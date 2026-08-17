@@ -401,7 +401,7 @@ async function getFxRates(){try{const raw=await SS.get(FX_KEY);if(raw){const v=J
 async function refreshFxInputs(){const r=await getFxRates();$('rateUSD').value=r.USD;$('rateEUR').value=r.EUR;$('rateVND').value=r.VND;
  const raw=await SS.get(FX_KEY).catch(()=>null);$('fxRatesInfo').textContent=raw?'שערים שמורים':'שערים ברירת מחדל משוערים — כדאי לעדכן לפני הנסיעה'}
 $('fxAutoUpdate').onclick=async()=>{if(!requireUser())return;$('fxRatesInfo').textContent='⏳ מושך שערים חיים...';
- try{const r=await fetch('https://api.frankfurter.dev/v2/latest?base=ILS&symbols=USD,EUR,VND',{cache:'no-store'});if(!r.ok)throw Error();const j=await r.json();
+ try{const r=await fetch('https://open.er-api.com/v6/latest/ILS',{cache:'no-store'});if(!r.ok)throw Error();const j=await r.json();
   const USD=1/j.rates.USD,EUR=1/j.rates.EUR,VND=1000/j.rates.VND;
   if(![USD,EUR,VND].every(Number.isFinite))throw Error();
   $('rateUSD').value=USD.toFixed(3);$('rateEUR').value=EUR.toFixed(3);$('rateVND').value=VND.toFixed(4);
