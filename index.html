@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.2.2</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.2.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- CHANGE 2026-08-22 v1.2.2: Fixed all JS syntax errors, integrated 22-day itinerary & budget edit/delete. -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwIrXr4gtBjYw9zDhfR8t0TNDluHDH_l8&callback=initMap"></script>
 <style>
 :root{
  --primary:#b42318;--primary-hover:#8f1d14;--primary-dark:#7a160e;--primary-light:#fff4f2;
@@ -271,6 +271,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
    <input id="expenseDescription" placeholder="תיאור">
    <input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח">
    <select id="expenseCategory">
+    <option value="lodging">לינה</option>
     <option value="food">אוכל</option>
     <option value="markets">שווקים</option>
     <option value="shopping">קניות</option>
@@ -284,9 +285,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   </div>
   <div id="expenseList" style="margin-top:15px;"></div>
  </div>
- <details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">האפליקציה רצה בסביבה חסומה לאינטרנט חיצוני, ולכן שערי החליפין לא מתעדכנים אוטומטית. יש להזין שערים ידנית — הם יישמרו ויהיו זהים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><button class="btn blue" id="fxUpdate">שמור שערים</button><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details>
+ <details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערים ידנית, או ללחוץ על "משוך שערים חיים" כדי להתעדכן מול שער המטבע העולמי.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row"><button class="btn gold" id="fxAutoUpdate">🔄 משוך שערים חיים</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details>
 </section>
-<section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><a class="listitem" href="https://m.grab.com/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://t.me/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#e0f2fe">✈️</div><div class="lbl">קבוצת טלגרם משפחתית (וייטנאם 2026)<span class="val" style="display:block;font-weight:400;font-size:.72rem">עדכונים, תמונות ושיחות שוטפות בטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic" style="background:#e6f4ea">📊</div><div class="lbl">תקציב והוצאות<span class="val" style="display:block;font-weight:400;font-size:.72rem">מעקב הוצאות ומחשבון המרה</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
+<section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/sg/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><a class="listitem" href="https://t.me/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#e0f2fe">✈️</div><div class="lbl">קבוצת טלגרם משפחתית (וייטנאם 2026)<span class="val" style="display:block;font-weight:400;font-size:.72rem">עדכונים, תמונות ושיחות שוטפות בטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic" style="background:#e6f4ea">📊</div><div class="lbl">תקציב והוצאות<span class="val" style="display:block;font-weight:400;font-size:.72rem">מעקב הוצאות ומחשבון המרה</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
 
@@ -302,9 +303,15 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 
 <script>
 'use strict';
-const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null};const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const USERS=['אור','שירי','שחר','עמית','עפרי'];
+const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};
+const CAT_ICONS={lodging:'🏨',food:'🍜',markets:'🏮',shopping:'🛍️',attractions:'🎟️',other:'💰'};
+const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};
+const DEFAULT_BUDGET=23000;
+let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null};
+const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget'};
+const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',catBudgets:'planner:catbudgets'};
 const QKEY='planner:__queue__';
 const hasCloud=()=>!!(window.storage&&typeof window.storage.set==='function');
 function readQueue(){try{return JSON.parse(localStorage.getItem(QKEY)||'[]')}catch{return[]}}
@@ -314,14 +321,14 @@ function dequeue(key){writeQueue(readQueue().filter(o=>o.key!==key));updateSyncB
 function lastSyncText(){const t=Number(localStorage.getItem('planner:lastsync')||0);if(!t)return hasCloud()?'זה עתה':'—';const mins=Math.floor((Date.now()-t)/60000);if(mins<1)return'זה עתה';if(mins<60)return`לפני ${mins} דקות`;const hrs=Math.floor(mins/60);if(hrs<24)return`לפני ${hrs} שעות`;return`לפני ${Math.floor(hrs/24)} ימים`}
 function updateSyncBadge(){const el=$('syncBadge');const n=readQueue().length;
  if(el){if(!n){el.style.display='none'}else{el.style.display='inline-block';
-  if(hasCloud()){el.textContent='🔴 '+n+' שינויים לא סונכרנו — לחצו לניסיון';el.title='לחצו לסנכרון מיידי'}
-  else{el.textContent='⚠️ מצב מקומי בלבד — '+n+' שינויים שמורים רק במכשיר הזה';el.title='אין חיבור לשרת משותף. לחצו להסבר'}}}
+  if(hasCloud()){el.textContent='🔴 '+n+' שינויים לא סונכרנו';el.title='לחצו לסנכרון מיידי'}
+  else{el.textContent='⚠️ מצב מקומי בלבד';el.title='אין חיבור לשרת משותף'}}}
  const ok=hasCloud()&&!n,card=$('moreSyncCard');
  if(card){card.classList.toggle('ok',ok);$('moreSyncTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים לסנכרון`:'סנכרון בענן פעיל'):'מצב מקומי בלבד';$('moreSyncSub').textContent=hasCloud()?`עודכן לאחרונה ${lastSyncText()}`:'אין חיבור לאחסון משותף'}
- if($('backupStatusTitle')){const cardOk=hasCloud();$('backupStatusCard').classList.toggle('ok',cardOk);$('backupStatusChk').textContent=cardOk?'✓':'⚠️';$('backupStatusChk').style.background=cardOk?'':'var(--accent)';$('backupStatusTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים`:'הגיבוי בענן פעיל'):'מצב מקומי בלבד';$('backupStatusSub').textContent=hasCloud()?'הנתונים מעודכנים':'אין חיבור לאחסון משותף — הנתונים נשמרים במכשיר זה בלבד';$('backupLastSync').textContent=hasCloud()?lastSyncText():'—'}}
+ if($('backupStatusTitle')){const cardOk=hasCloud();$('backupStatusCard').classList.toggle('ok',cardOk);$('backupStatusChk').textContent=cardOk?'✓':'⚠️';$('backupStatusChk').style.background=cardOk?'':'var(--accent)';$('backupStatusTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים`:'הגיבוי בענן פעיל'):'מצב מקומי בלבד';$('backupStatusSub').textContent=hasCloud()?'הנתונים מעודכנים':'אין חיבור לאחסון משותף';$('backupLastSync').textContent=hasCloud()?lastSyncText():'—'}}
 let flushing=false;
 async function flushQueue(manual){
- if(!hasCloud()){if(manual)alert('אין כרגע חיבור לשרת משותף.\n\nהנתונים נשמרים במכשיר הזה בלבד ולא נראים לשאר בני המשפחה. כדי לאפשר שיתוף אמיתי יש לחבר את האפליקציה לשרת נתונים.');updateSyncBadge();return}
+ if(!hasCloud()){if(manual)alert('אין כרגע חיבור לשרת משותף. הנתונים נשמרים במכשיר זה בלבד.');updateSyncBadge();return}
  if(flushing)return;const q=readQueue();if(!q.length){localStorage.setItem('planner:lastsync',String(Date.now()));updateSyncBadge();return}
  flushing=true;const left=[];
  for(const op of q){try{op.type==='del'?await window.storage.delete(op.key,true):await window.storage.set(op.key,op.value,true)}catch{left.push(op)}}
@@ -374,7 +381,7 @@ const SEED_DATA=[
   {"day": 3, "date": "17/09/2026", "region": "האנוי", "title": "כפר הקטורת ובובות מים", "activities": "סיור בכפר הקטורת קוואנג פו קאו, בערב מופע בובות מים", "hotel": "מלון בהאנוי", "cost": 850, "notes": "לינה משוערת: 350 ש״ח. הסעה לכפר + כניסות + כרטיסים לבובות מים: ~500 ש״ח", "lat": 21.0315, "lng": 105.853, "zoom": 14, "waypoints": [{"name": "כפר הקטורת קוואנג פו קאו", "lat": 21.0315, "lng": 105.853, "notes": "תרבות/צילום"}, {"name": "תיאטרון בובות מים", "lat": 21.0311, "lng": 105.8535, "notes": "לשריין כרטיסים מראש"}]},
   {"day": 4, "date": "18/09/2026", "region": "האנוי", "title": "רחוב הרכבת ושוק לילה", "activities": "מקדש הספרות, הליכה לאורך Train Street, וקפה", "hotel": "מלון בהאנוי", "cost": 450, "notes": "לינה משוערת: 350 ש״ח. הוצאות קטנות/כניסות: 100 ש״ח", "lat": 21.0275, "lng": 105.8431, "zoom": 14, "waypoints": [{"name": "Train Street", "lat": 21.0275, "lng": 105.8431, "notes": "אטרקציה תיירותית"}, {"name": "מקדש הספרות", "lat": 21.0288, "lng": 105.8356, "notes": "היסטוריה מקומית"}]},
   {"day": 5, "date": "19/09/2026", "region": "נין בין", "title": "מעבר לנין בין (ערב יום כיפור מחר)", "activities": "נסיעה להרים וצוקי הגיר, מנוחה", "hotel": "ריזורט בנין בין", "cost": 900, "notes": "הסעה פרטית האנוי-נין בין: ~300 ש״ח. לינה: ~600 ש״ח", "lat": 20.2506, "lng": 105.9745, "zoom": 14, "waypoints": [{"name": "נין בין / טאם קוק", "lat": 20.2506, "lng": 105.9745, "notes": "מנוחה והתאקלמות"}]},
-  {"day": 6, "date": "20/09/2026", "region": "נין בין", "title": "טראנג אן וערב יום כיפור", "activities": "שייט בבוקר בטראנג אן. בערב - כניסת הצום ומנוחה", "hotel": "ריזורט בנין בין", "cost": 800, "notes": "לינה: ~600 ש״ח. שייט וכניסות: ~200 ש״ח", "lat": 20.2541, "lng": 105.9189, "zoom": 14, "waypoints": [{"name": "Trang An", "lat": 20.2541, "lng": 105.9189, "notes": "שייט מערות בבוקר"}]},
+  {"day": 6, "date": "20/09/2026", "region": "נין بين", "title": "טראנג אן וערב יום כיפור", "activities": "שייט בבוקר בטראנג אן. בערב - כניסת הצום ומנוחה", "hotel": "ריזורט בנין בין", "cost": 800, "notes": "לינה: ~600 ש״ח. שייט וכניסות: ~200 ש״ח", "lat": 20.2541, "lng": 105.9189, "zoom": 14, "waypoints": [{"name": "Trang An", "lat": 20.2541, "lng": 105.9189, "notes": "שייט מערות בבוקר"}]},
   {"day": 7, "date": "21/09/2026", "region": "נין בין", "title": "יום כיפור", "activities": "שקט ומנוחה בריזורט. צאת הצום בערב.", "hotel": "ריזורט בנין בין", "cost": 600, "notes": "לינה בלבד: ~600 ש״ח.", "lat": 20.2506, "lng": 105.9745, "zoom": 14, "waypoints": []},
   {"day": 8, "date": "22/09/2026", "region": "מפרץ לאן הא", "title": "נסיעה למפרץ ועלייה לקרוז", "activities": "נסיעה בבוקר מנין בין לקרוז במפרץ לאן הא", "hotel": "קרוז 5 כוכבים", "cost": 3100, "notes": "הסעה נין בין-האלונג: ~300 ש״ח. קרוז ל-5 (פנסיון מלא): ~2800 ש״ח", "lat": 20.75, "lng": 107.05, "zoom": 14, "waypoints": [{"name": "יציאה לקרוז", "lat": 20.932, "lng": 106.995, "notes": "העברה לספינה ועלייה לסיפון"}]},
   {"day": 9, "date": "23/09/2026", "region": "מפרץ לאן הא", "title": "קרוז לילה במפרץ לאן הא", "activities": "המשך קרוז, שייט קיאקים, מערות", "hotel": "קרוז 5 כוכבים", "cost": 2800, "notes": "קרוז ל-5 (פנסיון מלא): ~2800 ש״ח", "lat": 20.75, "lng": 107.05, "zoom": 14, "waypoints": []},
@@ -537,7 +544,7 @@ async function setUserPhoto(name,dataUrl){const photos=await getUserPhotos();pho
 async function paintAvatar(el,name){if(!name){el.style.background=AVATAR_COLORS[0];el.textContent='?';return}
  const photos=await getUserPhotos();el.innerHTML='';
  if(photos[name]){const img=document.createElement('img');img.src=photos[name];el.appendChild(img)}
- else{el.style.background=avatarColor(name);el.textContent=name.trim()[0]||'קידוד'}}
+ else{el.style.background=avatarColor(name);el.textContent=name.trim()[0]||'?'}}
 
 async function renderHome(){
  let p=0;
@@ -600,6 +607,9 @@ async function saveExpenses(items){await SS.set(SHARED.expenses,JSON.stringify(i
 async function getBudgetTarget(){const raw=await SS.get(SHARED.budget);const n=Number(raw);if(Number.isFinite(n)&&n>0)return n;
  const old=Number(localStorage.getItem(KEYS.budget));return Number.isFinite(old)&&old>0?old:DEFAULT_BUDGET}
 
+async function getCatBudgets(){try{const raw=await SS.get(SHARED.catBudgets);return raw?JSON.parse(raw):{}}catch{return{}}}
+async function saveCatBudget(cat,val){const cur=await getCatBudgets();cur[cat]=val;await SS.set(SHARED.catBudgets,JSON.stringify(cur))}
+
 async function renderBudget(){
  const target=await getBudgetTarget();
  const items=await getExpenses();
@@ -614,10 +624,17 @@ async function renderBudget(){
  $('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;
  $('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
 
+ const catBudgets=await getCatBudgets();
  $('catChips').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>{
-  const actual=Number(by[k]||0);
-  return`<div class="tile"><div class="ic">💰</div><div class="name">${v}</div><div class="trow actual">בפועל<b>${actual.toLocaleString('he-IL')}₪</b></div></div>`;
+  const planned=Number(catBudgets[k]||0),actual=Number(by[k]||0);
+  const over=planned>0&&actual>planned;
+  return`<div class="tile"><div class="ic">${CAT_ICONS[k]}</div><div class="name">${v}</div><div class="trow">תכנון<input type="number" min="0" data-cat="${k}" value="${planned||''}" placeholder="0"></div><div class="trow actual ${planned>0?(over?'over':'under'):''}">בפועל<b>${actual.toLocaleString('he-IL')}₪${planned>0?(over?' ⚠️':' ✅'):''}</b></div></div>`;
  }).join('');
+
+ document.querySelectorAll('.tile input').forEach(inp=>inp.onchange=async()=>{
+  await saveCatBudget(inp.dataset.cat,Number(inp.value)||0);
+  renderBudget();
+ });
 
  $('expenseList').innerHTML=items.map((e,idx)=>`<div class="expense" style="align-items:center;"><div style="flex:1;min-width:0;padding-inline-end:10px;"><span style="display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.description)} <span class="muted">· ${esc(e.by||'')}</span></span><b>${Number(e.amount).toLocaleString('he-IL')} ₪</b></div><div class="row" style="gap:6px;flex-wrap:nowrap;"><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-edit-expense="${idx}">✎</button><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-delete-expense="${idx}">🗑️</button></div></div>`).join('');
 }
@@ -715,6 +732,19 @@ async function refreshFxInputs(){
  const raw=await SS.get(FX_KEY).catch(()=>null);
  $('fxRatesInfo').textContent=raw?'שערים שמורים':'שערים ברירת מחדל משוערים';
 }
+
+$('fxAutoUpdate').onclick=async()=>{
+ if(!requireUser())return;
+ $('fxRatesInfo').textContent='⏳ מושך שערים חיים...';
+ try{
+  const r=await fetch('https://api.frankfurter.dev/v2/latest?base=ILS&symbols=USD,EUR,VND',{cache:'no-store'});
+  if(!r.ok)throw Error();const j=await r.json();
+  const USD=1/j.rates.USD,EUR=1/j.rates.EUR,VND=1000/j.rates.VND;
+  if(![USD,EUR,VND].every(Number.isFinite))throw Error();
+  $('rateUSD').value=USD.toFixed(3);$('rateEUR').value=EUR.toFixed(3);$('rateVND').value=VND.toFixed(4);
+  await SS.set(FX_KEY,JSON.stringify({USD,EUR,VND}));fxState={result:null};
+  $('fxRatesInfo').textContent='✅ שערים חיים עודכנו ונשמרו';
+ }catch{$('fxRatesInfo').textContent='⚠️ משיכת שערים נכשלה — ניתן להזין ידנית'}};
 
 $('fxUpdate').onclick=async()=>{
  if(!requireUser())return;
