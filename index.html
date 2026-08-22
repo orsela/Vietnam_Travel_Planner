@@ -5,6 +5,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Vietnam Travel Planner — ויאטנם 2026 · v1.5.0 (Google Maps + schematic-map fallback)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
+     Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
+     hasCloud layer was already built to look for) never existed in a plain browser --
+     verified empirically by opening this file in two separate browser profiles and
+     confirming each saw only its own local data. This block, when filled in with a
+     real Supabase project's URL + anon key (see SUPABASE_SETUP_v1.5.4.txt), provides
+     that missing `window.storage` so the existing sync/offline-queue logic (already
+     written, never previously connected to anything real) starts working end to end.
+     Left unfilled, this block is a no-op and the app behaves exactly as before --
+     local-only, with the same honest "מצב מקומי בלבד" indicator. See
+     CHANGELOG_v1.5.4.txt for what was verified and how. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('[planner] Supabase library failed to load -- running in local-only mode')"></script>
+<script>
+(function(){
+ // ==== כדי להפעיל סנכרון-ענן אמיתי בין כל בני המשפחה: ====
+ // 1. הירשמו בחינם ב-supabase.com וצרו פרויקט חדש
+ // 2. הריצו את סקריפט ה-SQL מתוך SUPABASE_SETUP_v1.5.4.txt כדי ליצור את הטבלה
+ // 3. העתיקו את ה-Project URL ואת ה-anon public key מתוך Settings → API בפרויקט
+ // 4. הדביקו אותם כאן במקום שתי המחרוזות למטה (בלי לשנות שום דבר אחר בקובץ)
+ // עד שזה יתמלא, השורה הבאה גורמת לבלוק הזה לא לעשות כלום -- האפליקציה תמשיך
+ // לעבוד בדיוק כמו היום, במצב מקומי בלבד.
+ const SUPABASE_URL='https://kkitwcnkoxuhbcsabcdl.supabase.co';
+ const SUPABASE_ANON_KEY='sb_publishable_e7CzGjayv7yHKDbxypzTjA_Ya-fptMp';
+ if(!SUPABASE_URL||SUPABASE_URL.indexOf('YOUR_')===0||!SUPABASE_ANON_KEY||SUPABASE_ANON_KEY.indexOf('YOUR_')===0)return;
+ if(!window.supabase||typeof window.supabase.createClient!=='function'){console.warn('[planner] Supabase configured but library not loaded');return}
+ let sb;
+ try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn('[planner] Supabase client init failed',e);return}
+ window.storage={
+  async get(key){
+   const{data,error}=await sb.from('planner_kv').select('value').eq('key',key).maybeSingle();
+   if(error)throw error;
+   return data?{value:data.value}:null
+  },
+  async set(key,value){
+   const{error}=await sb.from('planner_kv').upsert({key,value,updated_at:new Date().toISOString()},{onConflict:'key'});
+   if(error)throw error;
+   return true
+  },
+  async delete(key){
+   const{error}=await sb.from('planner_kv').delete().eq('key',key);
+   if(error)throw error;
+   return true
+  }
+ };
+})();
+</script>
 <!-- Google Maps API with your provided key -->
 <!-- CHANGE 2026-08-22 GM-03: capture Google Maps load failures as early and reliably as
      possible, before the app's own script has even run. gm_authFailure is Google's own
@@ -680,13 +726,35 @@ $('importExcelInput').onchange=async e=>{
   tripData=days;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render();
   $('importExcelFeedback').textContent='✅ המסלול יובא בהצלחה';
  }catch(err){$('importExcelFeedback').textContent=err?.message==='missing-sheet'?'⚠️ לא נמצא גיליון בשם "מסלול" בקובץ':'⚠️ קובץ אקסל לא תקין או שהמבנה שונה מהצפוי'}
- e.target.value=''};$('importInput').onchange=e=>{const r=new FileReader();r.onload=async()=>{try{const v=JSON.parse(r.result);if(!Array.isArray(v)||!v.length)throw Error();if(!confirm('הקובץ מכיל '+v.length+' ימים ויחליף את המסלול עבור כולם. להמשיך?'))return;tripData=v;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render()}catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};(async function boot(){
+ e.target.value=''};$('importInput').onchange=e=>{const r=new FileReader();r.onload=async()=>{try{const v=JSON.parse(r.result);if(!Array.isArray(v)||!v.length)throw Error();if(!confirm('הקובץ מכיל '+v.length+' ימים ויחליף את המסלול עבור כולם. להמשיך?'))return;tripData=v;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render()}catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};
+/* CHANGE 2026-08-22 GM-09: pull-based live refresh from the shared cloud store.
+   Verified empirically (two simulated devices sharing one backend) that without
+   this, a change saved on one device never appeared on another device that was
+   already open -- the existing 20s interval only pushes local pending changes
+   out, it never pulls anyone else's changes in, and nothing else in the app
+   re-reads shared data on its own once boot() has run. This adds a second,
+   independent interval that re-reads the shared trip/budget/expenses/journal
+   data (all already read live via SS.get() by loadState()/render() -- no new
+   fetch logic needed) and re-renders, but only when it's safe to do so
+   silently: never while a modal is open, and never while the user is actively
+   typing in a field, so an incoming update can't interrupt or overwrite
+   something they're in the middle of entering. See CHANGELOG_v1.5.4.txt. */
+async function pullRemoteUpdates(){
+ if(!hasCloud())return;
+ if(document.querySelector('.modal.open'))return;
+ const ae=document.activeElement;
+ if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+ try{await loadState();fillSelects();updateDates();render();renderBudget();renderDailyBurn()}catch{}
+}
+(async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
  await ensureDefaultLodgingBudget();renderBudget();
  $('tripName').textContent=await getTripName();
  updateSyncBadge();flushQueue();
  window.addEventListener('online',flushQueue);
  setInterval(flushQueue,20000);
+ setInterval(pullRemoteUpdates,15000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullRemoteUpdates()});
  startGoogleMapsWatch(); /* CHANGE 2026-08-22 GM-03 */
 })();
 </script>
