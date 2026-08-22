@@ -3,9 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.2.5</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.5.0 (Google Maps + schematic-map fallback)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwIrXr4gtBjYw9zDhfR8t0TNDluHDH_l8&callback=initMap"></script>
+<!-- Google Maps API with your provided key -->
+<!-- CHANGE 2026-08-22 GM-03: capture Google Maps load failures as early and reliably as
+     possible, before the app's own script has even run. gm_authFailure is Google's own
+     documented hook for auth/billing problems (invalid key, billing off, API not enabled,
+     expired key) -- unlike an iframe, a plain script element's onerror DOES fire
+     reliably for network-level failures (verified directly with a mocked aborted request,
+     not assumed). Both are wired to a tiny queue here; the main script (bottom of page)
+     drains it once it has booted, and also starts its own timeout for the "never calls
+     back at all" case that neither of these two hooks covers. See CHANGELOG_v1.5.0.txt. -->
+<script>window.__gmapsFailure=null;window.gm_authFailure=function(){window.__gmapsFailure='auth';if(window.__onGmapsFailure)window.__onGmapsFailure('auth')};</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwIrXr4gtBjYw9zDhfR8t0TNDluHDH_l8&callback=initMap" onerror="window.__gmapsFailure='network';if(window.__onGmapsFailure)window.__onGmapsFailure('network')"></script>
 <style>
 :root{
  --primary:#b42318;--primary-hover:#8f1d14;--primary-dark:#7a160e;--primary-light:#fff4f2;
@@ -20,24 +30,20 @@
 html,body,button,input,textarea,select{font-family:"Segoe UI",Arial,sans-serif}
 body{margin:0;background:var(--bg);color:var(--text);line-height:1.6;font-size:16px;padding-bottom:70px}
 h1,h2,h3{line-height:1.3;margin:0 0 var(--sp-1)}
-
 .tabs{position:fixed;bottom:0;left:0;right:0;z-index:29;display:flex;justify-content:space-around;align-items:center;background:#fff;border-top:1px solid var(--border);padding:8px 0 calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 10px #0000000a}
 .tab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;flex:1;padding:6px 2px;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:.64rem;white-space:nowrap}
 .tab .tabicon{font-size:1.15rem;line-height:1}
 .tab.active{color:var(--primary)}
-
 .avatar-circle{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex-shrink:0;overflow:hidden;background:var(--primary)}
 .avatar-circle img{width:100%;height:100%;object-fit:cover}
 .pillbtn{border-radius:var(--radius-pill)!important}
 .file-input-vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-
 .panel{display:none;max-width:1100px;margin:auto;padding:var(--sp-3)}
 .panel.active{display:block}
 #home.panel{padding:0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--sp-4);margin-bottom:var(--sp-3);box-shadow:0 2px 8px #0000000a}
 .card h2{font-size:1.3rem}
 .card h3{font-size:1.05rem;margin-bottom:var(--sp-2)}
-
 .subsection{border-top:1px solid var(--border);margin-top:var(--sp-3);padding-top:var(--sp-3)}
 .subsection>.row{justify-content:space-between;margin-bottom:var(--sp-2)}
 .subsection b{font-size:.95rem}
@@ -53,15 +59,12 @@ details.card>summary::-webkit-details-marker{display:none}
 details.card>summary::after{content:'▾ הצג/הסתר';color:var(--muted);font-size:.72rem;font-weight:600;margin-inline-start:8px}
 details.card[open]>summary::after{content:'▴ הסתר'}
 details.card .subsection-body{padding-top:var(--sp-3)}
-
 .grid{display:grid;grid-template-columns:1fr;gap:var(--sp-3)}
 @media(min-width:850px){.grid{grid-template-columns:1fr 1.2fr}}
 .row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
-
 input,textarea,select{width:100%;min-height:var(--h);padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--text);font-size:.95rem}
 textarea{min-height:88px}
 input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px #b4231824}
-
 .btn{min-height:var(--h);padding:10px 16px;border:0;border-radius:var(--radius);font-weight:700;font-size:.92rem;cursor:pointer;touch-action:manipulation}
 .red{background:var(--primary);color:#fff}
 .blue{background:var(--booking);color:#fff}
@@ -69,22 +72,11 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .gold{background:#f2b134;color:#2b2100}
 .outline{background:#fff;border:1px solid var(--border);color:var(--text)}
 .muted{color:var(--muted);font-size:.85rem}
-
 .badge{min-height:26px;display:inline-flex;align-items:center;background:#f1f5f9;border-radius:15px;padding:3px 10px;font-size:.74rem;font-weight:700;letter-spacing:.01em}
-
-.info-grid{display:flex;flex-direction:column;gap:var(--sp-3);margin:var(--sp-2) 0}
-.info-item{display:flex;flex-direction:column;gap:3px}
-.info-label{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.info-value{font-size:1rem}
-.info-value.cost{font-size:1.4rem;font-weight:800;color:var(--primary)}
-.info-item .row{flex-wrap:nowrap}
-.info-item .row input{width:auto;flex:1;min-width:0}
-
 .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
 @media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{text-align:center;padding:var(--sp-3)}
 .stat strong{display:block;font-size:1.7rem;color:var(--primary);margin-bottom:2px}
-
 .homehero{background:var(--grad-home);color:#fff;padding:18px 18px 26px;position:relative;overflow:hidden}
 .homehero::before{content:'';position:absolute;inset:0;background:
  radial-gradient(circle at 20% 15%, #ffffff1a 0 70px, transparent 71px),
@@ -100,22 +92,18 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .section-label{font-size:.78rem;font-weight:700;color:var(--muted);margin:4px 0 8px}
 .nextcard{align-items:center;gap:12px}
 .nextthumb{width:52px;height:52px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,#f2b134,#b42318)}
-
 .topbar{display:flex;align-items:center;justify-content:center;position:relative;padding:16px 18px 6px;max-width:1100px;margin:auto}
 .topbar h1{font-size:1.05rem;margin:0}
 .topbar .topbar-action{position:absolute;left:18px;font-size:1rem;color:var(--muted);cursor:pointer}
 .topbar .topbar-back{position:absolute;right:18px;font-size:1.2rem;color:var(--text);cursor:pointer;background:none;border:0}
-
 .tabrow2{display:flex;margin:6px 18px 10px;border-bottom:1px solid var(--border);max-width:1100px;margin-inline:auto}
 .tabrow2-item{flex:1;text-align:center;padding:10px 0;font-size:.85rem;font-weight:700;color:var(--muted);border-bottom:2.5px solid transparent;cursor:pointer;background:none;border-top:0;border-inline:0}
 .tabrow2-item.active{color:var(--primary);border-bottom-color:var(--primary)}
-
 .listitem{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px;cursor:pointer}
 .listitem .ic{width:36px;height:36px;border-radius:10px;background:#f5f2ea;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
 .listitem .lbl{flex:1;font-weight:700;font-size:.85rem}
 .listitem .val{font-size:.78rem;color:var(--muted)}
 .listitem .chev{color:var(--muted)}
-
 .statuscard{border-radius:16px;padding:14px;display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .statuscard.ok{background:var(--success-bg)}
 .statuscard .chk{width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
@@ -123,7 +111,6 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .statuscard b{font-size:.85rem;display:block}
 .statuscard.ok b{color:#265a0a}
 .statuscard.ok span{font-size:.7rem;color:#3b6d11}
-
 .catrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .tile{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 8px;text-align:center}
 .tile .ic{font-size:1.15rem;margin-bottom:2px}
@@ -133,43 +120,37 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .tile .trow.actual.over b{color:var(--primary)}
 .tile .trow.actual.under b{color:var(--success)}
 .tile input{width:100%;min-height:26px;border:1px solid var(--border);border-radius:7px;font-size:.68rem;text-align:center;padding:2px}
-
 .sumcard{background:var(--success-bg);border-radius:16px;padding:16px;text-align:center;margin:0 auto var(--sp-3);max-width:1100px}
 .sumcard .amt{font-size:1.7rem;font-weight:800;color:var(--success)}
 .sumcard .lbl{font-size:.78rem;color:#3d7a4f;margin-bottom:10px}
 .pbar2{height:8px;background:#fff;border-radius:6px;overflow:hidden}
 .pbar2 div{height:100%;background:var(--success)}
-
 .pgrid2{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pgrid2 .ph{aspect-ratio:1;border-radius:12px;position:relative;overflow:hidden;background:#eee}
 .pgrid2 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .pgrid2 .ph .star{position:absolute;top:5px;left:5px;width:22px;height:22px;border-radius:50%;background:#00000055;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff;border:0;cursor:pointer}
 .pgrid2 .ph .star.on{background:var(--gold);color:#7a5c00}
 .pgrid2 .ph .by{position:absolute;bottom:0;right:0;left:0;background:linear-gradient(0deg,#000000aa,transparent);color:#fff;font-size:.62rem;padding:4px 6px}
-
 .urow{display:flex;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius-pill);padding:9px 14px;margin-bottom:9px;cursor:pointer}
 .urow.active{border-color:var(--primary);background:var(--primary-light)}
 .urow .uname{flex:1;font-weight:700;font-size:.9rem}
 .urow .ucheck{width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem}
 .urow .cambadge{position:relative;width:28px;height:28px;margin-inline-start:-16px;margin-top:22px;border-radius:50%;background:#fff;border:2px solid var(--primary);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;flex-shrink:0;touch-action:manipulation}
-
-.map{height:340px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.map{height:340px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;position:relative}
+.map-provider-toggle{position:absolute;top:8px;left:8px;z-index:5;background:#fff;border:1px solid var(--border);border-radius:var(--radius-pill);padding:6px 12px;font-size:.72rem;font-weight:700;color:var(--text);cursor:pointer;box-shadow:0 2px 6px #0000001a}
+.map-fallback-note{font-size:.72rem;color:var(--accent);margin:6px 0 0;text-align:center}
 .map-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-2)}
 #map{height:100%}
-
 .modal{display:none;position:fixed;inset:0;z-index:100;background:#0f172aaa;place-items:center;padding:var(--sp-3)}
 .modal.open{display:grid}
-.modal-box{position:relative;background:#fff;border-radius:var(--radius-lg);padding:var(--sp-4);width:min(520px,100%);max-height:calc(100vh - 24px);overflow:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
-
+.modal-box{background:#fff;border-radius:var(--radius-lg);padding:var(--sp-4);width:min(520px,100%);max-height:calc(100vh - 24px);overflow:auto;display:flex;flex-direction:column;gap:var(--sp-2)}
 .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:var(--sp-2)}
 .photo{position:relative;aspect-ratio:1;overflow:hidden;border-radius:var(--radius)}
 .photo img{width:100%;height:100%;object-fit:cover}
 .photo small{position:absolute;bottom:0;inset-inline:0;background:#000b;color:#fff;padding:3px}
-
 .expense{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:var(--sp-2) 0}
 .progress{height:13px;background:#e5e7eb;border-radius:8px;overflow:hidden}
 .progress div{height:100%;background:var(--success);width:0}
-
 @media(max-width:700px){
  .panel{padding:var(--sp-2)}
  .card{padding:var(--sp-3)}
@@ -180,7 +161,6 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
  .homehero h1{font-size:1.1rem}
 }
 @media print{.tabs,.no-print,.homehero{display:none}.panel{display:none!important}.panel#album{display:block!important}}
-
 .day-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
 .day-chip{min-width:68px;flex:0 0 auto;border:1px solid var(--border);background:#fff;border-radius:12px;padding:7px 8px;text-align:center;cursor:pointer;font-weight:700;font-size:.72rem;color:var(--muted);touch-action:manipulation}
@@ -229,70 +209,15 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   </div>
  </div>
 </section>
-<section id="route" class="panel">
- <div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div>
- <div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div>
- <div class="card row"><select id="daySelect"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div>
- <div class="grid">
-  <div class="card">
-   <div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div>
-   <h2 id="title"></h2>
-   <div class="info-grid">
-    <div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div>
-    <div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span></div>
-    <div class="info-item"><span class="info-label">💰 עלות</span><span id="dayCost" class="info-value cost"></span></div>
-   </div>
-   <details class="subsection"><summary>💡 דגשים</summary><div class="subsection-body"><span id="notes" class="muted"></span></div></details>
-   <details class="subsection"><summary>📍 נקודות עניין <span id="waypointBadge" class="badge"></span></summary><div class="subsection-body"><div class="row" style="justify-content:flex-end;margin-bottom:var(--sp-2)"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div></details>
-   <details class="subsection"><summary>🏨 הזמנה <span id="bookingBadge" class="badge"></span></summary><div class="subsection-body"><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></details>
-  </div>
-  <div>
-   <div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button></div>
-   <div class="map"><div id="map" style="width:100%;height:100%"></div></div>
-   <a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a>
-  </div>
- </div>
-</section>
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div class="card row"><select id="daySelect"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span></div><div class="info-item"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div></div><details class="subsection"><summary>💡 דגשים</summary><div class="subsection-body"><span id="notes" class="muted"></span></div></details><details class="subsection"><summary>📍 נקודות עניין <span id="waypointBadge" class="badge"></span></summary><div class="subsection-body"><div class="row" style="justify-content:flex-end;margin-bottom:var(--sp-2)"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div></details><details class="subsection"><summary>🏨 הזמנה <span id="bookingBadge" class="badge"></span></summary><div class="subsection-body"><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></details></div><div><div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
-<section id="budget" class="panel">
- <div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>תקציב והוצאות</h1></div>
- <div id="budgetBurn" class="daily-burn" style="display:none"></div>
- <div class="sumcard">
-  <div class="amt" id="budgetTotals2"></div>
-  <div class="lbl" id="budgetSubline"></div>
-  <div class="pbar2"><div id="budgetBar"></div></div>
- </div>
- <div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div>
- <div class="catrow" id="catChips"></div>
- <div class="card">
-  <h3>➕ הוספת הוצאה</h3>
-  <div class="grid">
-   <input id="expenseDescription" placeholder="תיאור">
-   <input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח">
-   <select id="expenseCategory">
-    <option value="lodging">לינה</option>
-    <option value="food">אוכל</option>
-    <option value="markets">שווקים</option>
-    <option value="shopping">קניות</option>
-    <option value="attractions">אטרקציות</option>
-    <option value="other">אחר</option>
-   </select>
-  </div>
-  <div class="row" style="margin-top:10px;">
-   <button class="btn green" id="saveExpense">שמור הוצאה</button>
-   <button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button>
-  </div>
-  <div id="expenseList" style="margin-top:15px;"></div>
- </div>
- <details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">האפליקציה רצה בסביבה חסומה לאינטרנט חיצוני, ולכן שערי החליפין לא מתעדכנים אוטומטית. יש להזין שערים ידנית — הם יישמרו ויהיו זהים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row"><button class="btn gold" id="fxAutoUpdate">🔄 משוך שערים חיים</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details>
-</section>
-<section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/sg/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic" style="background:#e6f4ea">📊</div><div class="lbl">תקציב והוצאות<span class="val" style="display:block;font-weight:400;font-size:.72rem">מעקב הוצאות ומחשבון המרה</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
+<section id="budget" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><div class="card"><h3>➕ הוספת הוצאה</h3><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
+<section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="budget"><div class="ic" style="background:#e6f4ea">📊</div><div class="lbl">תקציב והוצאות<span class="val" style="display:block;font-weight:400;font-size:.72rem">מעקב הוצאות ומחשבון המרה</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
-
 <div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><select id="quickFxFrom"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="EUR">אירו — EUR</option></select><select id="quickFxTo"><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="ILS">שקל — ILS</option><option value="EUR">אירו — EUR</option></select></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small></div></div>
-<div id="weatherModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
+<div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
 <div id="documentsModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔐 כספת מסמכים</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">המסמכים נשמרים מקומית במכשיר וזמינים גם ללא אינטרנט. מומלץ להעלות תמונות/צילומי מסך ולא קבצים גדולים.</p><div class="row"><select id="docCategory" style="flex:1"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><input id="docName" style="flex:1" maxlength="50" placeholder="שם המסמך"></div><button class="btn blue" id="docAddBtn" type="button">➕ הוסף מסמך</button><input id="docInput" type="file" accept="image/*" multiple class="file-input-vh"><div id="documentsGrid" class="doc-grid" style="margin-top:12px"></div></div></div>
 <div id="tripSettingsModal" class="modal"><div class="modal-box"><h2>🧭 הגדרות מסע</h2><label class="muted">שם הטיול</label><input id="tripNameInput" placeholder="שם הטיול" maxlength="60"><button class="btn green" id="saveTripName">שמור</button><button class="btn outline close" type="button">סגור</button></div></div>
 <div id="dayEditModal" class="modal"><div class="modal-box"><h2>✎ עריכת יום</h2><select id="editSelect"></select><form id="dayForm"><div class="grid"><input id="fDate" required placeholder="תאריך DD/MM/YYYY"><input id="fRegion" required placeholder="אזור"><input id="fTitle" required placeholder="כותרת"><textarea id="fActivities" required placeholder="פעילויות"></textarea><input id="fHotel" required placeholder="מלון"><input id="fCost" type="number" min="0" required placeholder="עלות"><input id="fLat" type="number" step="any" required placeholder="Latitude"><input id="fLng" type="number" step="any" required placeholder="Longitude"><textarea id="fNotes" placeholder="דגשים"></textarea></div><button class="btn green">שמור שינויים</button><button class="btn outline" type="button" id="deleteDay">מחק יום</button><button class="btn outline close" type="button">סגור</button></form></div></div>
@@ -300,18 +225,12 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div id="waypointModal" class="modal"><div class="modal-box"><h2>📍 הוספת נקודת עניין</h2><label class="muted">קישור Google Maps או קואורדינטות</label><div class="row"><input id="mapsInput" placeholder="קישור מלא או 21.0285,105.8542"><button class="btn blue" id="parseMaps">חלץ</button></div><small id="mapsFeedback" class="muted"></small><input id="wpName" placeholder="שם המקום"><input id="wpLat" type="number" step="any" placeholder="Latitude"><input id="wpLng" type="number" step="any" placeholder="Longitude"><input id="wpNotes" placeholder="הערות"><button class="btn green" id="saveWaypoint">שמור נקודה</button><button class="btn outline close">ביטול</button></div></div>
 <div id="bookingModal" class="modal"><div class="modal-box"><h2>🏨 הזמנה מאושרת</h2><input id="bookHotel" placeholder="מלון בפועל"><input id="bookRef" placeholder="מספר אישור"><input id="bookTotal" type="number" min="0" placeholder="מחיר כולל בש״ח"><textarea id="bookNotes" placeholder="הערות"></textarea><label class="muted">מיקום המלון בפועל (לעדכון המפה — אופציונלי)</label><div class="row"><input id="bookMapsInput" placeholder="קישור Google Maps או קואורדינטות"><button class="btn blue" type="button" id="bookParseMaps">חלץ</button></div><small id="bookMapsFeedback" class="muted"></small><div class="row"><input id="bookLat" type="number" step="any" placeholder="Latitude"><input id="bookLng" type="number" step="any" placeholder="Longitude"></div><label><input id="bookAll" type="checkbox" checked> החל על כל רצף השהייה</label><button class="btn green" id="saveBooking">שמור הזמנה</button><button class="btn outline close">ביטול</button></div></div>
 <div id="backupModal" class="modal"><div class="modal-box"><h2>💾 גיבוי וייבוא נתוני מסלול</h2><p class="muted">מומלץ אקסל לעריכה נוחה (נפתח כטבלה), או JSON לגיבוי מלא ומדויק.</p><div class="row"><button class="btn gold" id="backupDownloadXlsx">📊 הורדה כאקסל</button><button class="btn outline" id="backupDownload">⬇️ הורדה כ-JSON</button><button class="btn blue" id="backupCopy">📋 העתק JSON ללוח</button></div><small id="backupFeedback" class="muted"></small><hr><b>📂 ייבוא</b><p class="muted">מחליף את כל המסלול הנוכחי. יש לשמור על מבנה העמודות/השדות כפי שהוא בקובץ שהורדתם מכאן.</p><div class="row"><button class="btn outline" type="button" id="importExcelBtn">בחר קובץ אקסל (.xlsx)</button><input id="importExcelInput" type="file" accept=".xlsx,.xls" class="file-input-vh"><button class="btn outline" type="button" id="importJsonBtn">בחר קובץ JSON</button><input id="importInput" type="file" accept=".json" class="file-input-vh"></div><small id="importExcelFeedback" class="muted"></small><hr><textarea id="backupText" readonly style="min-height:180px;font-family:monospace;font-size:.78rem" onclick="this.select()"></textarea><button class="btn outline close">סגור</button></div></div>
-
+<button id="globalFxBtn" class="global-fx" type="button" aria-label="המרת מטבע">₪ ⇄ $</button>
+<!-- CHANGE 2026-08-22 GM-03: moved here from after </script> -- it was previously placed after the closing </script> tag, so it did not exist in the DOM yet when the top-level script below ran and tried to wire its onclick handler. That threw an uncaught TypeError which silently aborted the rest of the script, including the boot() call at the very end -- so the app never loaded trip data or opened the user picker. Confirmed with a headless-browser test; see CHANGELOG_v1.5.0.txt. -->
 <script>
 'use strict';
-const USERS=['אור','שירי','שחר','עמית','עפרי'];
-const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};
-const CAT_ICONS={lodging:'🏨',food:'🍜',markets:'🏮',shopping:'🛍️',attractions:'🎟️',other:'💰'};
-const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};
-const DEFAULT_BUDGET=23000;
-let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null};
-const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',catBudgets:'planner:catbudgets'};
+const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null},mapProvider='google',mapLoadTimer=null;const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget'};
 const QKEY='planner:__queue__';
 const hasCloud=()=>!!(window.storage&&typeof window.storage.set==='function');
 function readQueue(){try{return JSON.parse(localStorage.getItem(QKEY)||'[]')}catch{return[]}}
@@ -321,14 +240,14 @@ function dequeue(key){writeQueue(readQueue().filter(o=>o.key!==key));updateSyncB
 function lastSyncText(){const t=Number(localStorage.getItem('planner:lastsync')||0);if(!t)return hasCloud()?'זה עתה':'—';const mins=Math.floor((Date.now()-t)/60000);if(mins<1)return'זה עתה';if(mins<60)return`לפני ${mins} דקות`;const hrs=Math.floor(mins/60);if(hrs<24)return`לפני ${hrs} שעות`;return`לפני ${Math.floor(hrs/24)} ימים`}
 function updateSyncBadge(){const el=$('syncBadge');const n=readQueue().length;
  if(el){if(!n){el.style.display='none'}else{el.style.display='inline-block';
-  if(hasCloud()){el.textContent='🔴 '+n+' שינויים לא סונכרנו';el.title='לחצו לסנכרון מיידי'}
-  else{el.textContent='⚠️ מצב מקומי בלבד';el.title='אין חיבור לשרת משותף'}}}
+  if(hasCloud()){el.textContent='🔴 '+n+' שינויים לא סונכרנו — לחצו לניסיון';el.title='לחצו לסנכרון מיידי'}
+  else{el.textContent='⚠️ מצב מקומי בלבד — '+n+' שינויים שמורים רק במכשיר הזה';el.title='אין חיבור לשרת משותף. לחצו להסבר'}}}
  const ok=hasCloud()&&!n,card=$('moreSyncCard');
  if(card){card.classList.toggle('ok',ok);$('moreSyncTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים לסנכרון`:'סנכרון בענן פעיל'):'מצב מקומי בלבד';$('moreSyncSub').textContent=hasCloud()?`עודכן לאחרונה ${lastSyncText()}`:'אין חיבור לאחסון משותף'}
- if($('backupStatusTitle')){const cardOk=hasCloud();$('backupStatusCard').classList.toggle('ok',cardOk);$('backupStatusChk').textContent=cardOk?'✓':'⚠️';$('backupStatusChk'].style.background=cardOk?'':'var(--accent)';$('backupStatusTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים`:'הגיבוי בענן פעיל'):'מצב מקומי בלבד';$('backupStatusSub').textContent=hasCloud()?'הנתונים מעודכנים':'אין חיבור לאחסון משותף';$('backupLastSync').textContent=hasCloud()?lastSyncText():'—'}}
+ if($('backupStatusTitle')){const cardOk=hasCloud();$('backupStatusCard').classList.toggle('ok',cardOk);$('backupStatusChk').textContent=cardOk?'✓':'⚠️';$('backupStatusChk').style.background=cardOk?'':'var(--accent)';$('backupStatusTitle').textContent=hasCloud()?(n?`${n} שינויים ממתינים`:'הגיבוי בענן פעיל'):'מצב מקומי בלבד';$('backupStatusSub').textContent=hasCloud()?'הנתונים מעודכנים':'אין חיבור לאחסון משותף — הנתונים נשמרים במכשיר זה בלבד';$('backupLastSync').textContent=hasCloud()?lastSyncText():'—'}}
 let flushing=false;
 async function flushQueue(manual){
- if(!hasCloud()){if(manual)alert('אין כרגע חיבור לשרת משותף. הנתונים נשמרים במכשיר זה בלבד.');updateSyncBadge();return}
+ if(!hasCloud()){if(manual)alert('אין כרגע חיבור לשרת משותף.\n\nהנתונים נשמרים במכשיר הזה בלבד ולא נראים לשאר בני המשפחה. כדי לאפשר שיתוף אמיתי יש לחבר את האפליקציה לשרת נתונים.');updateSyncBadge();return}
  if(flushing)return;const q=readQueue();if(!q.length){localStorage.setItem('planner:lastsync',String(Date.now()));updateSyncBadge();return}
  flushing=true;const left=[];
  for(const op of q){try{op.type==='del'?await window.storage.delete(op.key,true):await window.storage.set(op.key,op.value,true)}catch{left.push(op)}}
@@ -374,7 +293,6 @@ async function migrateJournal(from,to){
  await SS.del('planner:journal:'+from)}
 function recalcDates(){const a=parseDate(tripData[0]&&tripData[0].date);if(!a)return;
  tripData.forEach((d,i)=>{const x=new Date(a);x.setDate(a.getDate()+i);d.date=x.toLocaleDateString('en-GB')})}
-
 const SEED_DATA=[
   {"day": 1, "date": "15/09/2026", "region": "טיסות", "title": "טיסה להאנוי", "activities": "יציאה מישראל להאנוי (המראה והגעה למחרת)", "hotel": "בטיסה", "cost": 100, "notes": "טיסות שולמו. מחושבת עלות מונית משוערת משדה התעופה למלון (100 ש״ח).", "lat": 21.2212, "lng": 105.8072, "zoom": 14, "waypoints": [{"name": "נמל תעופה נוי באי (HAN)", "lat": 21.2212, "lng": 105.8072, "notes": "נחיתה והסעה (עלות הסעה מוערכת: 100 ש״ח)"}]},
   {"day": 2, "date": "16/09/2026", "region": "האנוי", "title": "נחיתה והרובע העתיק", "activities": "התאקלמות וסיור אוכל רגלי מודרך בערב", "hotel": "מלון בהאנוי", "cost": 550, "notes": "לינה משוערת: 350 ש״ח. סיור: 200 ש״ח. אוכל בדוכנים בנפרד.", "lat": 21.0315, "lng": 105.853, "zoom": 14, "waypoints": [{"name": "שוק דונג שואן", "lat": 21.0381, "lng": 105.8498, "notes": "שיטוט חופשי"}, {"name": "סיור אוכל רגלי", "lat": 21.0315, "lng": 105.853, "notes": "קולינריה מסורתית"}]},
@@ -399,7 +317,6 @@ const SEED_DATA=[
   {"day": 21, "date": "05/10/2026", "region": "האנוי", "title": "קניות ופנאי", "activities": "השלמת קניות ברובע הצרפתי והעתיק, אריזות", "hotel": "מלון בהאנוי", "cost": 450, "notes": "לינה: ~350 ש״ח. נסיעות קטנות בעיר: ~100 ש״ח.", "lat": 21.0245, "lng": 105.856, "zoom": 14, "waypoints": [{"name": "הרובע הצרפתי", "lat": 21.0245, "lng": 105.856, "notes": "אזור קניות והאופרה"}]},
   {"day": 22, "date": "06/10/2026", "region": "טיסות", "title": "טיסה חזרה לישראל", "activities": "נסיעה לשדה התעופה נוי באי וטיסה חזרה הביתה", "hotel": "בטיסה", "cost": 100, "notes": "מונית לשדה: ~100 ש״ח.", "lat": 21.2212, "lng": 105.8072, "zoom": 14, "waypoints": [{"name": "נמל תעופה נוי באי HAN", "lat": 21.2212, "lng": 105.8072, "notes": "המראה חזרה לישראל"}]}
 ];
-
 function makeSeed(){return SEED_DATA.map(d=>({...d,waypoints:(d.waypoints||[]).map(w=>({...w}))}))}
 async function loadState(){let v=null;
  try{const raw=await SS.get(SHARED.trip);if(raw)v=JSON.parse(raw)}catch{}
@@ -407,41 +324,12 @@ async function loadState(){let v=null;
  tripData=Array.isArray(v)&&v.length?v:makeSeed();
  if(globalDayIndex>=tripData.length)globalDayIndex=Math.max(0,tripData.length-1);
  activeUser=localStorage.getItem(KEYS.user)||''}
-async function saveTrip(){await SS.set(SHARED.trip,JSON.stringify(tripData))}
-function requireUser(){if(activeUser)return true;openModal('userModal');return false}
-function valid(a,b){return Number.isFinite(Number(a))&&Number(a)>=-90&&Number(a)<=90&&Number.isFinite(Number(b))&&Number(b)>=-180&&Number(b)<=180}
-function parseDate(v){const m=String(v).match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null}
-function iso(v){const d=parseDate(v);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:''}
-function checkout(v){const d=parseDate(v);if(!d)return'';d.setDate(d.getDate()+1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function stayBlock(i){const d=tripData[i];if(!d||['בטיסה','טיסה חזרה'].includes(d.hotel))return null;const key=`${d.bookedHotel||d.hotel}|${d.region}`;let a=i,b=i;while(a&&`${tripData[a-1].bookedHotel||tripData[a-1].hotel}|${tripData[a-1].region}`===key)a--;while(b<tripData.length-1&&`${tripData[b+1].bookedHotel||tripData[b+1].hotel}|${tripData[b+1].region}`===key)b++;return{start:a,end:b,hotel:d.bookedHotel||d.hotel,region:d.region,checkin:iso(tripData[a].date),checkout:checkout(tripData[b].date),nights:b-a+1}}
-function bookingUrl(i){const s=stayBlock(i);if(!s?.checkin||!s?.checkout)return'';const p=new URLSearchParams({ss:`${s.hotel}, ${s.region}, Vietnam`,checkin:s.checkin,checkout:s.checkout,group_adults:'2',group_children:'3',age:'17,15,11',no_rooms:'2'});return`https://www.booking.com/searchresults.html?${p}`}
-function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}
-function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}
-
-function render(){
- const d=tripData[globalDayIndex];
- $('dayBadge').textContent=`יום ${d.day}`;
- $('dateBadge').textContent=d.date;
- $('regionBadge').textContent=d.region;
- $('title').textContent=d.title;
- $('activities').textContent=d.activities;
- $('hotel').textContent=d.bookedHotel||d.hotel;
- $('notes').textContent=d.notes;
- $('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;
- $('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';
- $('bookingBadge').textContent=d.isBooked?'✅':'טרם';
- const u=bookingUrl(globalDayIndex);
- $('bookingLink').style.display=u?'inline-flex':'none';
- $('bookingLink').href=u;
- const wp=d.waypoints||[];
- $('waypointBadge').textContent=wp.length||'';
- $('waypointBadge').style.display=wp.length?'':'none';
- $('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';
- loadForm();loadJournal();drawMap();renderHome();renderBudget();
-}
-
+async function saveTrip(){await SS.set(SHARED.trip,JSON.stringify(tripData))}function requireUser(){if(activeUser)return true;openUserModal();return false}function valid(a,b){return Number.isFinite(Number(a))&&Number(a)>=-90&&Number(a)<=90&&Number.isFinite(Number(b))&&Number(b)>=-180&&Number(b)<=180}function parseDate(v){const m=String(v).match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null}function iso(v){const d=parseDate(v);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:''}function checkout(v){const d=parseDate(v);if(!d)return'';d.setDate(d.getDate()+1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function stayBlock(i){const d=tripData[i];if(!d||['בטיסה','טיסה חזרה'].includes(d.hotel))return null;const key=`${d.bookedHotel||d.hotel}|${d.region}`;let a=i,b=i;while(a&&`${tripData[a-1].bookedHotel||tripData[a-1].hotel}|${tripData[a-1].region}`===key)a--;while(b<tripData.length-1&&`${tripData[b+1].bookedHotel||tripData[b+1].hotel}|${tripData[b+1].region}`===key)b++;return{start:a,end:b,hotel:d.bookedHotel||d.hotel,region:d.region,checkin:iso(tripData[a].date),checkout:checkout(tripData[b].date),nights:b-a+1}}function bookingUrl(i){const s=stayBlock(i);if(!s?.checkin||!s?.checkout)return'';const p=new URLSearchParams({ss:`${s.hotel}, ${s.region}, Vietnam`,checkin:s.checkin,checkout:s.checkout,group_adults:'2',group_children:'3',age:'17,15,11',no_rooms:'2'});return`https://www.booking.com/searchresults.html?${p}`}
+function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}function render(){const d=tripData[globalDayIndex];$('dayBadge').textContent=`יום ${d.day}`;$('dateBadge').textContent=d.date;$('regionBadge').textContent=d.region;$('title').textContent=d.title;$('activities').textContent=d.activities;$('hotel').textContent=d.bookedHotel||d.hotel;$('notes').textContent=d.notes;$('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;$('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';$('bookingBadge').textContent=d.isBooked?'✅':'טרם';const u=bookingUrl(globalDayIndex);$('bookingLink').style.display=u?'inline-flex':'none';$('bookingLink').href=u;const wp=d.waypoints||[];$('waypointBadge').textContent=wp.length||'';$('waypointBadge').style.display=wp.length?'':'none';$('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';loadForm();loadJournal();drawMap();renderHome();renderBudget()}
+// --- Google Maps Integration ---
 function initMap() {
   if (typeof google === 'undefined') return;
+  clearTimeout(mapLoadTimer);
   map = new google.maps.Map(document.getElementById('map'), {
     center: { lat: 21.0285, lng: 105.8542 },
     zoom: 6,
@@ -450,7 +338,6 @@ function initMap() {
   });
   if (tripData.length) drawMap();
 }
-
 function clearMap() {
   markers.forEach(m => m.setMap(null));
   markers = [];
@@ -459,18 +346,12 @@ function clearMap() {
     polyLine = null;
   }
 }
-
-function drawMap() {
+function drawGoogleMap() {
   if (!map || typeof google === 'undefined') return;
   clearMap();
   const d = tripData[globalDayIndex];
-  if(d) {
-    $('openGmaps').href = valid(d.lat, d.lng) ? `https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}` : '#';
-    $('openGmaps').style.display = valid(d.lat, d.lng) ? 'inline-flex' : 'none';
-  }
   const bounds = new google.maps.LatLngBounds();
   let pointCount = 0;
-
   if (mapMode === 'day' && d) {
     if (valid(d.lat, d.lng)) {
       const pt = { lat: d.lat, lng: d.lng };
@@ -523,31 +404,77 @@ function drawMap() {
   if (pointCount > 1) map.fitBounds(bounds);
   else if (pointCount === 1) { map.setCenter(bounds.getCenter()); map.setZoom(d.zoom || 13); }
 }
+// CHANGE 2026-08-22 GM-03: dispatcher. Owns the provider-agnostic "open in Google Maps"
+// link and the provider toggle, then hands off to whichever map provider is active.
+function drawMap(){const d=tripData[globalDayIndex];if(!d)return;
+ $('openGmaps').href=valid(d.lat,d.lng)?`https://www.google.com/maps/search/?api=1&query=${d.lat},${d.lng}`:'#';
+ $('openGmaps').style.display=valid(d.lat,d.lng)?'inline-flex':'none';
+ updateMapProviderToggle();
+ if(mapProvider==='google'&&map&&typeof google!=='undefined')drawGoogleMap();else drawSchematicMap()}
+/* CHANGE 2026-08-22 GM-03: fallback plumbing + the hand-drawn schematic map, ported from
+   the sibling v3.1.0/v1.3.0 builds (same VN_OUTLINE/VN_RIVER/VN_MEKONG approach), since
+   this file had no fallback at all if Google Maps failed to load -- confirmed by direct
+   testing that the map area just stayed blank with no message. Three ways a failure gets
+   caught, in order of how far it gets:
+   1) window.gm_authFailure -- Google's own documented hook for auth/billing problems.
+   2) the Google Maps <script> tag's onerror -- fires reliably for network-level failures.
+   3) a timeout, for the residual case neither of the above covers.
+   Both 1 and 2 are wired at the very top of <head>, before this script has even run --
+   window.__onGmapsFailure below is what they call once it has. */
+window.__onGmapsFailure=function(reason){fallbackToSchematic(reason==='auth'?'⚠️ Google Maps סירב להיטען (בעיית מפתח/חיוב) — עברנו למפה הסכמטית.':'⚠️ לא הצלחנו לטעון את Google Maps (בעיית רשת) — עברנו למפה הסכמטית.')};
+function startGoogleMapsWatch(){
+ if(window.__gmapsFailure){window.__onGmapsFailure(window.__gmapsFailure);return}
+ mapLoadTimer=setTimeout(()=>{if(!map)fallbackToSchematic('⚠️ Google Maps לא נטען בזמן — עברנו למפה הסכמטית. אפשר לנסות שוב מהכפתור שמעל המפה.')},8000)}
+function fallbackToSchematic(msg){mapProvider='schematic';updateMapProviderToggle();const note=$('mapFallbackNote');if(note){note.textContent=msg;note.style.display=''}drawMap()}
+function updateMapProviderToggle(){const btn=$('mapProviderToggle');if(!btn)return;
+ btn.textContent=mapProvider==='google'?'🗺️ מפה סכמטית':'🌍 נסה שוב Google Maps';
+ btn.onclick=()=>{mapProvider=mapProvider==='google'?'schematic':'google';$('mapFallbackNote').style.display='none';
+  if(mapProvider==='google'&&!map&&typeof google!=='undefined')initMap();
+  drawMap()}}
+const VN_OUTLINE=[[21.53,107.97],[20.95,107.08],[20.86,106.68],[20.25,106.17],[19.80,105.78],[18.67,105.69],[18.34,105.90],[17.48,106.62],[16.46,107.60],[16.07,108.22],[15.88,108.35],[13.78,109.22],[12.24,109.19],[11.57,108.99],[10.93,108.10],[10.35,107.08],[10.45,106.83],[8.60,104.75],[10.02,105.09],[10.38,104.48],[11.30,105.80],[13.40,107.60],[14.60,107.50],[16.70,106.50],[19.30,104.00],[20.90,103.20],[22.40,103.10],[22.80,104.98],[22.66,106.26]];
+const VN_RIVER=[[22.50,103.95],[21.70,104.90],[21.30,105.40],[21.03,105.85],[20.60,106.30],[20.25,106.17]];
+const VN_MEKONG=[[[10.9,105.0],[10.45,106.0],[10.2,106.6],[10.45,106.83]],[[10.9,105.0],[9.8,105.3],[9.0,105.8],[8.6,104.75]],[[10.9,105.0],[10.1,104.9],[10.02,105.09]]];
+function mapBounds(){const pts=VN_OUTLINE.slice();tripData.forEach(d=>{if(valid(d.lat,d.lng))pts.push([d.lat,d.lng]);(d.waypoints||[]).forEach(w=>{if(valid(w.lat,w.lng))pts.push([w.lat,w.lng])})});
+ if(!pts.length)return null;const lats=pts.map(p=>p[0]),lngs=pts.map(p=>p[1]);
+ let minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+ const padLat=(maxLat-minLat)*.06||.5,padLng=(maxLng-minLng)*.06||.5;
+ return{minLat:minLat-padLat,maxLat:maxLat+padLat,minLng:minLng-padLng,maxLng:maxLng+padLng}}
+function project(lat,lng,b,W,H){const x=(lng-b.minLng)/((b.maxLng-b.minLng)||1)*W;const y=H-(lat-b.minLat)/((b.maxLat-b.minLat)||1)*H;return[x,y]}
+function landShape(b,W,H){return VN_OUTLINE.map(p=>project(p[0],p[1],b,W,H).join(',')).join(' ')}
+function linePath(pts,b,W,H){return pts.map((p,i)=>{const[x,y]=project(p[0],p[1],b,W,H);return`${i===0?'M':'L'}${x},${y}`}).join(' ')}
+function drawSchematicMap(){const el=$('map');if(!el)return;const d=tripData[globalDayIndex];
+ const b=mapBounds();if(!b){el.innerHTML='<p class="muted" style="padding:20px">אין נתוני מיקום להצגה</p>';return}
+ const W=600,H=380;let shapes='';
+ const compass=`<g transform="translate(${W-30},30)"><circle r="14" fill="#fff" opacity=".85"/><path d="M0,-10 L4,4 L0,1 L-4,4 Z" fill="#5b7a94"/><text y="22" text-anchor="middle" font-size="10" fill="#5b7a94" font-weight="700">N</text></g>`;
+ const base=`<rect x="0" y="0" width="${W}" height="${H}" fill="#cfe3f2"/><polygon points="${landShape(b,W,H)}" fill="#e3ecd9" stroke="#9db98c" stroke-width="1.5"/><path d="${linePath(VN_RIVER,b,W,H)}" fill="none" stroke="#7fb3d5" stroke-width="2" opacity=".85"/>${VN_MEKONG.map(seg=>`<path d="${linePath(seg,b,W,H)}" fill="none" stroke="#7fb3d5" stroke-width="1.5" opacity=".8"/>`).join('')}<text x="${W-8}" y="18" text-anchor="end" font-size="10" fill="#5b7a94" font-style="italic">מפרץ טונקין</text>${compass}<text x="10" y="${H-8}" font-size="9" fill="#8a97a3">מפה סכמטית</text>`;
+ if(mapMode==='day'){
+  if(valid(d.lat,d.lng)){const[x,y]=project(d.lat,d.lng,b,W,H);
+   shapes+=`<circle cx="${x}" cy="${y}" r="9" fill="#b42318" stroke="#fff" stroke-width="2"><title>${esc(d.title)}</title></circle><text x="${x}" y="${Math.max(12,y-14)}" text-anchor="middle" font-size="12" fill="#1f2937" font-weight="700">${esc(d.region)}</text>`}
+  (d.waypoints||[]).forEach(w=>{if(!valid(w.lat,w.lng))return;const[x,y]=project(w.lat,w.lng,b,W,H);
+   shapes+=`<circle cx="${x}" cy="${y}" r="6" fill="#075985" stroke="#fff" stroke-width="1.5"><title>${esc(w.name)}</title></circle>`})
+ }else{
+  const linePts=tripData.filter(x=>valid(x.lat,x.lng));
+  if(linePts.length>1)shapes+=`<path d="${linePath(linePts.map(p=>[p.lat,p.lng]),b,W,H)}" fill="none" stroke="#b42318" stroke-width="2" stroke-dasharray="6 5" opacity=".75"/>`;
+  regionClusters().forEach(c=>{const[x,y]=project(c.lat,c.lng,b,W,H);const active=c.region===d.region;
+   shapes+=`<circle cx="${x}" cy="${y}" r="${active?9:5}" fill="${active?'#b42318':'#667085'}" stroke="#fff" stroke-width="1.5"><title>${esc(c.region)}</title></circle><text x="${x}" y="${y-(active?14:10)}" text-anchor="middle" font-size="${active?12:10}" fill="${active?'#b42318':'#475569'}" font-weight="${active?800:600}">${esc(c.region)}</text>`})}
+ el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;background:#cfe3f2" xmlns="http://www.w3.org/2000/svg">${base}${shapes}</svg>`}
 function regionClusters(){const groups=new Map();tripData.forEach(d=>{if(!valid(d.lat,d.lng))return;if(!groups.has(d.region))groups.set(d.region,{region:d.region,lat:0,lng:0,n:0});const c=groups.get(d.region);c.lat+=d.lat;c.lng+=d.lng;c.n++});return[...groups.values()].map(c=>({...c,lat:c.lat/c.n,lng:c.lng/c.n}))}
-
-function loadForm(){const d=tripData[globalDayIndex];$('fDate').value=d.date;$('fRegion').value=d.region;$('fTitle').value=d.title;$('fActivities').value=d.activities;$('fHotel').value=d.hotel;$('fCost').value=d.cost;$('fLat').value=d.lat;$('fLng').value=d.lng;$('fNotes').value=d.notes}
-function currentDayNum(){return tripData[globalDayIndex].day}
-
-async function loadJournal(){
- const d=tripData[globalDayIndex];
+// ---------------------------------------------
+function loadForm(){const d=tripData[globalDayIndex];$('fDate').value=d.date;$('fRegion').value=d.region;$('fTitle').value=d.title;$('fActivities').value=d.activities;$('fHotel').value=d.hotel;$('fCost').value=d.cost;$('fLat').value=d.lat;$('fLng').value=d.lng;$('fNotes').value=d.notes}function currentDayNum(){return tripData[globalDayIndex].day}
+async function loadJournal(){const d=tripData[globalDayIndex];
  $('journalTitle').textContent=`יומן יום ${d.day} — ${d.title}`;
  const j=await getJournal(d.day);
  if(tripData[globalDayIndex]!==d)return;
  $('journalText').value=j.text;
- $('photoGrid').innerHTML=(j.photos||[]).map(p=>`<div class="photo"><img src="${p.src}"><small>${esc(p.by||'')}</small></div>`).join('');
-}
-
-const AVATAR_COLORS=['#b42318','#d97706','#15803d','#7c3aed','#0f766e','#be185d','#0369a1'];
+ $('photoGrid').innerHTML=(j.photos||[]).map(p=>`<div class="photo"><img src="${p.src}"><small>${esc(p.by||'')}</small></div>`).join('')}const AVATAR_COLORS=['#b42318','#d97706','#15803d','#7c3aed','#0f766e','#be185d','#0369a1'];
 function avatarColor(name){let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
 async function getUserPhotos(){try{const raw=await SS.get('planner:userphotos');return raw?JSON.parse(raw):{}}catch{return{}}}
 async function setUserPhoto(name,dataUrl){const photos=await getUserPhotos();photos[name]=dataUrl;await SS.set('planner:userphotos',JSON.stringify(photos))}
 async function paintAvatar(el,name){if(!name){el.style.background=AVATAR_COLORS[0];el.textContent='?';return}
  const photos=await getUserPhotos();el.innerHTML='';
  if(photos[name]){const img=document.createElement('img');img.src=photos[name];el.appendChild(img)}
- else{el.style.background=avatarColor(name);el.textContent=name.trim()[0]||'קידוד'}}
-
-async function renderHome(){
- let p=0;
+ else{el.style.background=avatarColor(name);el.textContent=name.trim()[0]||'?'}}
+async function renderHome(){let p=0;
  for(const d of tripData){try{const raw=await SS.get('planner:journal:'+d.day);if(raw){const m=JSON.parse(raw);p+=(m.photoIds||[]).length}}catch{}}
  $('sDays').textContent=tripData.length;$('sPoints').textContent=tripData.reduce((n,d)=>n+(d.waypoints||[]).length,0);$('sBookings').textContent=tripData.filter(d=>d.isBooked).length;$('sPhotos').textContent=p;
  $('homeUserName').textContent=activeUser||'יש לבחור משתמש';
@@ -555,139 +482,54 @@ async function renderHome(){
  const nd=tripData[globalDayIndex];
  if(nd){$('nextTitle').textContent=nd.region;$('nextMeta').textContent=`יום ${nd.day} — ${nd.title}`;
   $('nextThumb').style.background=`linear-gradient(135deg,${avatarColor(nd.region)},#f2b134)`}
- await renderDailyBurn(); updateRouteDayStrip(); updateDocumentsSummary();
-}
-
-async function calcDailyBurn(){
- const target=await getBudgetTarget(),items=await getExpenses();
- let spent=items.reduce((s,e)=>s+Number(e.amount||0),0);
- tripData.forEach(d=>{if(d.isBooked)spent+=Number(d.actualCost||0)});
- const today=globalDayIndex;
- const daysLeft=Math.max(1,tripData.length-today);
- const available=Math.max(0,target-spent);
- const perDay=available/daysLeft;
- return{target,spent,daysLeft,available,perDay};
-}
-
-function burnMarkup(b){
- const level=b.perDay<0?'danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?'warning':'ok';
- return `<div class="row" style="justify-content:space-between"><div><div class="muted">ארנק יומי</div><div class="burn-amount">${Math.max(0,b.perDay).toLocaleString('he-IL',{maximumFractionDigits:0})} ₪</div><div class="muted">נשאר להוציא ליום</div></div><span class="badge">${level==='ok'?'✓ במסגרת':level==='warning'?'⚠️ כדאי להאט':'🔴 חריגה'}</span></div><div class="burn-meta"><span>${b.daysLeft} ימים נותרו</span><span>${b.available.toLocaleString('he-IL',{maximumFractionDigits:0})} ₪ זמינים</span></div>`;
-}
-
-async function renderDailyBurn(){
- const b=await calcDailyBurn();
- for(const id of ['homeBurn','budgetBurn']){
-  const el=$(id);if(!el)continue;
-  el.innerHTML=burnMarkup(b);
-  el.className='daily-burn'+(b.perDay<0?' danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?' warning':'');
-  el.style.display='block';
- }
-}
-
-function updateRouteDayStrip(){
- const el=$('routeDayStrip');if(!el)return;
- el.innerHTML=tripData.map((d,i)=>{
-  const date=String(d.date).slice(0,5);
-  return `<button type="button" class="day-chip ${i===globalDayIndex?'active':''}" data-route-day="${i}"><strong>יום ${d.day}</strong>${esc(date)}</button>`;
- }).join('');
- el.querySelectorAll('[data-route-day]').forEach(b=>b.onclick=()=>{globalDayIndex=Number(b.dataset.routeDay);fillSelects();render()});
- const active=el.querySelector('.active');if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-}
-
+ await renderDailyBurn(); await renderWeatherWidget(); updateRouteDayStrip(); updateDocumentsSummary();}
+async function calcDailyBurn(){const target=await getBudgetTarget(),items=await getExpenses();let spent=items.reduce((s,e)=>s+Number(e.amount||0),0);tripData.forEach(d=>{if(d.isBooked)spent+=Number(d.actualCost||0)});const today=globalDayIndex;const catBudgets=await getCatBudgets();const plannedLodgingBudget=Number(catBudgets.lodging||0);const bookedLodging=tripData.reduce((s,d)=>s+(d.isBooked?Number(d.actualCost||0):0),0);const futureLodging=Math.max(0,plannedLodgingBudget-bookedLodging);const daysLeft=Math.max(1,tripData.length-today);const available=Math.max(0,target-spent-futureLodging);const perDay=available/daysLeft;return{target,spent,futureLodging,daysLeft,available,perDay}}
+function burnMarkup(b){const level=b.perDay<0?'danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?'warning':'ok';return `<div class="row" style="justify-content:space-between"><div><div class="muted">ארנק יומי</div><div class="burn-amount">${Math.max(0,b.perDay).toLocaleString('he-IL',{maximumFractionDigits:0})} ₪</div><div class="muted">נשאר להוציא ליום</div></div><span class="badge">${level==='ok'?'✓ במסגרת':level==='warning'?'⚠️ כדאי להאט':'🔴 חריגה'}</span></div><div class="burn-meta"><span>${b.daysLeft} ימים נותרו</span><span>${b.available.toLocaleString('he-IL',{maximumFractionDigits:0})} ₪ זמינים</span></div>`}
+async function renderDailyBurn(){const b=await calcDailyBurn();for(const id of ['homeBurn','budgetBurn']){const el=$(id);if(!el)continue;el.innerHTML=burnMarkup(b);el.className='daily-burn'+(b.perDay<0?' danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?' warning':'')}; if($('homeBurn'))$('homeBurn').style.display='block'; if($('budgetBurn'))$('budgetBurn').style.display='block';}
+function updateRouteDayStrip(){const el=$('routeDayStrip');if(!el)return;el.innerHTML=tripData.map((d,i)=>{const date=String(d.date).slice(0,5);return `<button type="button" class="day-chip ${i===globalDayIndex?'active':''}" data-route-day="${i}"><strong>יום ${d.day}</strong>${esc(date)}</button>`}).join('');el.querySelectorAll('[data-route-day]').forEach(b=>b.onclick=()=>{globalDayIndex=Number(b.dataset.routeDay);fillSelects();render()});const active=el.querySelector('.active');if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}
 const DOC_KEY='planner:documents';
 async function getDocuments(){try{const raw=localStorage.getItem(DOC_KEY);const v=raw?JSON.parse(raw):[];return Array.isArray(v)?v:[]}catch{return[]}}
 async function saveDocuments(v){try{localStorage.setItem(DOC_KEY,JSON.stringify(v));return true}catch{return false}}
 async function updateDocumentsSummary(){const el=$('documentsSummary');if(!el)return;const docs=await getDocuments();el.textContent=docs.length?`${docs.length} מסמכים · זמין ללא אינטרנט`:'זמין ללא אינטרנט'}
 async function renderDocuments(){const docs=await getDocuments();$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card"><img src="${d.src}" alt="${esc(d.name)}"><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.categoryLabel)} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><button class="btn outline" style="width:100%;margin-top:7px" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים</p>'}
-
+const WEATHER_KEY='planner:weather:';
+const weatherCodeMap={0:['☀️','בהיר'],1:['🌤️','בהיר ברובו'],2:['⛅','מעונן חלקית'],3:['☁️','מעונן'],45:['🌫️','ערפל'],48:['🌫️','ערפל'],51:['🌦️','טפטוף'],53:['🌦️','טפטוף'],55:['🌧️','גשם קל'],61:['🌧️','גשם'],63:['🌧️','גשם'],65:['🌧️','גשם חזק'],71:['🌨️','שלג'],73:['🌨️','שלג'],75:['❄️','שלג כבד'],80:['🌦️','ממטרים'],81:['🌧️','ממטרים'],82:['⛈️','ממטרים חזקים'],95:['⛈️','סופת רעמים'],96:['⛈️','סופת רעמים'],99:['⛈️','סופת רעמים']};
+async function getTomorrowWeather(dayIndex=globalDayIndex){const d=tripData[dayIndex];if(!d||!valid(d.lat,d.lng))return null;const target=parseDate(d.date);if(!target)return null;target.setDate(target.getDate()+1);const date=target.toISOString().slice(0,10);const cacheKey=WEATHER_KEY+date+':'+d.lat+':'+d.lng;try{const cached=localStorage.getItem(cacheKey);if(cached){const c=JSON.parse(cached);if(Date.now()-c.ts<30*60*1000)return c.data}}catch{}
+ try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(d.lat)}&longitude=${encodeURIComponent(d.lng)}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`;const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),6000);let r;try{r=await fetch(u,{cache:'no-store',signal:ctrl.signal})}finally{clearTimeout(timer)}if(!r.ok)throw new Error('weather '+r.status);const x=await r.json();const data={date,code:x.daily?.weather_code?.[0],max:x.daily?.temperature_2m_max?.[0],min:x.daily?.temperature_2m_min?.[0],rain:x.daily?.precipitation_probability_max?.[0],wind:x.daily?.windspeed_10m_max?.[0],region:d.region};try{localStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),data}))}catch{}return data}catch{return null}}
+function weatherMarkup(w){if(!w)return `<div><b>תחזית למחר</b><div class="muted">התחזית עדיין לא זמינה. היא תתעדכן קרוב יותר למועד.</div></div><span>›</span>`;const [icon,label]=weatherCodeMap[w.code]||['🌦️','מזג אוויר משתנה'];return `<span class="weather-icon">${icon}</span><div class="weather-main"><b>מחר · ${esc(w.region)}</b><div><span class="weather-temp">${Math.round(w.max)}°</span> · ${Math.round(w.min)}°</div><div class="weather-meta">${esc(label)} · ${w.rain??0}% סיכוי לגשם</div></div><span>›</span>`}
+async function renderWeatherWidget(){const el=$('homeWeather');if(!el)return;el.innerHTML=weatherMarkup(await getTomorrowWeather());el.style.display='flex'}
+async function showWeatherDetails(){const w=await getTomorrowWeather();$('weatherDetails').innerHTML=weatherMarkup(w);openModal('weatherModal')}
+async function quickFxCalculate(){const a=Number($('quickFxAmount').value),f=$('quickFxFrom').value,t=$('quickFxTo').value;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.'}
 async function getExpenses(){try{const raw=await SS.get(SHARED.expenses);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))return v}catch{}
  try{const old=JSON.parse(localStorage.getItem(KEYS.expenses)||'[]');if(Array.isArray(old))return old}catch{}
  return[]}
 async function saveExpenses(items){await SS.set(SHARED.expenses,JSON.stringify(items))}
 async function getBudgetTarget(){const raw=await SS.get(SHARED.budget);const n=Number(raw);if(Number.isFinite(n)&&n>0)return n;
  const old=Number(localStorage.getItem(KEYS.budget));return Number.isFinite(old)&&old>0?old:DEFAULT_BUDGET}
-
-async function getCatBudgets(){try{const raw=await SS.get(SHARED.catBudgets);return raw?JSON.parse(raw):{}}catch{return{}}}
-async function saveCatBudget(cat,val){const cur=await getCatBudgets();cur[cat]=val;await SS.set(SHARED.catBudgets,JSON.stringify(cur))}
-
-async function renderBudget(){
- const target=await getBudgetTarget();
- const items=await getExpenses();
- const by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));
- items.forEach(e=>by[e.category]=(by[e.category]||0)+Number(e.amount||0));
- tripData.forEach(d=>{if(d.isBooked)by.lodging+=Number(d.actualCost||0)});
- const total=Object.values(by).reduce((a,b)=>a+b,0);
- 
- $('budgetTarget').value=target;
- const pct=Math.min(100,total/target*100);
- $('budgetBar').style.width=pct+'%';
- $('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;
- $('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
-
+const CAT_ICONS={lodging:'🏨',food:'🍜',markets:'🏮',shopping:'🛍️',attractions:'🎟️',other:'💰'};
+const CAT_BUDGET_KEY='planner:catbudgets';
+async function getCatBudgets(){try{const raw=await SS.get(CAT_BUDGET_KEY);return raw?JSON.parse(raw):{}}catch{return{}}}
+async function saveCatBudget(cat,value){const cur=await getCatBudgets();cur[cat]=value;await SS.set(CAT_BUDGET_KEY,JSON.stringify(cur))}
+async function ensureDefaultLodgingBudget(){const cur=await getCatBudgets();if(cur.lodging!=null)return;
+ const total=tripData.reduce((s,d)=>s+Number(d.cost||0),0);if(total>0)await saveCatBudget('lodging',total)}
+async function renderBudget(){const target=await getBudgetTarget(),items=await getExpenses(),by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));items.forEach(e=>by[e.category]=(by[e.category]||0)+Number(e.amount||0));tripData.forEach(d=>{if(d.isBooked)by.lodging+=Number(d.actualCost||0)});const total=Object.values(by).reduce((a,b)=>a+b,0);$('budgetTarget').value=target;const pct=Math.min(100,total/target*100);$('budgetBar').style.width=pct+'%';$('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;$('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
  const catBudgets=await getCatBudgets();
  $('catChips').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>{
   const planned=Number(catBudgets[k]||0),actual=Number(by[k]||0);
   const over=planned>0&&actual>planned;
-  return`<div class="tile"><div class="ic">${CAT_ICONS[k]}</div><div class="name">${v}</div><div class="trow">תכנון<input type="number" min="0" data-cat="${k}" value="${planned||''}" placeholder="0"></div><div class="trow actual ${planned>0?(over?'over':'under'):''}">בפועל<b>${actual.toLocaleString('he-IL')}₪${planned>0?(over?' ⚠️':' ✅'):''}</b></div></div>`;
- }).join('');
+  return`<div class="tile"><div class="ic">${CAT_ICONS[k]}</div><div class="name">${v}</div>
+  <div class="trow">תכנון<input type="number" min="0" data-cat="${k}" value="${planned||''}" placeholder="0"></div>
+  <div class="trow actual ${planned>0?(over?'over':'under'):''}">בפועל<b>${actual.toLocaleString('he-IL')}₪${planned>0?(over?' ⚠️':' ✅'):''}</b></div></div>`}).join('');
+ document.querySelectorAll('.tile input').forEach(inp=>inp.onchange=async()=>{await saveCatBudget(inp.dataset.cat,Number(inp.value)||0);renderBudget()});
 
- document.querySelectorAll('.tile input').forEach(inp=>inp.onchange=async()=>{
-  await saveCatBudget(inp.dataset.cat,Number(inp.value)||0);
-  renderBudget();
- });
-
- $('expenseList').innerHTML=items.map((e,idx)=>`<div class="expense" style="align-items:center;"><div style="flex:1;min-width:0;padding-inline-end:10px;"><span style="display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.description)} <span class="muted">· ${esc(e.by||'')}</span></span><b>${Number(e.amount).toLocaleString('he-IL')} ₪</b></div><div class="row" style="gap:6px;flex-wrap:nowrap;"><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-edit-expense="${idx}">✎</button><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-delete-expense="${idx}">🗑️</button></div></div>`).join('');
+ $('expenseList').innerHTML=items.map((e,idx)=>`<div class="expense" style="align-items:center;"><div style="flex:1;min-width:0;padding-inline-end:10px;"><span style="display:block;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.description)} <span class="muted">· ${esc(e.by||'')}</span></span><b>${Number(e.amount).toLocaleString('he-IL')} ₪</b></div><div class="row" style="gap:6px;flex-wrap:nowrap;"><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-edit-expense="${idx}">✎</button><button class="btn outline" style="padding:4px 8px;min-height:30px;font-size:.85rem;" data-delete-expense="${idx}">🗑️</button></div></div>`).join('')
 }
-
-$('expenseList').onclick=async e=>{
- const editBtn=e.target.closest('[data-edit-expense]');
- const delBtn=e.target.closest('[data-delete-expense]');
- if(delBtn){
-  if(!requireUser())return;
-  if(!confirm('למחוק הוצאה זו?'))return;
-  const items=await getExpenses();
-  items.splice(Number(delBtn.dataset.deleteExpense),1);
-  await saveExpenses(items);
-  renderBudget();renderDailyBurn();
- }else if(editBtn){
-  if(!requireUser())return;
-  const idx=Number(editBtn.dataset.editExpense);
-  const items=await getExpenses();
-  const exp=items[idx];
-  $('expenseDescription').value=exp.description;
-  $('expenseAmount').value=exp.amount;
-  $('expenseCategory').value=exp.category||'other';
-  $('saveExpense').dataset.editIdx=idx;
-  $('saveExpense').textContent='עדכן הוצאה';
-  $('cancelEditExpense').style.display='inline-block';
-  $('expenseDescription').focus();
- }
-};
-
-$('saveExpense').onclick=async()=>{
- if(!requireUser())return;
- const a=Number($('expenseAmount').value),d=$('expenseDescription').value.trim();
- if(!d||!Number.isFinite(a)||a<0)return alert('פרטי הוצאה לא תקינים');
- const items=await getExpenses();
- const editIdx=$('saveExpense').dataset.editIdx;
- if(editIdx!==undefined&&editIdx!==''){
-  items[Number(editIdx)]={...items[Number(editIdx)],description:d,amount:a,category:$('expenseCategory').value,by:activeUser,editedAt:Date.now()};
-  delete $('saveExpense').dataset.editIdx;
-  $('saveExpense').textContent='שמור הוצאה';
-  $('cancelEditExpense').style.display='none';
- }else{
-  items.push({description:d,amount:a,category:$('expenseCategory').value,by:activeUser,createdAt:Date.now()});
- }
- await saveExpenses(items);
- $('expenseDescription').value='';$('expenseAmount').value='';
- renderBudget();renderDailyBurn();
-};
+$('expenseList').onclick=async e=>{const editBtn=e.target.closest('[data-edit-expense]');const delBtn=e.target.closest('[data-delete-expense]');if(delBtn){if(!requireUser())return;if(!confirm('למחוק הוצאה זו?'))return;const items=await getExpenses();items.splice(Number(delBtn.dataset.deleteExpense),1);await saveExpenses(items);renderBudget();renderDailyBurn();}else if(editBtn){if(!requireUser())return;const idx=Number(editBtn.dataset.editExpense);const items=await getExpenses();const exp=items[idx];$('expenseDescription').value=exp.description;$('expenseAmount').value=exp.amount;$('expenseCategory').value=exp.category||'other';$('saveExpense').dataset.editIdx=idx;$('saveExpense').textContent='עדכן הוצאה';$('cancelEditExpense').style.display='inline-block';$('expenseDescription').focus()}};
+$('saveExpense').onclick=async()=>{if(!requireUser())return;const a=Number($('expenseAmount').value),d=$('expenseDescription').value.trim();if(!d||!Number.isFinite(a)||a<0)return alert('פרטי הוצאה לא תקינים');const items=await getExpenses();const editIdx=$('saveExpense').dataset.editIdx;if(editIdx!==undefined&&editIdx!==''){items[Number(editIdx)]={...items[Number(editIdx)],description:d,amount:a,category:$('expenseCategory').value,by:activeUser,editedAt:Date.now()};delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none'}else{items.push({description:d,amount:a,category:$('expenseCategory').value,by:activeUser,createdAt:Date.now()})}await saveExpenses(items);$('expenseDescription').value='';$('expenseAmount').value='';renderBudget();renderDailyBurn();};
 $('cancelEditExpense').onclick=()=>{delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none';$('expenseDescription').value='';$('expenseAmount').value=''};
-
 function openUserModal(){renderUserChoices();openModal('userModal')}
 let pendingPhotoUser='';
-async function renderUserChoices(){
- const el=$('userChoices');el.innerHTML='';
+async function renderUserChoices(){const el=$('userChoices');el.innerHTML='';
  for(const name of USERS){
   const row=document.createElement('div');row.className='urow'+(name===activeUser?' active':'');
   const av=document.createElement('div');av.className='avatar-circle';av.style.width='44px';av.style.height='44px';av.style.fontSize='1.05rem';
@@ -698,107 +540,30 @@ async function renderUserChoices(){
   const avWrap=document.createElement('div');avWrap.style.position='relative';avWrap.appendChild(av);avWrap.appendChild(cam);
   row.appendChild(nm);row.appendChild(avWrap);
   if(name===activeUser){const chk=document.createElement('div');chk.className='ucheck';chk.textContent='✓';row.appendChild(chk)}
-  row.onclick=()=>{activeUser=name;localStorage.setItem(KEYS.user,name);closeModal($('userModal'));render()};
-  el.appendChild(row);
- }
-}
-
-$('userPhotoInput').onchange=async e=>{
- const f=e.target.files[0];if(!f||!pendingPhotoUser)return;
- const src=await compressImage(f);
- if(src){await setUserPhoto(pendingPhotoUser,src);await renderUserChoices();renderHome()}
- e.target.value='';
-};
-
-function setupUsers(){
- const btn=$('saveUser');
- if(btn){
-  btn.onclick=()=>{
-   const name=$('customUser').value.trim();
-   if(!name)return alert('יש לבחור או להזין שם');
-   activeUser=name;localStorage.setItem(KEYS.user,name);closeModal($('userModal'));render();
-  };
- }
- if(!activeUser)openUserModal();
-}
-
+  row.onclick=()=>{activeUser=name;localStorage.setItem(KEYS.user,name);$('userModal').classList.remove('open');render()};
+  el.appendChild(row)}}
+$('userPhotoInput').onchange=async e=>{const f=e.target.files[0];if(!f||!pendingPhotoUser)return;
+ const src=await compressImage(f);if(src){await setUserPhoto(pendingPhotoUser,src);await renderUserChoices();renderHome()}
+ e.target.value=''};
+function setupUsers(){$('saveUser').onclick=()=>{const name=$('customUser').value.trim();if(!name)return alert('יש לבחור או להזין שם');activeUser=name;localStorage.setItem(KEYS.user,name);$('userModal').classList.remove('open');render()};if(!activeUser)openUserModal()}
 const FX_KEY='planner:fxrates',FX_DEFAULTS={USD:3.7,EUR:4.0,VND:0.145};
 function ilsPerUnit(rates,code){if(code==='ILS')return 1;if(code==='VND')return rates.VND/1000;return rates[code]}
 async function getFxRates(){try{const raw=await SS.get(FX_KEY);if(raw){const v=JSON.parse(raw);if(Number.isFinite(v.USD)&&Number.isFinite(v.EUR)&&Number.isFinite(v.VND))return v}}catch{}
  return{...FX_DEFAULTS}}
-async function refreshFxInputs(){
- const r=await getFxRates();
- $('rateUSD').value=r.USD;$('rateEUR').value=r.EUR;$('rateVND').value=r.VND;
- const raw=await SS.get(FX_KEY).catch(()=>null);
- $('fxRatesInfo').textContent=raw?'שערים שמורים':'שערים ברירת מחדל משוערים';
-}
-
-$('fxAutoUpdate').onclick=async()=>{
- if(!requireUser())return;
- $('fxRatesInfo').textContent='⏳ מושך שערים חיים...';
- try{
-  const r=await fetch('https://api.frankfurter.dev/v2/latest?base=ILS&symbols=USD,EUR,VND',{cache:'no-store'});
-  if(!r.ok)throw Error();const j=await r.json();
-  const USD=1/j.rates.USD,EUR=1/j.rates.EUR,VND=1000/j.rates.VND;
-  if(![USD,EUR,VND].every(Number.isFinite))throw Error();
-  $('rateUSD').value=USD.toFixed(3);$('rateEUR').value=EUR.toFixed(3);$('rateVND').value=VND.toFixed(4);
-  await SS.set(FX_KEY,JSON.stringify({USD,EUR,VND}));fxState={result:null};
-  $('fxRatesInfo').textContent='✅ שערים חיים עודכנו ונשמרו';
- }catch{$('fxRatesInfo').textContent='⚠️ משיכת שערים נכשלה — ניתן להזין ידנית'}};
-
-$('fxUpdate').onclick=async()=>{
- if(!requireUser())return;
- const USD=Number($('rateUSD').value),EUR=Number($('rateEUR').value),VND=Number($('rateVND').value);
+async function fetchLiveFxRates(){try{const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),6000);let r;try{r=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store',signal:ctrl.signal})}finally{clearTimeout(timer)}if(!r.ok)throw new Error('fx '+r.status);const x=await r.json();if(x.result!=='success')throw new Error('fx result');const usdIls=Number(x.rates?.ILS),usdEur=Number(x.rates?.EUR),usdVnd=Number(x.rates?.VND);if(![usdIls,usdEur,usdVnd].every(n=>Number.isFinite(n)&&n>0))throw new Error('fx data');return{USD:usdIls,EUR:usdIls/usdEur,VND:(1000/usdVnd)*usdIls,updatedAt:x.time_last_update_utc||null}}catch{return null}}
+async function refreshFxInputs(){const r=await getFxRates();$('rateUSD').value=r.USD;$('rateEUR').value=r.EUR;$('rateVND').value=r.VND;
+ const raw=await SS.get(FX_KEY).catch(()=>null);$('fxRatesInfo').textContent=raw?'שערים שמורים (הוזנו ידנית)':'שערים ברירת מחדל משוערים — כדאי לעדכן לפני הנסיעה'}
+$('fxAutoUpdate').onclick=async()=>{if(!requireUser())return;$('fxRatesInfo').textContent='מעדכן שערים…';const live=await fetchLiveFxRates();if(!live){$('fxRatesInfo').textContent='⚠️ לא הצלחנו למשוך שערים חיים כרגע (בעיית רשת) — אפשר להזין ידנית או לנסות שוב';return}$('rateUSD').value=live.USD.toFixed(3);$('rateEUR').value=live.EUR.toFixed(3);$('rateVND').value=live.VND.toFixed(4);$('fxRatesInfo').textContent='שערים חיים נמשכו מהרשת — לחצו "שמור שערים" כדי לשתף עם המשפחה'+(live.updatedAt?` (מקור: ${live.updatedAt})`:'')};
+$('fxUpdate').onclick=async()=>{if(!requireUser())return;const USD=Number($('rateUSD').value),EUR=Number($('rateEUR').value),VND=Number($('rateVND').value);
  if(![USD,EUR,VND].every(n=>Number.isFinite(n)&&n>0))return alert('נא להזין שערים תקינים וחיוביים');
- await SS.set(FX_KEY,JSON.stringify({USD,EUR,VND}));fxState={result:null};
- $('fxRatesInfo').textContent='✅ השערים נשמרו ומשותפים לכל בני המשפחה';
-};
-
-$('fxCalculate').onclick=async()=>{
- if(!requireUser())return;
- const a=Number($('fxAmount').value),f=$('fxFrom').value,t=$('fxTo').value;
- if(!Number.isFinite(a)||a<0)return $('fxResult').textContent='⚠️ סכום לא תקין';
- const rates=await getFxRates();
- const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);
- fxState.result={amount:a,from:f,to:t,converted:v};
- $('fxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;
-};
-
-$('fxSave').onclick=async()=>{
- if(!requireUser()||!fxState.result)return alert('בצע המרה תחילה');
- if(fxState.result.to!=='ILS')return alert('בחר ILS כמטבע יעד');
- const items=await getExpenses();
- items.push({description:`המרה ${fxState.result.amount} ${fxState.result.from}`,amount:fxState.result.converted,category:'other',by:activeUser,createdAt:Date.now()});
- await saveExpenses(items);renderBudget();
-};
-
-function parseMaps(v){
- const m=String(v).match(/@(-?\d+(?:\.\d+)?),(-?\d+)|!3d(-?\d+(?:\.\d+)?)!4d(-?\d+)|^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
- if(!m)return null;
- const lat=Number(m[1]??m[3]??m[5]),lng=Number(m[2]??m[4]??m[6]);
- return valid(lat,lng)?{lat,lng}:null;
-}
-
-$('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};
-$('parseMaps').onclick=()=>{const p=parseMaps($('mapsInput').value);if(!p)return $('mapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'};
-$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();closeModal($('waypointModal'));render()};
-$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
-
+ await SS.set(FX_KEY,JSON.stringify({USD,EUR,VND}));fxState={result:null};$('fxRatesInfo').textContent='✅ השערים נשמרו ומשותפים לכל בני המשפחה'};
+$('fxCalculate').onclick=async()=>{if(!requireUser())return;const a=Number($('fxAmount').value),f=$('fxFrom').value,t=$('fxTo').value;if(!Number.isFinite(a)||a<0)return $('fxResult').textContent='⚠️ סכום לא תקין';
+ const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);
+ fxState.result={amount:a,from:f,to:t,converted:v};$('fxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`};
+$('fxSave').onclick=async()=>{if(!requireUser()||!fxState.result)return alert('בצע המרה תחילה');if(fxState.result.to!=='ILS')return alert('בחר ILS כמטבע יעד');const items=await getExpenses();items.push({description:`המרה ${fxState.result.amount} ${fxState.result.from}`,amount:fxState.result.converted,category:'other',by:activeUser,createdAt:Date.now()});await saveExpenses(items);renderBudget()};
+function parseMaps(v){const m=String(v).match(/@(-?\d+(?:\.\d+)?),(-?\d+)|!3d(-?\d+(?:\.\d+)?)!4d(-?\d+)|^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);if(!m)return null;const lat=Number(m[1]??m[3]??m[5]),lng=Number(m[2]??m[4]??m[6]);return valid(lat,lng)?{lat,lng}:null}$('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};$('parseMaps').onclick=()=>{const p=parseMaps($('mapsInput').value);if(!p)return $('mapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'};$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();$('waypointModal').classList.remove('open');render()};$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
 function setMapVisible(show){document.querySelectorAll('#route .map,#route .map-controls,#openGmaps').forEach(el=>el.style.display=show?'':'none')}
-$('dayEditBtn').onclick=()=>{if(!requireUser())return;$('editSelect').value=globalDayIndex;loadForm();openModal('dayEditModal')};
-$('bookingBtn').onclick=()=>{if(!requireUser())return;const d=tripData[globalDayIndex];$('bookHotel').value=d.bookedHotel||'';$('bookRef').value=d.bookingRef||'';$('bookTotal').value=d.actualCost||'';$('bookNotes').value=d.bookingNotes||'';$('bookMapsInput').value='';$('bookMapsFeedback').textContent='';$('bookLat').value=valid(d.lat,d.lng)?d.lat:'';$('bookLng').value=valid(d.lat,d.lng)?d.lng:'';setMapVisible(false);openModal('bookingModal')};
-$('bookParseMaps').onclick=()=>{const p=parseMaps($('bookMapsInput').value);if(!p)return $('bookMapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('bookLat').value=p.lat;$('bookLng').value=p.lng;$('bookMapsFeedback').textContent='✅ קואורדינטות זוהו'};
-document.querySelectorAll('.close').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-
-$('saveBooking').onclick=async()=>{
- if(!requireUser())return;
- const d=tripData[globalDayIndex],block=stayBlock(globalDayIndex),total=Number($('bookTotal').value)||0,targets=$('bookAll').checked&&block?tripData.slice(block.start,block.end+1):[d];
- const nl=Number($('bookLat').value),ng=Number($('bookLng').value),hasLoc=valid(nl,ng);
- targets.forEach((x,i)=>{Object.assign(x,{isBooked:true,bookedHotel:$('bookHotel').value.trim()||x.hotel,bookingRef:$('bookRef').value.trim(),bookingNotes:$('bookNotes').value.trim(),actualCost:Math.floor(total/targets.length)+(i===targets.length-1?total%targets.length:0),bookingUpdatedBy:activeUser,bookingUpdatedAt:Date.now()});if(hasLoc){x.lat=nl;x.lng=ng}});
- await saveTrip();closeModal($('bookingModal'));setMapVisible(true);render();
-};
-
+$('dayEditBtn').onclick=()=>{if(!requireUser())return;$('editSelect').value=globalDayIndex;loadForm();openModal('dayEditModal')};$('bookingBtn').onclick=()=>{if(!requireUser())return;const d=tripData[globalDayIndex];$('bookHotel').value=d.bookedHotel||'';$('bookRef').value=d.bookingRef||'';$('bookTotal').value=d.actualCost||'';$('bookNotes').value=d.bookingNotes||'';$('bookMapsInput').value='';$('bookMapsFeedback').textContent='';$('bookLat').value=valid(d.lat,d.lng)?d.lat:'';$('bookLng').value=valid(d.lat,d.lng)?d.lng:'';setMapVisible(false);openModal('bookingModal')};$('bookParseMaps').onclick=()=>{const p=parseMaps($('bookMapsInput').value);if(!p)return $('bookMapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('bookLat').value=p.lat;$('bookLng').value=p.lng;$('bookMapsFeedback').textContent='✅ קואורדינטות זוהו'};document.querySelectorAll('.close').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));$('saveBooking').onclick=async()=>{if(!requireUser())return;const d=tripData[globalDayIndex],block=stayBlock(globalDayIndex),total=Number($('bookTotal').value)||0,targets=$('bookAll').checked&&block?tripData.slice(block.start,block.end+1):[d];const nl=Number($('bookLat').value),ng=Number($('bookLng').value),hasLoc=valid(nl,ng);targets.forEach((x,i)=>{Object.assign(x,{isBooked:true,bookedHotel:$('bookHotel').value.trim()||x.hotel,bookingRef:$('bookRef').value.trim(),bookingNotes:$('bookNotes').value.trim(),actualCost:Math.floor(total/targets.length)+(i===targets.length-1?total%targets.length:0),bookingUpdatedBy:activeUser,bookingUpdatedAt:Date.now()});if(hasLoc){x.lat=nl;x.lng=ng}});await saveTrip();$('bookingModal').classList.remove('open');setMapVisible(true);render()};
 $('saveJournal').onclick=async()=>{if(!requireUser())return;const day=currentDayNum();
  const j=await getJournal(day);j.text=$('journalText').value;j.by=activeUser;j.editedAt=Date.now();
  await saveJournalMeta(day,j);loadJournal();renderAlbum()};
@@ -815,10 +580,8 @@ $('photos').onchange=async e=>{if(!requireUser()){e.target.value='';return}
  await saveJournalMeta(day,j);
  btn.textContent=orig;
  e.target.value='';loadJournal();renderHome();renderAlbum()};
-
 async function toggleFavorite(day,id){const raw=await SS.get('planner:photo:'+day+':'+id);if(!raw)return;
  try{const p=JSON.parse(raw);p.favorite=!p.favorite;await SS.set('planner:photo:'+day+':'+id,JSON.stringify(p));renderAlbum()}catch{}}
-
 async function renderAlbum(){
  $('albumBody').innerHTML='<p class="muted">⏳ טוען אלבום…</p>';
  const entries=[];for(const day of tripData)entries.push(await getJournal(day.day));
@@ -826,93 +589,30 @@ async function renderAlbum(){
  tripData.forEach((day,di)=>{const entry=entries[di];const card=document.createElement('article');card.className='card';card.innerHTML=`<h3>יום ${day.day} — ${esc(day.title)}</h3><p class="muted">${esc(day.date)} · ${esc(day.region)}</p>${entry.text?`<p>${esc(entry.text)}</p>`:''}${entry.by?`<small class="muted">נערך על ידי ${esc(entry.by)}</small>`:''}<div class="photo-grid">${(entry.photos||[]).map(p=>`<div class="photo"><img src="${p.src}"><small>${esc(p.by||'')}</small></div>`).join('')}</div>`;$('albumBody').appendChild(card)});
  const allPhotos=[];tripData.forEach((day,di)=>{(entries[di].photos||[]).forEach(p=>allPhotos.push({...p,day:day.day}))});
  allPhotos.sort((a,b)=>(b.uploadedAt||0)-(a.uploadedAt||0));
- $('albumGrid').innerHTML=allPhotos.map(p=>`<div class="ph"><img src="${p.src}"><button class="star${p.favorite?' on':''}" data-fav-day="${p.day}" data-fav-id="${p.id}">${p.favorite?'★':'☆'}</button><div class="by">${esc(p.by||'')}</div></div>`).join('')||'<p class="muted" style="grid-column:1/-1">עדיין אין תמונות</p>';
-}
+ $('albumGrid').innerHTML=allPhotos.map(p=>`<div class="ph"><img src="${p.src}"><button class="star${p.favorite?' on':''}" data-fav-day="${p.day}" data-fav-id="${p.id}">${p.favorite?'★':'☆'}</button><div class="by">${esc(p.by||'')}</div></div>`).join('')||'<p class="muted" style="grid-column:1/-1">עדיין אין תמונות</p>'}
 $('albumGrid').onclick=e=>{const b=e.target.closest('[data-fav-day]');if(!b)return;toggleFavorite(Number(b.dataset.favDay),b.dataset.favId)};
 $('albumTabAll').onclick=()=>{$('albumTabAll').classList.add('active');$('albumTabDays').classList.remove('active');$('albumAllView').style.display='';$('albumDaysView').style.display='none'};
-$('albumTabDays').onclick=()=>{$('albumTabDays').classList.add('active');$('albumTabAll').classList.remove('active');$('albumDaysView').style.display='';$('albumAllView').style.display='none'};
-
-const TRIP_NAME_KEY='planner:tripname';
+$('albumTabDays').onclick=()=>{$('albumTabDays').classList.add('active');$('albumTabAll').classList.remove('active');$('albumDaysView').style.display='';$('albumAllView').style.display='none'};const TRIP_NAME_KEY='planner:tripname';
 async function getTripName(){try{const v=await SS.get(TRIP_NAME_KEY);return v||'מסע של חלומות'}catch{return'מסע של חלומות'}}
 async function renderManagement(){$('mgmtUsersVal').textContent=activeUser||'—';$('mgmtTripVal').textContent=await getTripName();$('mgmtBackupVal').textContent=hasCloud()?'ענן פעיל':'מקומי בלבד'}
 function renderBackupScreen(){updateSyncBadge()}
-
 $('mgmtUsers').onclick=()=>openUserModal();
 $('mgmtTrip').onclick=async()=>{$('tripNameInput').value=await getTripName();openModal('tripSettingsModal')};
 $('saveTripName').onclick=async()=>{const name=$('tripNameInput').value.trim();if(!name)return alert('יש להזין שם טיול');await SS.set(TRIP_NAME_KEY,name);$('tripName').textContent=name;closeModal($('tripSettingsModal'));renderManagement()};
 $('backupNowBtn').onclick=()=>openBackupModal();
 function openBackupModal(){const json=JSON.stringify(tripData,null,2);$('backupText').value=json;$('backupFeedback').textContent='';$('importExcelFeedback').textContent='';openModal('backupModal')}
-
 let modalReturnPanel='home';
 function currentPanel(){return document.querySelector('.panel.active')?.id||'home'}
 function openModal(id){modalReturnPanel=currentPanel();const m=$(id);if(m)m.classList.add('open')}
 function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.classList.remove('open');if(m.id==='bookingModal')setMapVisible(true);switchPanel(modalReturnPanel)}
-
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',album:'album',more:'more',budget:'more',management:'more',backup:'more'};
-function switchPanel(id){
- document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));
- const activeTabId=TAB_FOR_PANEL[id]||id;
- document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));
- if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}
- if(id==='album')renderAlbum();
- if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();}
- if(id==='management')renderManagement();
- if(id==='backup')renderBackupScreen();
- if(id==='more')updateDocumentsSummary();
- window.scrollTo(0,0);
-}
-
-function ensureModalXControls(){
- document.querySelectorAll('.modal').forEach(m=>{
-  if(m.querySelector('[data-modal-x]'))return;
-  const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';
-  b.style.position='absolute';b.style.top='10px';b.style.right='10px';
-  m.querySelector('.modal-box')?.appendChild(b);
- });
-}
-ensureModalXControls();
-document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-
-$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};
-$('docAddBtn').onclick=()=>$('docInput').click();
-$('docInput').onchange=async e=>{
- if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;
- const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};
- let docs=await getDocuments();
- for(const f of files){const src=await compressImage(f);if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser})}
- await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();updateDocumentsSummary();
-};
-$('documentsGrid').onclick=async e=>{
- const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;
- const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);
- await saveDocuments(docs);await renderDocuments();updateDocumentsSummary();
-};
-
-$('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};
-$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));
-document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));
-document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});
-['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});
-document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));drawMap()});
-
-$('saveBudgetTarget').onclick=async()=>{
- if(!requireUser())return;
- await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));
- renderBudget();renderDailyBurn();
-};
-
-$('dayForm').onsubmit=async e=>{
- e.preventDefault();if(!requireUser())return;
- Object.assign(tripData[globalDayIndex],{date:$('fDate').value,region:$('fRegion').value,title:$('fTitle').value,activities:$('fActivities').value,hotel:$('fHotel').value,cost:Number($('fCost').value)||0,lat:Number($('fLat').value),lng:Number($('fLng').value),notes:$('fNotes').value,lastEditedBy:activeUser,lastEditedAt:Date.now()});
+function switchPanel(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more')updateDocumentsSummary();window.scrollTo(0,0)}
+function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
+$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();for(const f of files){const src=await compressImage(f);if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser})}await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary()};$('documentsGrid').onclick=async e=>{const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};$('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));drawMap()});$('saveBudgetTarget').onclick=async()=>{if(!requireUser())return;await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));renderBudget();renderDailyBurn();};
+$('dayForm').onsubmit=async e=>{e.preventDefault();if(!requireUser())return;Object.assign(tripData[globalDayIndex],{date:$('fDate').value,region:$('fRegion').value,title:$('fTitle').value,activities:$('fActivities').value,hotel:$('fHotel').value,cost:Number($('fCost').value)||0,lat:Number($('fLat').value),lng:Number($('fLng').value),notes:$('fNotes').value,lastEditedBy:activeUser,lastEditedAt:Date.now()});
  const cascaded=globalDayIndex===0;if(cascaded)recalcDates();
  await saveTrip();updateDates();fillSelects();render();
- if(cascaded)alert('✅ תאריך תחילת המסע עודכן וכל שאר הימים הוזזו בהתאם');
- closeModal($('dayEditModal'));
-};
-
-$('deleteDay').onclick=async()=>{
- if(!requireUser()||tripData.length<2)return;
+ if(cascaded)alert('✅ תאריך תחילת המסע עודכן וכל שאר הימים הוזזו בהתאם');};$('deleteDay').onclick=async()=>{if(!requireUser()||tripData.length<2)return;
  if(!confirm('למחוק את היום הנבחר? היומן והתמונות של הימים שאחריו יועברו אוטומטית.'))return;
  const btn=$('deleteDay'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ מוחק ומעביר…';
  const idx=globalDayIndex;tripData.splice(idx,1);
@@ -920,10 +620,7 @@ $('deleteDay').onclick=async()=>{
  tripData.forEach((d,i)=>d.day=i+1);recalcDates();
  globalDayIndex=Math.max(0,idx-1);
  await saveTrip();updateDates();fillSelects();render();
- btn.disabled=false;btn.textContent=orig;
- closeModal($('dayEditModal'));
-};
-
+ btn.disabled=false;btn.textContent=orig};
 function downloadBlob(blob,filename){
  try{
   const url=URL.createObjectURL(blob);
@@ -933,7 +630,6 @@ function downloadBlob(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   return true;
  }catch{return false}}
-
 $('backupDownload').onclick=()=>{
  const ok=downloadBlob(new Blob([$('backupText').value],{type:'application/json'}),'Vietnam_Travel_Planner.json');
  $('backupFeedback').textContent=ok?'✅ אם ההורדה לא התחילה, אפשר להעתיק את הטקסט למטה במקום':'⚠️ ההורדה נכשלה — יש להעתיק את הטקסט למטה ולשמור ידנית'};
@@ -941,12 +637,10 @@ $('backupCopy').onclick=async()=>{
  try{await navigator.clipboard.writeText($('backupText').value);$('backupFeedback').textContent='✅ הועתק ללוח'}
  catch{$('backupText').select();try{document.execCommand('copy');$('backupFeedback').textContent='✅ הועתק ללוח'}
   catch{$('backupFeedback').textContent='⚠️ העתקה אוטומטית נכשלה — הטקסט מסומן, אפשר להעתיק ידנית (Ctrl+C)'}}};
-
 const XLSX_DAY_COLS=[['day','יום'],['date','תאריך'],['region','אזור'],['title','כותרת'],['activities','פעילויות'],['hotel','מלון מתוכנן'],['cost','עלות מתוכננת (₪)'],['notes','דגשים'],['lat','קו רוחב (lat)'],['lng','קו אורך (lng)'],['zoom','זום מפה'],['isBooked','הוזמן (כן/לא)'],['bookedHotel','מלון בפועל'],['bookingRef','מספר אישור'],['actualCost','עלות בפועל (₪)'],['bookingNotes','הערות הזמנה']];
 const XLSX_WP_COLS=[['day','יום'],['name','שם המקום'],['lat','קו רוחב (lat)'],['lng','קו אורך (lng)'],['notes','הערות'],['addedBy','נוסף על ידי']];
 function buildDaySheetRows(){return tripData.map(d=>{const row={};XLSX_DAY_COLS.forEach(([k,h])=>{row[h]=k==='isBooked'?(d.isBooked?'כן':'לא'):(d[k]??'')});return row})}
 function buildWaypointSheetRows(){const rows=[];tripData.forEach(d=>(d.waypoints||[]).forEach(w=>{const row={};XLSX_WP_COLS.forEach(([k,h])=>{row[h]=(k==='day'?d.day:w[k])??''});rows.push(row)}));return rows}
-
 $('backupDownloadXlsx').onclick=()=>{
  try{
   const wb=XLSX.utils.book_new();
@@ -956,7 +650,6 @@ $('backupDownloadXlsx').onclick=()=>{
   const ok=downloadBlob(new Blob([bytes],{type:'application/octet-stream'}),'Vietnam_Travel_Planner.xlsx');
   $('backupFeedback').textContent=ok?'✅ אם ההורדה לא התחילה, אפשר להוריד/להעתיק כ-JSON במקום':'⚠️ יצירת האקסל נכשלה — אפשר להוריד/להעתיק כ-JSON במקום';
  }catch{$('backupFeedback').textContent='⚠️ יצירת האקסל נכשלה — אפשר להוריד/להעתיק כ-JSON במקום'}};
-
 $('importExcelBtn').onclick=()=>$('importExcelInput').click();
 $('importJsonBtn').onclick=()=>$('importInput').click();
 $('importExcelInput').onchange=async e=>{
@@ -987,28 +680,14 @@ $('importExcelInput').onchange=async e=>{
   tripData=days;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render();
   $('importExcelFeedback').textContent='✅ המסלול יובא בהצלחה';
  }catch(err){$('importExcelFeedback').textContent=err?.message==='missing-sheet'?'⚠️ לא נמצא גיליון בשם "מסלול" בקובץ':'⚠️ קובץ אקסל לא תקין או שהמבנה שונה מהצפוי'}
- e.target.value=''};
-
-$('importInput').onchange=e=>{
- const r=new FileReader();
- r.onload=async()=>{
-  try{
-   const v=JSON.parse(r.result);
-   if(!Array.isArray(v)||!v.length)throw Error();
-   if(!confirm('הקובץ מכיל '+v.length+' ימים ויחליף את המסלול עבור כולם. להמשיך?'))return;
-   tripData=v;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render();
-  }catch{alert('קובץ JSON לא תקין')}
- };
- r.readAsText(e.target.files[0]);
-};
-
-(async function boot(){
+ e.target.value=''};$('importInput').onchange=e=>{const r=new FileReader();r.onload=async()=>{try{const v=JSON.parse(r.result);if(!Array.isArray(v)||!v.length)throw Error();if(!confirm('הקובץ מכיל '+v.length+' ימים ויחליף את המסלול עבור כולם. להמשיך?'))return;tripData=v;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render()}catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};(async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
  await ensureDefaultLodgingBudget();renderBudget();
  $('tripName').textContent=await getTripName();
  updateSyncBadge();flushQueue();
  window.addEventListener('online',flushQueue);
  setInterval(flushQueue,20000);
+ startGoogleMapsWatch(); /* CHANGE 2026-08-22 GM-03 */
 })();
 </script>
 </body>
