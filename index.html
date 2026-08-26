@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.5.0 (Google Maps + schematic-map fallback)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.5.7 (צ׳אט שאלות על הטיול)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -28,23 +28,49 @@
  // לעבוד בדיוק כמו היום, במצב מקומי בלבד.
  const SUPABASE_URL='https://kkitwcnkoxuhbcsabcdl.supabase.co';
  const SUPABASE_ANON_KEY='sb_publishable_e7CzGjayv7yHKDbxypzTjA_Ya-fptMp';
+ /* CHANGE 2026-08-26 GM-17: exposed on window so the main script (a separate <script> tag below,
+    which cannot see this IIFE's local consts) can build the chat-assistant Edge Function URL and
+    send the anon key with it -- see CHAT_ENDPOINT near the bottom of the main script. This does
+    NOT change what's exposed to the page: the anon key is already meant to be client-visible (see
+    the security note in SUPABASE_SETUP_v1.5.4.txt), and it was already sent over the wire on every
+    window.storage call below either way. Placed before the early-return guard on the next line so
+    CHAT_ENDPOINT can correctly detect "not configured" too, matching hasCloud()'s own behavior. */
+ window.SUPABASE_URL=SUPABASE_URL;window.SUPABASE_ANON_KEY=SUPABASE_ANON_KEY;
  if(!SUPABASE_URL||SUPABASE_URL.indexOf('YOUR_')===0||!SUPABASE_ANON_KEY||SUPABASE_ANON_KEY.indexOf('YOUR_')===0)return;
  if(!window.supabase||typeof window.supabase.createClient!=='function'){console.warn('[planner] Supabase configured but library not loaded');return}
  let sb;
  try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn('[planner] Supabase client init failed',e);return}
+ /* CHANGE 2026-08-26 GM-14: bounded timeout on every real Supabase call. Found empirically
+    (user report: home-screen stats stuck at 0 and the user-picker list not populating on a
+    real device with a real Supabase project -- not reproducible against the fast in-process
+    fake backend used in earlier rounds' tests) -- the underlying supabase-js fetch had no
+    timeout at all, unlike every other network call in this app (weather/maps/fx all already
+    use an 8s/6s AbortController pattern). renderHome()'s per-day photo-count loop and
+    renderUserChoices()'s avatar-photo lookup both await SS.get() with no top-level catch, so
+    a single slow/stuck real request left them hanging forever, while the rest of the screen
+    (driven synchronously) rendered fine -- matching exactly what was reported. This wraps
+    every window.storage call in an 8s timeout: get() then falls back to localStorage/defaults
+    same as any other failure; set()/delete() fall into the existing offline-queue retry logic
+    that was already built for exactly this case. See CHANGELOG_v1.5.6.txt. */
+ function withTimeout(promise,ms){
+  return new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(new Error('סנכרון-ענן לא הגיב בזמן')),ms);
+   promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)});
+  });
+ }
  window.storage={
   async get(key){
-   const{data,error}=await sb.from('planner_kv').select('value').eq('key',key).maybeSingle();
+   const{data,error}=await withTimeout(sb.from('planner_kv').select('value').eq('key',key).maybeSingle(),8000);
    if(error)throw error;
    return data?{value:data.value}:null
   },
   async set(key,value){
-   const{error}=await sb.from('planner_kv').upsert({key,value,updated_at:new Date().toISOString()},{onConflict:'key'});
+   const{error}=await withTimeout(sb.from('planner_kv').upsert({key,value,updated_at:new Date().toISOString()},{onConflict:'key'}),8000);
    if(error)throw error;
    return true
   },
   async delete(key){
-   const{error}=await sb.from('planner_kv').delete().eq('key',key);
+   const{error}=await withTimeout(sb.from('planner_kv').delete().eq('key',key),8000);
    if(error)throw error;
    return true
   }
@@ -207,8 +233,18 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
  .homehero h1{font-size:1.1rem}
 }
 @media print{.tabs,.no-print,.homehero{display:none}.panel{display:none!important}.panel#album{display:block!important}}
-.day-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
-.day-strip::-webkit-scrollbar{display:none}
+/* CHANGE 2026-08-26 GM-16: the day-strip's scrollbar was deliberately hidden (touch-swipe was
+   assumed to be enough). Now that the old select+arrows fallback is gone and the strip is the
+   ONLY way to jump between non-adjacent days, a hidden scrollbar reads as "not scrollable" to
+   a mouse/trackpad user -- reported directly. Made it a real, visible (if subtle) scrollbar,
+   and vertical wheel input now scrolls it horizontally too (see the wheel listener near the
+   bottom of the script) for anyone without a horizontal-scroll trackpad. */
+.day-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.day-strip::-webkit-scrollbar{height:6px}
+.day-strip::-webkit-scrollbar-track{background:transparent}
+.day-strip::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.day-strip::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+.day-progress{text-align:center;font-size:.72rem;color:var(--muted);padding:0 0 8px}
 .day-chip{min-width:68px;flex:0 0 auto;border:1px solid var(--border);background:#fff;border-radius:12px;padding:7px 8px;text-align:center;cursor:pointer;font-weight:700;font-size:.72rem;color:var(--muted);touch-action:manipulation}
 .day-chip strong{display:block;color:var(--text);font-size:.82rem}
 .day-chip.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
@@ -220,11 +256,53 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .daily-burn.danger{background:#fff4f2;border-color:#f3c5bd}.daily-burn.danger .burn-amount{color:var(--primary)}
 .burn-meta{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:var(--muted);font-size:.72rem}
 .weather-card{display:flex;align-items:center;gap:12px;border:1px solid var(--border);background:#fff;border-radius:16px;padding:13px 14px;margin-bottom:var(--sp-3);cursor:pointer}
-.weather-icon{font-size:2rem;width:44px;text-align:center}.weather-main{flex:1}.weather-temp{font-size:1.45rem;font-weight:900}.weather-meta{font-size:.74rem;color:var(--muted)}
+.weather-icon{font-size:2rem;width:44px;text-align:center}.weather-main{flex:1;min-width:0}.weather-temp{font-size:1.45rem;font-weight:900}.weather-meta{font-size:.74rem;color:var(--muted)}
+/* CHANGE 2026-08-26 GM-10: per-day weather widget with a 3-tier reliability system --
+   see CHANGELOG_v1.5.5.txt. Tier badge + advisory + long-range/seasonal styling. */
+.weather-row1{display:flex;align-items:baseline;gap:8px}
+.weather-range{font-size:.78rem;color:var(--muted);font-weight:700}
+.weather-advisory{font-size:.72rem;color:var(--text);margin-top:4px;font-weight:600}
+.weather-tier{display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:800;border-radius:20px;padding:2px 8px;margin-top:6px}
+.weather-tier.t-ok{color:var(--success);background:var(--success-bg)}
+.weather-tier.t-warn{color:#92600a;background:#fff3da}
+.weather-tier.t-none{color:var(--muted);background:#f1f0eb}
+.seasontxt{font-size:.78rem;color:var(--text);line-height:1.5;margin-top:2px}
+/* CHANGE 2026-08-26 GM-11: unobtrusive Grab quick-access link next to the lodging line. */
+.grab-link{font-size:.72rem;color:var(--muted);display:inline-flex;align-items:center;gap:3px;margin-top:6px;text-decoration:none}
+.grab-link:hover{color:var(--text)}
 .global-fx{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:28;border:1px solid #cfd7df;background:#fff;color:var(--text);box-shadow:0 4px 14px #00000018;border-radius:999px;padding:7px 13px;font-weight:800;font-size:.76rem;cursor:pointer;touch-action:manipulation}
 .doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.doc-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:10px;min-width:0}.doc-card img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:10px;background:#f3f4f6}.doc-name{font-weight:800;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-meta{font-size:.68rem;color:var(--muted)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.modal-box{position:relative}.modal-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:#fff;font-size:1.2rem;cursor:pointer;flex:0 0 auto}
 @media(max-width:420px){.global-fx{bottom:78px}.doc-grid{grid-template-columns:1fr 1fr}.day-chip{min-width:62px}}
+/* CHANGE 2026-08-26 GM-17: floating "questions about the trip" chat assistant (Claude API via a
+   Supabase Edge Function proxy -- see CHANGELOG_v1.5.7.txt). Matches the approved mockup:
+   https://claude.ai/code/artifact/84a99169-487f-4915-b709-f702aed99d26 */
+.chat-fab{position:fixed;left:16px;bottom:76px;width:58px;height:58px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.85rem;line-height:1;border:0;box-shadow:0 4px 14px #00000030;z-index:30;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}
+.chat-scrim{display:none;position:fixed;inset:0;background:#0f172aa6;z-index:98}
+.chat-scrim.open{display:block}
+.chat-sheet{display:none;position:fixed;left:0;right:0;bottom:0;height:min(72vh,620px);background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px #0000002e;z-index:99;flex-direction:column}
+.chat-sheet.open{display:flex}
+.chat-handle{width:36px;height:4px;border-radius:99px;background:var(--border);margin:10px auto 4px;flex:0 0 auto}
+.chat-head{display:flex;align-items:center;gap:10px;padding:8px 16px 10px;flex:0 0 auto}
+.chat-head-icon{width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:1.15rem;line-height:1}
+.chat-head-text{flex:1;min-width:0}
+.chat-head-text b{display:block;font-size:.98rem}
+.chat-x{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:#fff;flex:0 0 auto;font-size:1.1rem;cursor:pointer}
+.chat-privacy{display:flex;align-items:center;gap:6px;padding:0 16px 10px;color:var(--muted);font-size:.68rem;flex:0 0 auto}
+.chat-body{flex:1;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column;gap:10px}
+.chat-row{display:flex}
+.chat-bubble{max-width:80%;padding:10px 13px;font-size:.86rem;line-height:1.55;white-space:pre-wrap}
+.chat-bubble.assistant{background:#fff;border:1px solid var(--border);border-radius:14px 14px 4px 14px;color:var(--text)}
+.chat-bubble.user{background:var(--primary);color:#fff;border-radius:14px 14px 14px 4px}
+.chat-bubble.assistant.chat-typing{color:var(--muted)}
+.chat-bubble.assistant.chat-error{border-color:#f3c5bd;background:#fff4f2;color:var(--primary-dark)}
+.chat-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.chat-chip{border:1px solid var(--border);background:#fff;color:var(--primary-dark);border-radius:999px;padding:8px 12px;font-size:.76rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+.chat-input-row{display:flex;align-items:center;gap:8px;padding:10px 16px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:0 0 auto}
+.chat-input-row input{flex:1;min-height:44px;border-radius:999px;background:#faf8f5}
+.chat-send{width:44px;height:44px;border-radius:50%;background:var(--primary);border:0;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:1.1rem}
+.chat-send:disabled{opacity:.5;cursor:default}
+@media(max-width:420px){.chat-fab{bottom:78px}.chat-sheet{height:min(78vh,620px)}}
 </style>
 </head>
 <body>
@@ -255,7 +333,22 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   </div>
  </div>
 </section>
-<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div class="card row"><select id="daySelect"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span></div><div class="info-item"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div></div><details class="subsection"><summary>💡 דגשים</summary><div class="subsection-body"><span id="notes" class="muted"></span></div></details><details class="subsection"><summary>📍 נקודות עניין <span id="waypointBadge" class="badge"></span></summary><div class="subsection-body"><div class="row" style="justify-content:flex-end;margin-bottom:var(--sp-2)"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div></details><details class="subsection"><summary>🏨 הזמנה <span id="bookingBadge" class="badge"></span></summary><div class="subsection-body"><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></details></div><div><div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
+<!-- CHANGE 2026-08-26 GM-10/GM-11/GM-12/GM-13: route/day screen redesign, per the mockup
+     shown to and approved by the user (see Route_Decision_Log.md and CHANGELOG_v1.5.5.txt).
+     - GM-12: the old daySelect+move-arrows row (redundant with the day-strip below it) is
+       removed from view; #daySelect itself stays in the DOM (hidden) because fillSelects()
+       unconditionally does $('daySelect').innerHTML=...;$('daySelect').value=... for all
+       three of daySelect/journalDay/editSelect -- deleting the element outright would throw
+       and break journalDay/editSelect population too. The day-strip + arrows are now the
+       only VISIBLE way to move between days on this screen.
+     - GM-10: #routeDayWeather is the new per-day weather widget (see getDayWeather/
+       renderRouteDayWeather in the script below).
+     - Declutter: cost + notes + waypoints + booking moved from three separate always-listed
+       subsections into one collapsed "עוד פרטים" section; activities + lodging stay visible.
+     - GM-13: a third data-map="poi" button reuses the existing generic
+       [data-map] click handler unchanged; only drawGoogleMap/drawSchematicMap gained a poi
+       branch (see script). -->
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div><div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
 <section id="budget" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><div class="card"><h3>➕ הוספת הוצאה</h3><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
@@ -272,6 +365,25 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div id="bookingModal" class="modal"><div class="modal-box"><h2>🏨 הזמנה מאושרת</h2><input id="bookHotel" placeholder="מלון בפועל"><input id="bookRef" placeholder="מספר אישור"><input id="bookTotal" type="number" min="0" placeholder="מחיר כולל בש״ח"><textarea id="bookNotes" placeholder="הערות"></textarea><label class="muted">מיקום המלון בפועל (לעדכון המפה — אופציונלי)</label><div class="row"><input id="bookMapsInput" placeholder="קישור Google Maps או קואורדינטות"><button class="btn blue" type="button" id="bookParseMaps">חלץ</button></div><small id="bookMapsFeedback" class="muted"></small><div class="row"><input id="bookLat" type="number" step="any" placeholder="Latitude"><input id="bookLng" type="number" step="any" placeholder="Longitude"></div><label><input id="bookAll" type="checkbox" checked> החל על כל רצף השהייה</label><button class="btn green" id="saveBooking">שמור הזמנה</button><button class="btn outline close">ביטול</button></div></div>
 <div id="backupModal" class="modal"><div class="modal-box"><h2>💾 גיבוי וייבוא נתוני מסלול</h2><p class="muted">מומלץ אקסל לעריכה נוחה (נפתח כטבלה), או JSON לגיבוי מלא ומדויק.</p><div class="row"><button class="btn gold" id="backupDownloadXlsx">📊 הורדה כאקסל</button><button class="btn outline" id="backupDownload">⬇️ הורדה כ-JSON</button><button class="btn blue" id="backupCopy">📋 העתק JSON ללוח</button></div><small id="backupFeedback" class="muted"></small><hr><b>📂 ייבוא</b><p class="muted">מחליף את כל המסלול הנוכחי. יש לשמור על מבנה העמודות/השדות כפי שהוא בקובץ שהורדתם מכאן.</p><div class="row"><button class="btn outline" type="button" id="importExcelBtn">בחר קובץ אקסל (.xlsx)</button><input id="importExcelInput" type="file" accept=".xlsx,.xls" class="file-input-vh"><button class="btn outline" type="button" id="importJsonBtn">בחר קובץ JSON</button><input id="importInput" type="file" accept=".json" class="file-input-vh"></div><small id="importExcelFeedback" class="muted"></small><hr><textarea id="backupText" readonly style="min-height:180px;font-family:monospace;font-size:.78rem" onclick="this.select()"></textarea><button class="btn outline close">סגור</button></div></div>
 <button id="globalFxBtn" class="global-fx" type="button" aria-label="המרת מטבע">₪ ⇄ $</button>
+<!-- CHANGE 2026-08-26 GM-17: chat FAB + sheet, placed here (before the main <script>) for the same
+     reason as globalFxBtn just above -- see the GM-03 note right below: a fixed element added
+     AFTER the script tag does not exist yet when the script wires its onclick synchronously. -->
+<button id="chatFab" class="chat-fab" type="button" aria-label="שאלות על הטיול">💬</button>
+<div id="chatScrim" class="chat-scrim"></div>
+<div id="chatSheet" class="chat-sheet" role="dialog" aria-label="שאלות על הטיול">
+ <div class="chat-handle"></div>
+ <div class="chat-head">
+  <div class="chat-head-icon">💬</div>
+  <div class="chat-head-text"><b>שאלות על הטיול</b><span id="chatDayBadge" class="badge" style="margin-top:2px"></span></div>
+  <button id="chatCloseBtn" class="chat-x" type="button" aria-label="סגירה">✕</button>
+ </div>
+ <div class="chat-privacy">🔒 השיחה נשמרת רק במכשיר הזה</div>
+ <div id="chatBody" class="chat-body"></div>
+ <div class="chat-input-row">
+  <input id="chatInput" type="text" placeholder="שאל שאלה על הטיול…" maxlength="500">
+  <button id="chatSendBtn" class="chat-send" type="button" aria-label="שליחה">➤</button>
+ </div>
+</div>
 <!-- CHANGE 2026-08-22 GM-03: moved here from after </script> -- it was previously placed after the closing </script> tag, so it did not exist in the DOM yet when the top-level script below ran and tried to wire its onclick handler. That threw an uncaught TypeError which silently aborted the rest of the script, including the boot() call at the very end -- so the app never loaded trip data or opened the user picker. Confirmed with a headless-browser test; see CHANGELOG_v1.5.0.txt. -->
 <script>
 'use strict';
@@ -371,7 +483,10 @@ async function loadState(){let v=null;
  if(globalDayIndex>=tripData.length)globalDayIndex=Math.max(0,tripData.length-1);
  activeUser=localStorage.getItem(KEYS.user)||''}
 async function saveTrip(){await SS.set(SHARED.trip,JSON.stringify(tripData))}function requireUser(){if(activeUser)return true;openUserModal();return false}function valid(a,b){return Number.isFinite(Number(a))&&Number(a)>=-90&&Number(a)<=90&&Number.isFinite(Number(b))&&Number(b)>=-180&&Number(b)<=180}function parseDate(v){const m=String(v).match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null}function iso(v){const d=parseDate(v);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:''}function checkout(v){const d=parseDate(v);if(!d)return'';d.setDate(d.getDate()+1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function stayBlock(i){const d=tripData[i];if(!d||['בטיסה','טיסה חזרה'].includes(d.hotel))return null;const key=`${d.bookedHotel||d.hotel}|${d.region}`;let a=i,b=i;while(a&&`${tripData[a-1].bookedHotel||tripData[a-1].hotel}|${tripData[a-1].region}`===key)a--;while(b<tripData.length-1&&`${tripData[b+1].bookedHotel||tripData[b+1].hotel}|${tripData[b+1].region}`===key)b++;return{start:a,end:b,hotel:d.bookedHotel||d.hotel,region:d.region,checkin:iso(tripData[a].date),checkout:checkout(tripData[b].date),nights:b-a+1}}function bookingUrl(i){const s=stayBlock(i);if(!s?.checkin||!s?.checkout)return'';const p=new URLSearchParams({ss:`${s.hotel}, ${s.region}, Vietnam`,checkin:s.checkin,checkout:s.checkout,group_adults:'2',group_children:'3',age:'17,15,11',no_rooms:'2'});return`https://www.booking.com/searchresults.html?${p}`}
-function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}function render(){const d=tripData[globalDayIndex];$('dayBadge').textContent=`יום ${d.day}`;$('dateBadge').textContent=d.date;$('regionBadge').textContent=d.region;$('title').textContent=d.title;$('activities').textContent=d.activities;$('hotel').textContent=d.bookedHotel||d.hotel;$('notes').textContent=d.notes;$('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;$('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';$('bookingBadge').textContent=d.isBooked?'✅':'טרם';const u=bookingUrl(globalDayIndex);$('bookingLink').style.display=u?'inline-flex':'none';$('bookingLink').href=u;const wp=d.waypoints||[];$('waypointBadge').textContent=wp.length||'';$('waypointBadge').style.display=wp.length?'':'none';$('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';loadForm();loadJournal();drawMap();renderHome();renderBudget()}
+function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}function render(){const d=tripData[globalDayIndex];$('dayBadge').textContent=`יום ${d.day}`;$('dateBadge').textContent=d.date;$('regionBadge').textContent=d.region;$('title').textContent=d.title;$('activities').textContent=d.activities;$('hotel').textContent=d.bookedHotel||d.hotel;$('notes').textContent=d.notes;$('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;$('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';$('bookingBadge').textContent=d.isBooked?'✅':'טרם';const u=bookingUrl(globalDayIndex);$('bookingLink').style.display=u?'inline-flex':'none';$('bookingLink').href=u;const wp=d.waypoints||[];$('waypointBadge').textContent=wp.length||'';$('waypointBadge').style.display=wp.length?'':'none';$('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';loadForm();loadJournal();drawMap();renderHome();renderBudget();renderRouteDayWeather();
+ /* CHANGE 2026-08-26 GM-17: keep the chat panel's day-badge and suggestion chips in sync if the
+    day changes while it's open (e.g. via the day-strip) rather than only when it's opened. */
+ if(typeof isChatOpen==='function'&&isChatOpen()){updateChatDayBadge();renderChatBody()}}
 // --- Google Maps Integration ---
 function initMap() {
   if (typeof google === 'undefined') return;
@@ -421,6 +536,25 @@ function drawGoogleMap() {
         bounds.extend(pt);
         pointCount++;
       }
+    });
+  } else if (mapMode === 'poi') {
+    /* CHANGE 2026-08-26 GM-13: third map mode -- plots every waypoint from every day of the
+       trip (existing d.waypoints data only, no new data source), regardless of which day is
+       currently selected. */
+    tripData.forEach(day => {
+      (day.waypoints || []).forEach(w => {
+        if (!valid(w.lat, w.lng)) return;
+        const pt = { lat: w.lat, lng: w.lng };
+        const marker = new google.maps.Marker({
+          position: pt, map: map, title: `יום ${day.day}: ${w.name}`,
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: "#075985", fillOpacity: 0.9, strokeWeight: 2, strokeColor: "#ffffff" }
+        });
+        const infowindow = new google.maps.InfoWindow({ content: esc(`יום ${day.day} · ${w.name}`) });
+        marker.addListener("click", () => infowindow.open(map, marker));
+        markers.push(marker);
+        bounds.extend(pt);
+        pointCount++;
+      });
     });
   } else {
     const routePoints = [];
@@ -498,6 +632,9 @@ function drawSchematicMap(){const el=$('map');if(!el)return;const d=tripData[glo
    shapes+=`<circle cx="${x}" cy="${y}" r="9" fill="#b42318" stroke="#fff" stroke-width="2"><title>${esc(d.title)}</title></circle><text x="${x}" y="${Math.max(12,y-14)}" text-anchor="middle" font-size="12" fill="#1f2937" font-weight="700">${esc(d.region)}</text>`}
   (d.waypoints||[]).forEach(w=>{if(!valid(w.lat,w.lng))return;const[x,y]=project(w.lat,w.lng,b,W,H);
    shapes+=`<circle cx="${x}" cy="${y}" r="6" fill="#075985" stroke="#fff" stroke-width="1.5"><title>${esc(w.name)}</title></circle>`})
+ }else if(mapMode==='poi'){
+  tripData.forEach(day=>{(day.waypoints||[]).forEach(w=>{if(!valid(w.lat,w.lng))return;const[x,y]=project(w.lat,w.lng,b,W,H);
+   shapes+=`<circle cx="${x}" cy="${y}" r="6" fill="#075985" stroke="#fff" stroke-width="1.5"><title>${esc('יום '+day.day+': '+w.name)}</title></circle>`})})
  }else{
   const linePts=tripData.filter(x=>valid(x.lat,x.lng));
   if(linePts.length>1)shapes+=`<path d="${linePath(linePts.map(p=>[p.lat,p.lng]),b,W,H)}" fill="none" stroke="#b42318" stroke-width="2" stroke-dasharray="6 5" opacity=".75"/>`;
@@ -514,14 +651,28 @@ async function loadJournal(){const d=tripData[globalDayIndex];
  $('journalText').value=j.text;
  $('photoGrid').innerHTML=(j.photos||[]).map(p=>`<div class="photo"><img src="${p.src}"><small>${esc(p.by||'')}</small></div>`).join('')}const AVATAR_COLORS=['#b42318','#d97706','#15803d','#7c3aed','#0f766e','#be185d','#0369a1'];
 function avatarColor(name){let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
-async function getUserPhotos(){try{const raw=await SS.get('planner:userphotos');return raw?JSON.parse(raw):{}}catch{return{}}}
-async function setUserPhoto(name,dataUrl){const photos=await getUserPhotos();photos[name]=dataUrl;await SS.set('planner:userphotos',JSON.stringify(photos))}
+/* CHANGE 2026-08-26 GM-15: getUserPhotos() was being re-fetched from scratch once per family
+   member inside renderUserChoices() (5x the same key, sequentially) -- harmless once
+   window.storage has a timeout (GM-14), but still 5 avoidable real network round-trips every
+   time the user-picker opens. A tiny in-memory cache, invalidated on the one place that
+   writes this key, cuts that to at most one fetch. */
+let userPhotosCache=null;
+async function getUserPhotos(){if(userPhotosCache)return userPhotosCache;
+ try{const raw=await SS.get('planner:userphotos');userPhotosCache=raw?JSON.parse(raw):{}}catch{userPhotosCache={}}
+ return userPhotosCache}
+async function setUserPhoto(name,dataUrl){const photos=await getUserPhotos();photos[name]=dataUrl;userPhotosCache=photos;await SS.set('planner:userphotos',JSON.stringify(photos))}
 async function paintAvatar(el,name){if(!name){el.style.background=AVATAR_COLORS[0];el.textContent='?';return}
  const photos=await getUserPhotos();el.innerHTML='';
  if(photos[name]){const img=document.createElement('img');img.src=photos[name];el.appendChild(img)}
  else{el.style.background=avatarColor(name);el.textContent=name.trim()[0]||'?'}}
-async function renderHome(){let p=0;
- for(const d of tripData){try{const raw=await SS.get('planner:journal:'+d.day);if(raw){const m=JSON.parse(raw);p+=(m.photoIds||[]).length}}catch{}}
+/* CHANGE 2026-08-26 GM-15: this loop awaited SS.get() sequentially once per trip day (22
+   real network round-trips back to back) just to total up journal photo counts. Parallelized
+   with Promise.all so the whole thing takes as long as the SLOWEST single call, not the sum
+   of all of them -- combined with GM-14's timeout, this bounds the worst case to ~8s instead
+   of a potential 22x8s. */
+async function renderHome(){
+ const counts=await Promise.all(tripData.map(async d=>{try{const raw=await SS.get('planner:journal:'+d.day);if(raw){const m=JSON.parse(raw);return(m.photoIds||[]).length}}catch{}return 0}));
+ const p=counts.reduce((a,b)=>a+b,0);
  $('sDays').textContent=tripData.length;$('sPoints').textContent=tripData.reduce((n,d)=>n+(d.waypoints||[]).length,0);$('sBookings').textContent=tripData.filter(d=>d.isBooked).length;$('sPhotos').textContent=p;
  $('homeUserName').textContent=activeUser||'יש לבחור משתמש';
  await paintAvatar($('homeAvatar'),activeUser);
@@ -532,7 +683,10 @@ async function renderHome(){let p=0;
 async function calcDailyBurn(){const target=await getBudgetTarget(),items=await getExpenses();let spent=items.reduce((s,e)=>s+Number(e.amount||0),0);tripData.forEach(d=>{if(d.isBooked)spent+=Number(d.actualCost||0)});const today=globalDayIndex;const catBudgets=await getCatBudgets();const plannedLodgingBudget=Number(catBudgets.lodging||0);const bookedLodging=tripData.reduce((s,d)=>s+(d.isBooked?Number(d.actualCost||0):0),0);const futureLodging=Math.max(0,plannedLodgingBudget-bookedLodging);const daysLeft=Math.max(1,tripData.length-today);const available=Math.max(0,target-spent-futureLodging);const perDay=available/daysLeft;return{target,spent,futureLodging,daysLeft,available,perDay}}
 function burnMarkup(b){const level=b.perDay<0?'danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?'warning':'ok';return `<div class="row" style="justify-content:space-between"><div><div class="muted">ארנק יומי</div><div class="burn-amount">${Math.max(0,b.perDay).toLocaleString('he-IL',{maximumFractionDigits:0})} ₪</div><div class="muted">נשאר להוציא ליום</div></div><span class="badge">${level==='ok'?'✓ במסגרת':level==='warning'?'⚠️ כדאי להאט':'🔴 חריגה'}</span></div><div class="burn-meta"><span>${b.daysLeft} ימים נותרו</span><span>${b.available.toLocaleString('he-IL',{maximumFractionDigits:0})} ₪ זמינים</span></div>`}
 async function renderDailyBurn(){const b=await calcDailyBurn();for(const id of ['homeBurn','budgetBurn']){const el=$(id);if(!el)continue;el.innerHTML=burnMarkup(b);el.className='daily-burn'+(b.perDay<0?' danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?' warning':'')}; if($('homeBurn'))$('homeBurn').style.display='block'; if($('budgetBurn'))$('budgetBurn').style.display='block';}
-function updateRouteDayStrip(){const el=$('routeDayStrip');if(!el)return;el.innerHTML=tripData.map((d,i)=>{const date=String(d.date).slice(0,5);return `<button type="button" class="day-chip ${i===globalDayIndex?'active':''}" data-route-day="${i}"><strong>יום ${d.day}</strong>${esc(date)}</button>`}).join('');el.querySelectorAll('[data-route-day]').forEach(b=>b.onclick=()=>{globalDayIndex=Number(b.dataset.routeDay);fillSelects();render()});const active=el.querySelector('.active');if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}
+function updateRouteDayStrip(){const el=$('routeDayStrip');if(!el)return;el.innerHTML=tripData.map((d,i)=>{const date=String(d.date).slice(0,5);return `<button type="button" class="day-chip ${i===globalDayIndex?'active':''}" data-route-day="${i}"><strong>יום ${d.day}</strong>${esc(date)}</button>`}).join('');el.querySelectorAll('[data-route-day]').forEach(b=>b.onclick=()=>{globalDayIndex=Number(b.dataset.routeDay);fillSelects();render()});const active=el.querySelector('.active');if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});if($('dayProgress'))$('dayProgress').textContent=tripData.length?`יום ${globalDayIndex+1} מתוך ${tripData.length}`:''}
+/* CHANGE 2026-08-26 GM-16: let a vertical mouse-wheel gesture over the day-strip scroll it
+   horizontally -- most trackpads/mice don't produce horizontal wheel deltas on their own. */
+$('routeDayStrip').addEventListener('wheel',e=>{if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;e.preventDefault();$('routeDayStrip').scrollLeft+=e.deltaY},{passive:false});
 const DOC_KEY='planner:documents';
 async function getDocuments(){try{const raw=localStorage.getItem(DOC_KEY);const v=raw?JSON.parse(raw):[];return Array.isArray(v)?v:[]}catch{return[]}}
 async function saveDocuments(v){try{localStorage.setItem(DOC_KEY,JSON.stringify(v));return true}catch{return false}}
@@ -544,7 +698,38 @@ async function getTomorrowWeather(dayIndex=globalDayIndex){const d=tripData[dayI
  try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(d.lat)}&longitude=${encodeURIComponent(d.lng)}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`;const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),6000);let r;try{r=await fetch(u,{cache:'no-store',signal:ctrl.signal})}finally{clearTimeout(timer)}if(!r.ok)throw new Error('weather '+r.status);const x=await r.json();const data={date,code:x.daily?.weather_code?.[0],max:x.daily?.temperature_2m_max?.[0],min:x.daily?.temperature_2m_min?.[0],rain:x.daily?.precipitation_probability_max?.[0],wind:x.daily?.windspeed_10m_max?.[0],region:d.region};try{localStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),data}))}catch{}return data}catch{return null}}
 function weatherMarkup(w){if(!w)return `<div><b>תחזית למחר</b><div class="muted">התחזית עדיין לא זמינה. היא תתעדכן קרוב יותר למועד.</div></div><span>›</span>`;const [icon,label]=weatherCodeMap[w.code]||['🌦️','מזג אוויר משתנה'];return `<span class="weather-icon">${icon}</span><div class="weather-main"><b>מחר · ${esc(w.region)}</b><div><span class="weather-temp">${Math.round(w.max)}°</span> · ${Math.round(w.min)}°</div><div class="weather-meta">${esc(label)} · ${w.rain??0}% סיכוי לגשם</div></div><span>›</span>`}
 async function renderWeatherWidget(){const el=$('homeWeather');if(!el)return;el.innerHTML=weatherMarkup(await getTomorrowWeather());el.style.display='flex'}
-async function showWeatherDetails(){const w=await getTomorrowWeather();$('weatherDetails').innerHTML=weatherMarkup(w);openModal('weatherModal')}
+async function showWeatherDetails(){const w=await getTomorrowWeather();$('weatherModalTitle').textContent='🌦️ מזג אוויר למחר';$('weatherDetails').innerHTML=weatherMarkup(w);openModal('weatherModal')}
+/* CHANGE 2026-08-26 GM-10: per-day weather widget for the route/day screen, with a 3-tier
+   reliability system -- shown as a mockup and approved by the user first (see
+   Route_Decision_Log.md). Reuses the existing weatherCodeMap/WEATHER_KEY/weatherModal/
+   openModal -- nothing about the home-screen "tomorrow" widget above is touched.
+   Tier is computed from real calendar lead-time (today -> the day's own date), NOT the
+   trip's day-index, so the tier shown for a given day changes on its own as the trip gets
+   closer -- verified with weatherTierFor() directly (see CHANGELOG_v1.5.5.txt):
+   tier 1: 0-7 days out -> full forecast + a short day-quality advisory.
+   tier 2: 8-14 days out -> shown, but visibly flagged as a long-range/less-certain estimate,
+   no advisory (avoids false confidence in a number that will likely change).
+   tier 3: 15+ days out -> no invented forecast numbers, just "will update closer to the
+   date" + a generic (not date-specific) seasonal line.
+   A day that has already passed (negative lead time) shows neither a fetch nor a tier badge. */
+function daysFromToday(dateStr){const t=parseDate(dateStr);if(!t)return null;const now=new Date();const a=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();const b=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime();return Math.round((b-a)/86400000)}
+function weatherTierFor(daysAhead){if(daysAhead==null||daysAhead<0)return 0;if(daysAhead<=7)return 1;if(daysAhead<=14)return 2;return 3}
+async function getDayWeather(dayIndex){const d=tripData[dayIndex];if(!d||!valid(d.lat,d.lng))return null;const target=parseDate(d.date);if(!target)return null;const date=target.toISOString().slice(0,10);const cacheKey=WEATHER_KEY+date+':'+d.lat+':'+d.lng;try{const cached=localStorage.getItem(cacheKey);if(cached){const c=JSON.parse(cached);if(Date.now()-c.ts<30*60*1000)return c.data}}catch{}
+ try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(d.lat)}&longitude=${encodeURIComponent(d.lng)}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${date}&end_date=${date}`;const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),6000);let r;try{r=await fetch(u,{cache:'no-store',signal:ctrl.signal})}finally{clearTimeout(timer)}if(!r.ok)throw new Error('weather '+r.status);const x=await r.json();const code=x.daily?.weather_code?.[0];if(code==null)return null;const data={date,code,max:x.daily?.temperature_2m_max?.[0],min:x.daily?.temperature_2m_min?.[0],rain:x.daily?.precipitation_probability_max?.[0],region:d.region};try{localStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),data}))}catch{}return data}catch{return null}}
+function weatherAdvisory(rain){const r=Number(rain)||0;return r>=60?'🌧️ סיכוי גבוה לגשם — ייתכן שכדאי לתכנן חלופת פנים':r>=30?'🌦️ ייתכן גשם קל באזור':'☀️ מזג אוויר נעים לפעילות בחוץ'}
+function dayWeatherTierBadge(tier){return tier===1?'<span class="weather-tier t-ok">✓ תחזית מהימנה</span>':tier===2?'<span class="weather-tier t-warn">⚠ טווח ארוך · לא סופי</span>':tier===3?'<span class="weather-tier t-none">◔ יעודכן בהמשך</span>':''}
+function dayWeatherMarkup(tier,w,d){
+ if(tier===0)return `<span class="weather-icon">📅</span><div class="weather-main"><b>${esc(d.region)}</b><div class="muted">היום הזה כבר מאחורינו בטיול</div></div>`;
+ if(tier===3)return `<span class="weather-icon">🌤️</span><div class="weather-main"><b>${esc(d.region)}</b><div class="seasontxt">התחזית תתעדכן קרוב יותר למועד.<br>בדרך כלל בעונה זו: חם ולח, עם סיכוי לגשמי אחר-צהריים מקומיים.</div>${dayWeatherTierBadge(3)}</div>`;
+ if(!w)return `<span class="weather-icon">🌦️</span><div class="weather-main"><b>${esc(d.region)}</b><div class="muted">התחזית עדיין לא זמינה. היא תתעדכן בקרוב.</div>${dayWeatherTierBadge(tier)}</div>`;
+ const [icon,label]=weatherCodeMap[w.code]||['🌦️','מזג אוויר משתנה'];const rain=w.rain??0;
+ return `<span class="weather-icon">${icon}</span><div class="weather-main"><div class="weather-row1"><span class="weather-temp">${Math.round(w.max)}°</span><span class="weather-range">${Math.round(w.min)}°–${Math.round(w.max)}°</span></div><div class="weather-meta">${esc(label)} · ${rain}% סיכוי לגשם</div>${tier===1?`<div class="weather-advisory">${weatherAdvisory(rain)}</div>`:''}${dayWeatherTierBadge(tier)}</div>`}
+async function renderRouteDayWeather(){const el=$('routeDayWeather');if(!el)return;const idx=globalDayIndex,d=tripData[idx];if(!d||!valid(d.lat,d.lng)){el.style.display='none';el.onclick=null;return}
+ const tier=weatherTierFor(daysFromToday(d.date));const w=(tier===1||tier===2)?await getDayWeather(idx):null;
+ if(globalDayIndex!==idx||tripData[idx]!==d)return;
+ el.innerHTML=dayWeatherMarkup(tier,w,d);el.style.display='flex';
+ const clickable=tier===1||tier===2;el.style.cursor=clickable?'pointer':'default';
+ el.onclick=clickable?()=>{$('weatherModalTitle').textContent=`🌦️ מזג אוויר · יום ${d.day} — ${esc(d.region)}`;$('weatherDetails').innerHTML=dayWeatherMarkup(tier,w,d);openModal('weatherModal')}:null}
 async function quickFxCalculate(){const a=Number($('quickFxAmount').value),f=$('quickFxFrom').value,t=$('quickFxTo').value;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.'}
 async function getExpenses(){try{const raw=await SS.get(SHARED.expenses);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))return v}catch{}
  try{const old=JSON.parse(localStorage.getItem(KEYS.expenses)||'[]');if(Array.isArray(old))return old}catch{}
@@ -652,7 +837,7 @@ function currentPanel(){return document.querySelector('.panel.active')?.id||'hom
 function openModal(id){modalReturnPanel=currentPanel();const m=$(id);if(m)m.classList.add('open')}
 function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.classList.remove('open');if(m.id==='bookingModal')setMapVisible(true);switchPanel(modalReturnPanel)}
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',album:'album',more:'more',budget:'more',management:'more',backup:'more'};
-function switchPanel(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more')updateDocumentsSummary();window.scrollTo(0,0)}
+function switchPanel(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more')updateDocumentsSummary();window.scrollTo(0,0)}
 function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
 $('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();for(const f of files){const src=await compressImage(f);if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser})}await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary()};$('documentsGrid').onclick=async e=>{const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};$('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));drawMap()});$('saveBudgetTarget').onclick=async()=>{if(!requireUser())return;await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));renderBudget();renderDailyBurn();};
 $('dayForm').onsubmit=async e=>{e.preventDefault();if(!requireUser())return;Object.assign(tripData[globalDayIndex],{date:$('fDate').value,region:$('fRegion').value,title:$('fTitle').value,activities:$('fActivities').value,hotel:$('fHotel').value,cost:Number($('fCost').value)||0,lat:Number($('fLat').value),lng:Number($('fLng').value),notes:$('fNotes').value,lastEditedBy:activeUser,lastEditedAt:Date.now()});
@@ -746,6 +931,102 @@ async function pullRemoteUpdates(){
  if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
  try{await loadState();fillSelects();updateDates();render();renderBudget();renderDailyBurn()}catch{}
 }
+/* CHANGE 2026-08-26 GM-17: floating chat assistant. Calls a Supabase Edge Function proxy (never
+   the Claude API directly -- an API key embedded in a client-side file would be visible to anyone
+   who opens it) which the family sets up once per SUPABASE_SETUP_v1.5.7.txt. Chat history is
+   LOCAL ONLY (localStorage, never SS.get/set) per explicit decision -- not shared across devices,
+   unlike everything else in this app. Day-specific suggestion chips are computed client-side from
+   the day already in tripData, no extra network call. See CHANGELOG_v1.5.7.txt. */
+const CHAT_KEY='planner:chat:history:v1';
+const CHAT_ENDPOINT=(window.SUPABASE_URL&&window.SUPABASE_URL.indexOf('YOUR_')!==0)?`${window.SUPABASE_URL}/functions/v1/chat-assistant`:'';
+let chatHistory=[];
+function loadChatHistory(){try{const raw=localStorage.getItem(CHAT_KEY);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))chatHistory=v}catch{chatHistory=[]}}
+function saveChatHistory(){try{localStorage.setItem(CHAT_KEY,JSON.stringify(chatHistory.slice(-40)))}catch{}}
+function chatSuggestions(d){
+ if(!d)return[];
+ const list=[];
+ const wp=(d.waypoints||[])[0];
+ if(wp)list.push(`מה השעות הכי טובות לבקר ב${wp.name}?`);
+ if(Number(d.cost)>0)list.push('כמה מתוכנן להוציא היום?');
+ list.push('מה לעשות אם יורד גשם היום?');
+ return list.slice(0,3);
+}
+function chatBubbleHtml(role,text,extraClass){
+ const justify=role==='user'?'flex-start':'flex-end';
+ return `<div class="chat-row" style="justify-content:${justify}"><div class="chat-bubble ${esc(role)}${extraClass?' '+esc(extraClass):''}">${esc(text)}</div></div>`;
+}
+function renderChatBody(){
+ const el=$('chatBody');if(!el)return;
+ const d=tripData[globalDayIndex];
+ let html=chatHistory.length?chatHistory.map(m=>chatBubbleHtml(m.role,m.text)).join(''):
+  chatBubbleHtml('assistant','היי! אני כאן לעזור עם שאלות על המסלול. אפשר לשאול אותי כל דבר, או ללחוץ על אחת ההצעות למטה.');
+ const chips=chatSuggestions(d);
+ if(chips.length)html+=`<div class="chat-chips">${chips.map(c=>`<button type="button" class="chat-chip" data-chat-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
+ el.innerHTML=html;
+ el.querySelectorAll('[data-chat-chip]').forEach(b=>b.onclick=()=>sendChatMessage(b.dataset.chatChip));
+ el.scrollTop=el.scrollHeight;
+}
+function updateChatDayBadge(){
+ const d=tripData[globalDayIndex],b=$('chatDayBadge');if(!b)return;
+ b.textContent=d?`יום ${d.day} · ${d.region}`:'';
+}
+function isChatOpen(){return $('chatSheet')?.classList.contains('open')}
+function openChatSheet(){
+ $('chatScrim').classList.add('open');$('chatSheet').classList.add('open');
+ updateChatDayBadge();renderChatBody();
+ setTimeout(()=>$('chatInput')?.focus(),50);
+}
+function closeChatSheet(){$('chatScrim').classList.remove('open');$('chatSheet').classList.remove('open')}
+async function sendChatMessage(text){
+ text=String(text||'').trim();
+ if(!text)return;
+ $('chatInput').value='';
+ if(!CHAT_ENDPOINT){
+  chatHistory.push({role:'user',text});
+  chatHistory.push({role:'assistant',text:'התכונה הזו דורשת חיבור לענן שאינו מוגדר כרגע. אפשר לפנות למי שמתחזק את האפליקציה כדי להפעיל אותה.'});
+  saveChatHistory();renderChatBody();return;
+ }
+ chatHistory.push({role:'user',text});
+ saveChatHistory();renderChatBody();
+ const el=$('chatBody');
+ el.insertAdjacentHTML('beforeend',chatBubbleHtml('assistant','חושב…','chat-typing'));
+ el.scrollTop=el.scrollHeight;
+ const sendBtn=$('chatSendBtn');if(sendBtn)sendBtn.disabled=true;
+ try{
+  const d=tripData[globalDayIndex];
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),20000);
+  let res;
+  try{
+   res=await fetch(CHAT_ENDPOINT,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+window.SUPABASE_ANON_KEY,'apikey':window.SUPABASE_ANON_KEY},
+    body:JSON.stringify({
+     question:text,
+     currentDay:d?{day:d.day,date:d.date,region:d.region,title:d.title,activities:d.activities,hotel:d.hotel,notes:d.notes,cost:d.cost,waypoints:(d.waypoints||[]).map(w=>w.name)}:null,
+     trip:tripData.map(x=>({day:x.day,date:x.date,region:x.region,title:x.title})),
+     history:chatHistory.slice(-8).map(m=>({role:m.role,text:m.text}))
+    }),
+    signal:controller.signal
+   });
+  }finally{clearTimeout(timer)}
+  if(!res.ok)throw new Error('bad status '+res.status);
+  const data=await res.json();
+  chatHistory.push({role:'assistant',text:(data&&data.answer)?String(data.answer):'לא הצלחתי למצוא תשובה כרגע.'});
+ }catch(e){
+  chatHistory.push({role:'assistant',text:'לא הצלחתי להתחבר לשירות השאלות כרגע. אפשר לנסות שוב בעוד רגע.'});
+ }finally{
+  if(sendBtn)sendBtn.disabled=false;
+  saveChatHistory();renderChatBody();
+ }
+}
+$('chatFab').onclick=openChatSheet;
+$('chatCloseBtn').onclick=closeChatSheet;
+$('chatScrim').onclick=closeChatSheet;
+$('chatSendBtn').onclick=()=>sendChatMessage($('chatInput').value);
+$('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChatMessage($('chatInput').value)}});
+loadChatHistory();
+
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
  await ensureDefaultLodgingBudget();renderBudget();
