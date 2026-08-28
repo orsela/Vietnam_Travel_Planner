@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.5.7 (צ׳אט שאלות על הטיול)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.6.0 (Mobile UX refinement · צ׳אט שאלות על הטיול)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -308,6 +308,81 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .chat-send{width:44px;height:44px;border-radius:50%;background:var(--primary);border:0;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:1.1rem}
 .chat-send:disabled{opacity:.5;cursor:default}
 @media(max-width:420px){.chat-fab{bottom:78px}.chat-sheet{height:min(78vh,620px)}}
+
+/* CHANGE 2026-08-28 UX-01: approved mockup implementation — UI only. */
+:root{
+ --primary:#0f6b4f;--primary-hover:#0b5841;--primary-dark:#083f30;--primary-light:#edf8f3;
+ --booking:#176b87;--booking-light:#eef8fb;--success:#198754;--success-bg:#eaf7ef;--accent:#d97706;
+ --bg:#f7f6f1;--card:#fff;--text:#17211b;--muted:#6b746d;--border:#e4e6df;
+ --radius:12px;--radius-lg:18px;--radius-pill:999px;--h:46px;
+ --grad-home:linear-gradient(150deg,#1f7557 0%,#0f5c43 58%,#083f30 130%);
+}
+/* Keep the existing dashboard/stat calculations in the DOM, but remove them from the family-facing home screen. */
+#home .stats{display:none}
+#home .homebody{padding-top:14px}
+#home .today-card{border-color:#dfe8e1;box-shadow:0 3px 12px #0000000c;padding:14px}
+#home .today-card .nextthumb{width:58px;height:58px;border-radius:14px}
+#home .today-card #nextTitle::before{content:'📍 ';color:var(--primary)}
+#home .today-card::after{content:'›';font-size:1.35rem;color:var(--muted);margin-inline-start:auto}
+#home .herocta{background:rgba(255,255,255,.98);color:var(--primary-dark);box-shadow:none}
+#home .clock-row{margin-top:4px}
+#home .clock-box{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.12)}
+/* Route: make the selected day the visual focal point and reduce secondary detail density. */
+#route .topbar{padding-bottom:8px}
+#route .day-nav-wrap{margin:0 2px}
+#route .day-chip{min-width:60px;padding:6px 7px;border-radius:11px}
+#route .day-chip strong{font-size:.78rem}
+#route .day-progress{padding-bottom:6px}
+#routeDayWeather{box-shadow:0 2px 8px #00000008}
+#route .grid{gap:12px}
+#route .grid>div:first-child>.card{padding:16px}
+#route .grid>div:first-child>.card h2{font-size:1.45rem;margin-top:6px}
+#route .info-grid{gap:10px}
+#route .info-item{padding:10px 0}
+#route .grab-link{color:var(--primary);font-weight:700}
+#route .grid>div:nth-child(2){order:3}
+#route .map-controls{margin-top:2px}
+#route .map{height:245px}
+/* Turn the lower-detail section into a quiet disclosure instead of an always-open data block. */
+#route details.subsection{background:#fafbf8;border-radius:14px;border:1px solid #edf0e9;padding:10px 12px;margin-top:12px}
+#route details.subsection summary{font-size:.88rem}
+/* Make every modal a mobile-friendly bottom sheet while retaining the existing modal IDs/handlers. */
+.modal{place-items:end center;padding:0;background:#0f172a66}
+.modal-box{width:min(560px,100%);max-height:min(86vh,760px);border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 28px #00000020}
+.modal-box::before{content:'';display:block;width:38px;height:4px;border-radius:99px;background:var(--border);margin:0 auto 10px}
+.modal-head{padding-top:0}
+.modal-x{position:absolute!important;top:12px!important;right:12px!important;width:38px;height:38px;z-index:2;background:#fff}
+/* Clearer touch targets and less visual weight on secondary buttons. */
+.btn{min-height:44px}
+.outline{background:#fff}
+.listitem{min-height:60px;padding:12px 14px}
+.global-fx{left:auto;right:14px;transform:none;bottom:78px;background:#fff;color:var(--primary);border-color:#cfe1d7;box-shadow:0 4px 14px #00000018}
+.chat-fab{left:14px;background:var(--primary)}
+/* Utility panel: concise labels, no descriptive copy unless it helps the action. */
+#more .listitem .val{font-size:.68rem}
+#more .statuscard{margin-top:12px}
+/* Album: visual-first grid, inspired by the approved mockup. */
+#album .pgrid2{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#album .pgrid2 .ph{border-radius:14px}
+@media(max-width:700px){
+  .panel{padding:10px}
+  #home .homebody{padding:12px 14px 16px}
+  .homehero{padding:16px 14px 20px}
+  .homehero-top{margin-bottom:16px}
+  .homehero h1{font-size:1.18rem}
+  .clock-time{font-size:1.15rem}
+  #route .grid{display:flex;flex-direction:column}
+  #route .grid>div:first-child{order:1}
+  #route .grid>div:nth-child(2){order:2}
+  #route .map{height:225px}
+  .weather-card{padding:11px 12px}
+  .weather-icon{font-size:1.8rem;width:40px}
+  .modal-box{padding-inline:14px}
+}
+@media(min-width:701px){
+  #home .homebody{max-width:720px;margin:auto}
+}
+
 </style>
 </head>
 <body>
@@ -344,8 +419,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   <div class="stats card"><div class="stat"><strong id="sDays">0</strong>ימים</div><div class="stat"><strong id="sPoints">0</strong>נקודות עניין</div><div class="stat"><strong id="sBookings">0</strong>הזמנות</div><div class="stat"><strong id="sPhotos">0</strong>תמונות</div></div>
   <div id="homeWeather" class="weather-card" style="display:none"></div>
   <div id="homeBurn" class="daily-burn" style="display:none"></div>
-  <div class="section-label">היעד הבא</div>
-  <div class="card row nextcard" data-go="route" style="cursor:pointer">
+  <div class="section-label">היום</div>
+  <div class="card row nextcard today-card" data-go="route" style="cursor:pointer">
    <div class="nextthumb" id="nextThumb"></div>
    <div style="flex:1"><b id="nextTitle" style="display:block;font-size:.95rem"></b><span class="muted" id="nextMeta" style="font-size:.78rem"></span></div>
    <span class="muted">‹</span>
