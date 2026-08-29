@@ -3,7 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.6.0 (Mobile UX refinement · צ׳אט שאלות על הטיול)</title>
+<!-- CHANGE 2026-08-29 PWA-01: installable app support (manifest + icons + iOS meta tags +
+     network-only service worker). See sw.js for why it deliberately does NOT cache the app
+     itself, and CHANGELOG_v1.6.2.txt for the full picture and required upload steps. -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f6b4f">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ויאטנם 2026">
+<script>
+if('serviceWorker' in navigator){
+ window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
+}
+</script>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.6.2 (אפליקציה מותקנת · Mobile UX · צ׳אט שאלות על הטיול)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -899,7 +914,16 @@ $('fxCalculate').onclick=async()=>{if(!requireUser())return;const a=Number($('fx
  const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);
  fxState.result={amount:a,from:f,to:t,converted:v};$('fxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`};
 $('fxSave').onclick=async()=>{if(!requireUser()||!fxState.result)return alert('בצע המרה תחילה');if(fxState.result.to!=='ILS')return alert('בחר ILS כמטבע יעד');const items=await getExpenses();items.push({description:`המרה ${fxState.result.amount} ${fxState.result.from}`,amount:fxState.result.converted,category:'other',by:activeUser,createdAt:Date.now()});await saveExpenses(items);renderBudget()};
-function parseMaps(v){const m=String(v).match(/@(-?\d+(?:\.\d+)?),(-?\d+)|!3d(-?\d+(?:\.\d+)?)!4d(-?\d+)|^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);if(!m)return null;const lat=Number(m[1]??m[3]??m[5]),lng=Number(m[2]??m[4]??m[6]);return valid(lat,lng)?{lat,lng}:null}$('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};$('parseMaps').onclick=()=>{const p=parseMaps($('mapsInput').value);if(!p)return $('mapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'};$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();$('waypointModal').classList.remove('open');render()};$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
+function parseMaps(v){const m=String(v).match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)|!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)|^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);if(!m)return null;const lat=Number(m[1]??m[3]??m[5]),lng=Number(m[2]??m[4]??m[6]);return valid(lat,lng)?{lat,lng}:null}
+/* CHANGE 2026-08-29 BUG-01: parseMaps longitude was truncated at the decimal point -- the lng
+   capture groups were missing the "(?:\.\d+)?" fraction part that lat already had, so a URL like
+   .../@20.9564913,105.9745259,17z parsed to {lat:20.9564913, lng:105}. Fixed above by mirroring
+   the same optional-fraction group onto every lng capture. Also added parseMapsPlaceName() so a
+   pasted .../maps/place/<Name>/... link can auto-fill the waypoint name field the same way it
+   already auto-fills coordinates, since a missing name was the other reason "פרטי נקודה לא תקינים"
+   fired in the reported case. See CHANGELOG_v1.6.1.txt. */
+function parseMapsPlaceName(v){const m=String(v).match(/\/maps\/place\/([^/@]+)/);if(!m)return null;try{return decodeURIComponent(m[1].replace(/\+/g,' '))}catch{return m[1].replace(/\+/g,' ')}}
+$('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};$('parseMaps').onclick=()=>{const p=parseMaps($('mapsInput').value);if(!p)return $('mapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;const nm=parseMapsPlaceName($('mapsInput').value);const nameFilled=!!nm&&!$('wpName').value.trim();if(nameFilled)$('wpName').value=nm;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'+(nameFilled?' + שם המקום מולא אוטומטית':'')};$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();$('waypointModal').classList.remove('open');render()};$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
 function setMapVisible(show){document.querySelectorAll('#route .map,#route .map-controls,#openGmaps').forEach(el=>el.style.display=show?'':'none')}
 $('dayEditBtn').onclick=()=>{if(!requireUser())return;$('editSelect').value=globalDayIndex;loadForm();openModal('dayEditModal')};$('bookingBtn').onclick=()=>{if(!requireUser())return;const d=tripData[globalDayIndex];$('bookHotel').value=d.bookedHotel||'';$('bookRef').value=d.bookingRef||'';$('bookTotal').value=d.actualCost||'';$('bookNotes').value=d.bookingNotes||'';$('bookMapsInput').value='';$('bookMapsFeedback').textContent='';$('bookLat').value=valid(d.lat,d.lng)?d.lat:'';$('bookLng').value=valid(d.lat,d.lng)?d.lng:'';setMapVisible(false);openModal('bookingModal')};$('bookParseMaps').onclick=()=>{const p=parseMaps($('bookMapsInput').value);if(!p)return $('bookMapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('bookLat').value=p.lat;$('bookLng').value=p.lng;$('bookMapsFeedback').textContent='✅ קואורדינטות זוהו'};document.querySelectorAll('.close').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));$('saveBooking').onclick=async()=>{if(!requireUser())return;const d=tripData[globalDayIndex],block=stayBlock(globalDayIndex),total=Number($('bookTotal').value)||0,targets=$('bookAll').checked&&block?tripData.slice(block.start,block.end+1):[d];const nl=Number($('bookLat').value),ng=Number($('bookLng').value),hasLoc=valid(nl,ng);targets.forEach((x,i)=>{Object.assign(x,{isBooked:true,bookedHotel:$('bookHotel').value.trim()||x.hotel,bookingRef:$('bookRef').value.trim(),bookingNotes:$('bookNotes').value.trim(),actualCost:Math.floor(total/targets.length)+(i===targets.length-1?total%targets.length:0),bookingUpdatedBy:activeUser,bookingUpdatedAt:Date.now()});if(hasLoc){x.lat=nl;x.lng=ng}});await saveTrip();$('bookingModal').classList.remove('open');setMapVisible(true);render()};
 $('saveJournal').onclick=async()=>{if(!requireUser())return;const day=currentDayNum();
