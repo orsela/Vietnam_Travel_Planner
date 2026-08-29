@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.7.1 (הוצאות מלאות בסוכן הצ׳אט · Mobile UX · צ׳אט שאלות על הטיול)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.7.2 (טון חברי בצ׳אט · סוכן הצ׳אט · Mobile UX)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -1080,6 +1080,15 @@ async function pullRemoteUpdates(){
    the day already in tripData, no extra network call. See CHANGELOG_v1.5.7.txt. */
 const CHAT_KEY='planner:chat:history:v1';
 const CHAT_ENDPOINT=(window.SUPABASE_URL&&window.SUPABASE_URL.indexOf('YOUR_')!==0)?`${window.SUPABASE_URL}/functions/v1/chat-assistant`:'';
+/* CHANGE 2026-08-29 GM-23: friendly, varied fallback phrasing lives here on the client (not
+   hardcoded server-side) so the chat's tone can be tuned without redeploying the Edge Function.
+   Previously a successful action proposal with no accompanying sentence from Claude showed
+   "לא הצלחתי למצוא תשובה כרגע" -- which reads as a failure even though the action itself worked
+   fine. Now that specific case gets its own warm intro line instead. See CHANGELOG_v1.7.2.txt. */
+const CHAT_ACTION_INTROS=['הנה מה שאני חושב שכדאי לעשות 🙂','רעיון! הכנתי לכם הצעה:','בקשה, זה מה שחשבתי עליו:','אז ככה, מה דעתכם על זה:'];
+const CHAT_NO_ANSWER_FALLBACKS=['הממ, לא הצלחתי לגבש תשובה טובה לזה. אפשר לנסח קצת אחרת?','לא בטוח שהבנתי לגמרי -- אפשר לספר עוד קצת?'];
+const CHAT_ERROR_FALLBACKS=['אופס, הייתה בעיית תקשורת רגעית 🙈 אפשר לנסות שוב?','נראה שמשהו השתבש בדרך -- ננסה שוב בעוד רגע?'];
+function chatPick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 let chatHistory=[];
 function loadChatHistory(){try{const raw=localStorage.getItem(CHAT_KEY);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))chatHistory=v}catch{chatHistory=[]}}
 function saveChatHistory(){try{localStorage.setItem(CHAT_KEY,JSON.stringify(chatHistory.slice(-40)))}catch{}}
@@ -1144,7 +1153,7 @@ async function sendChatMessage(text){
  $('chatInput').value='';
  if(!CHAT_ENDPOINT){
   chatHistory.push({role:'user',text});
-  chatHistory.push({role:'assistant',text:'התכונה הזו דורשת חיבור לענן שאינו מוגדר כרגע. אפשר לפנות למי שמתחזק את האפליקציה כדי להפעיל אותה.'});
+  chatHistory.push({role:'assistant',text:'אופס, השיחה הזו עדיין לא מחוברת לענן 🙈 מי שמתחזק את האפליקציה צריך להפעיל את זה קודם.'});
   saveChatHistory();renderChatBody();return;
  }
  chatHistory.push({role:'user',text});
@@ -1182,9 +1191,11 @@ async function sendChatMessage(text){
   if(!res.ok)throw new Error('bad status '+res.status);
   const data=await res.json();
   const action=(data&&data.action&&data.action.type)?data.action:null;
-  chatHistory.push({role:'assistant',text:(data&&data.answer)?String(data.answer):'לא הצלחתי למצוא תשובה כרגע.',action,status:action?'pending':undefined});
+  let answerText=(data&&data.answer)?String(data.answer).trim():'';
+  if(!answerText)answerText=action?chatPick(CHAT_ACTION_INTROS):chatPick(CHAT_NO_ANSWER_FALLBACKS);
+  chatHistory.push({role:'assistant',text:answerText,action,status:action?'pending':undefined});
  }catch(e){
-  chatHistory.push({role:'assistant',text:'לא הצלחתי להתחבר לשירות השאלות כרגע. אפשר לנסות שוב בעוד רגע.'});
+  chatHistory.push({role:'assistant',text:chatPick(CHAT_ERROR_FALLBACKS)});
  }finally{
   if(sendBtn)sendBtn.disabled=false;
   saveChatHistory();renderChatBody();
