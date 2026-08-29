@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.6.2 (אפליקציה מותקנת · Mobile UX · צ׳אט שאלות על הטיול)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.7.1 (הוצאות מלאות בסוכן הצ׳אט · Mobile UX · צ׳אט שאלות על הטיול)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -318,6 +318,14 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .chat-bubble.assistant.chat-error{border-color:#f3c5bd;background:#fff4f2;color:var(--primary-dark)}
 .chat-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .chat-chip{border:1px solid var(--border);background:#fff;color:var(--primary-dark);border-radius:999px;padding:8px 12px;font-size:.76rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+/* CHANGE 2026-08-29 GM-21: confirmation card for chat-proposed actions. */
+.chat-action-card{max-width:82%;background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin:2px 0 8px}
+.chat-action-desc{font-size:.85rem;font-weight:600;margin-bottom:8px}
+.chat-action-btns{display:flex;gap:8px}
+.chat-action-btns .btn{padding:7px 14px;font-size:.8rem;min-height:auto}
+.chat-action-result{font-size:.8rem;font-weight:600;color:var(--primary)}
+.chat-action-result.ok{color:var(--success,#198754)}
+.chat-action-result.err{color:#b42318}
 .chat-input-row{display:flex;align-items:center;gap:8px;padding:10px 16px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:0 0 auto}
 .chat-input-row input{flex:1;min-height:44px;border-radius:999px;background:#faf8f5}
 .chat-send{width:44px;height:44px;border-radius:50%;background:var(--primary);border:0;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:1.1rem}
@@ -1088,15 +1096,35 @@ function chatBubbleHtml(role,text,extraClass){
  const justify=role==='user'?'flex-start':'flex-end';
  return `<div class="chat-row" style="justify-content:${justify}"><div class="chat-bubble ${esc(role)}${extraClass?' '+esc(extraClass):''}">${esc(text)}</div></div>`;
 }
+/* CHANGE 2026-08-29 GM-21: render a confirmation card under any assistant message that carries a
+   proposed action. Nothing here ever mutates tripData by itself -- it only wires the two buttons
+   to applyChatAction()/cancelChatAction(), which do the actual (confirmed) work. See
+   CHANGELOG_v1.7.0.txt. */
+function chatActionCardHtml(idx,action,status){
+ const desc=esc(action.description||'לבצע את הפעולה המוצעת?');
+ let body;
+ if(status==='approved')body=`<div class="chat-action-result ok">✅ בוצע ונשמר</div>`;
+ else if(status==='cancelled')body=`<div class="chat-action-result">בוטל</div>`;
+ else if(status==='error')body=`<div class="chat-action-result err">⚠️ לא הצלחתי לבצע את הפעולה -- ייתכן שהיום המבוקש לא קיים, או שחסר פרט נדרש</div>`;
+ else body=`<div class="chat-action-btns"><button type="button" class="btn gold" data-chat-approve="${idx}">✅ אישור</button><button type="button" class="btn outline" data-chat-cancel="${idx}">ביטול</button></div>`;
+ return `<div class="chat-row" style="justify-content:flex-end"><div class="chat-action-card"><div class="chat-action-desc">${desc}</div>${body}</div></div>`;
+}
+function chatMessageHtml(m,idx){
+ let html=chatBubbleHtml(m.role,m.text);
+ if(m.action)html+=chatActionCardHtml(idx,m.action,m.status||'pending');
+ return html;
+}
 function renderChatBody(){
  const el=$('chatBody');if(!el)return;
  const d=tripData[globalDayIndex];
- let html=chatHistory.length?chatHistory.map(m=>chatBubbleHtml(m.role,m.text)).join(''):
+ let html=chatHistory.length?chatHistory.map((m,i)=>chatMessageHtml(m,i)).join(''):
   chatBubbleHtml('assistant','היי! אני כאן לעזור עם שאלות על המסלול. אפשר לשאול אותי כל דבר, או ללחוץ על אחת ההצעות למטה.');
  const chips=chatSuggestions(d);
  if(chips.length)html+=`<div class="chat-chips">${chips.map(c=>`<button type="button" class="chat-chip" data-chat-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
  el.innerHTML=html;
  el.querySelectorAll('[data-chat-chip]').forEach(b=>b.onclick=()=>sendChatMessage(b.dataset.chatChip));
+ el.querySelectorAll('[data-chat-approve]').forEach(b=>b.onclick=()=>applyChatAction(Number(b.dataset.chatApprove)));
+ el.querySelectorAll('[data-chat-cancel]').forEach(b=>b.onclick=()=>cancelChatAction(Number(b.dataset.chatCancel)));
  el.scrollTop=el.scrollHeight;
 }
 function updateChatDayBadge(){
@@ -1153,7 +1181,8 @@ async function sendChatMessage(text){
   }finally{clearTimeout(timer)}
   if(!res.ok)throw new Error('bad status '+res.status);
   const data=await res.json();
-  chatHistory.push({role:'assistant',text:(data&&data.answer)?String(data.answer):'לא הצלחתי למצוא תשובה כרגע.'});
+  const action=(data&&data.action&&data.action.type)?data.action:null;
+  chatHistory.push({role:'assistant',text:(data&&data.answer)?String(data.answer):'לא הצלחתי למצוא תשובה כרגע.',action,status:action?'pending':undefined});
  }catch(e){
   chatHistory.push({role:'assistant',text:'לא הצלחתי להתחבר לשירות השאלות כרגע. אפשר לנסות שוב בעוד רגע.'});
  }finally{
@@ -1161,6 +1190,62 @@ async function sendChatMessage(text){
   saveChatHistory();renderChatBody();
  }
 }
+/* CHANGE 2026-08-29 GM-21: the actual (confirmed) mutation. Every action here reuses the exact
+   same tripData shape and saveTrip()/render() flow the rest of the app already uses for manual
+   edits -- there is nothing "special" about an AI-proposed change once it's approved, and it goes
+   through requireUser() exactly like any other edit in the app. See CHANGELOG_v1.7.0.txt. */
+async function applyChatAction(idx){
+ const m=chatHistory[idx];
+ if(!m||!m.action||m.status!=='pending')return;
+ if(!requireUser())return;
+ const {type,params}=m.action;
+ const dayIdx=n=>tripData.findIndex(x=>Number(x.day)===Number(n));
+ try{
+  if(type==='add_waypoint'){
+   const i=dayIdx(params.day);
+   if(i<0)throw new Error('day not found');
+   tripData[i].waypoints=tripData[i].waypoints||[];
+   tripData[i].waypoints.push({name:String(params.name||'').trim(),lat:null,lng:null,notes:params.notes||'',addedBy:activeUser,addedAt:Date.now()});
+   await saveTrip();render();
+  }else if(type==='add_expense'){
+   /* CHANGE 2026-08-29 GM-22: expenses go through the app's REAL expense store
+      (getExpenses/saveExpenses -> SHARED.expenses), the same one the manual "הוצאה חדשה" form
+      uses -- not tripData[i].actualCost (that field is specifically for booked-lodging cost and
+      is folded into the "lodging" category automatically elsewhere). Requires description+amount
+      +category together; the server-side tool already enforces this, but the check is repeated
+      here too since this is the function that actually writes the data. See CHANGELOG_v1.7.1.txt. */
+   const desc=String(params.description||'').trim();
+   const amount=Number(params.amount);
+   const category=Object.prototype.hasOwnProperty.call(CATEGORIES,params.category)?params.category:'other';
+   if(!desc||!Number.isFinite(amount)||amount<0)throw new Error('invalid expense');
+   const items=await getExpenses();
+   items.push({description:desc,amount,category,by:activeUser,createdAt:Date.now()});
+   await saveExpenses(items);
+   renderBudget();if(typeof renderDailyBurn==='function')renderDailyBurn();
+  }else if(type==='swap_days'){
+   const ia=dayIdx(params.day_a),ib=dayIdx(params.day_b);
+   if(ia<0||ib<0)throw new Error('day not found');
+   const fields=['region','title','activities','hotel','cost','notes','lat','lng','zoom','waypoints','isBooked','bookedHotel','bookingRef','bookingNotes','actualCost'];
+   const a={},b={};
+   fields.forEach(f=>{a[f]=tripData[ia][f];b[f]=tripData[ib][f]});
+   fields.forEach(f=>{tripData[ia][f]=b[f];tripData[ib][f]=a[f]});
+   await saveTrip();render();
+  }else{
+   throw new Error('unknown action type');
+  }
+  m.status='approved';
+ }catch(e){
+  m.status='error';
+ }
+ saveChatHistory();renderChatBody();
+}
+function cancelChatAction(idx){
+ const m=chatHistory[idx];
+ if(!m||!m.action||m.status!=='pending')return;
+ m.status='cancelled';
+ saveChatHistory();renderChatBody();
+}
+
 $('chatFab').onclick=openChatSheet;
 $('chatCloseBtn').onclick=closeChatSheet;
 $('chatScrim').onclick=closeChatSheet;
