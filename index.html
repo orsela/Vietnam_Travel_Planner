@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.8.4 (שכבת נקודות עניין אישית מ-My Maps)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.8.8 (זיהוי אוטומטי של קובצי NetworkLink)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -313,6 +313,19 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .res-row-del:hover{color:var(--primary)}
 .day-res-item{display:flex;align-items:center;gap:10px;background:var(--booking-light);border-radius:var(--radius);padding:9px 11px;margin-bottom:8px;cursor:pointer}
 .day-res-item .ic2{font-size:1.1rem}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px}
+.toggle-row .lbl{font-size:.82rem;font-weight:700}
+.toggle-row .sub{font-size:.7rem;color:var(--muted);margin-top:2px}
+.switch{width:42px;height:24px;border-radius:99px;background:var(--success);position:relative;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:2px;right:2px;width:20px;height:20px;background:#fff;border-radius:50%}
+.switch.off{background:#d7d3ca}
+.switch.off::after{right:auto;left:2px}
+.poi-point-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)}
+.poi-point-row .ic3{width:32px;height:32px;border-radius:9px;background:var(--booking-light);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.poi-point-row .main{flex:1;min-width:0}
+.poi-point-row .main b{font-size:.82rem;display:block}
+.poi-point-row select{border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.72rem;background:#fff;max-width:130px}
+.poi-auto-tag{font-size:.62rem;background:var(--success-bg);color:var(--success);padding:2px 6px;border-radius:99px;font-weight:700}
 /* CHANGE 2026-08-26 GM-17: floating "questions about the trip" chat assistant (Claude API via a
    Supabase Edge Function proxy -- see CHANGELOG_v1.5.7.txt). Matches the approved mockup:
    https://claude.ai/code/artifact/84a99169-487f-4915-b709-f702aed99d26 */
@@ -484,7 +497,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      - GM-13: a third data-map="poi" button reuses the existing generic
        [data-map] click handler unchanged; only drawGoogleMap/drawSchematicMap gained a poi
        branch (see script). -->
-<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div><div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div><!-- CHANGE 2026-08-31 POI-03: import row, additive, sits above the existing map-mode buttons which are untouched below -->
+<div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><input id="poiImportUrl" style="flex:1" placeholder="🔗 קישור למפת Google (My Maps) לייבוא נקודות"><button class="btn outline" id="poiImportBtn" type="button">ייבוא</button></div>
+<div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
 <section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><div class="card"><h3>➕ הוספת הוצאה</h3><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
@@ -558,6 +573,34 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <button class="btn green" id="resVaultPickerDone" type="button" style="width:100%;margin-top:12px">סיום</button>
 </div></div>
 
+<div id="poiImportModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="poiImportTitle">ייבוא נקודות עניין</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div>
+
+<div id="poiImportLoading" style="display:none;text-align:center;padding:24px 8px;color:var(--muted)">
+  <div style="width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;margin:0 auto 10px;animation:poiSpin 1s linear infinite"></div>
+  קוראים את הנקודות מהמפה...
+</div>
+<style>@keyframes poiSpin{to{transform:rotate(360deg)}}</style>
+
+<div id="poiImportError" class="res-hotel-note" style="display:none;background:var(--pending-bg);color:var(--pending)"></div>
+
+<div id="poiImportFallback" style="display:none">
+  <p class="muted">לא הצלחנו לקרוא את המפה ישירות דרך הדפדפן (כנראה הגבלת אבטחה של גוגל). אפשר להוריד את הקובץ מה-My Maps (⋮ ליד שם המפה ← ״הורדת KML/KMZ״) ולהעלות אותו כאן — גם KML וגם KMZ (הפורמט הדחוס שגוגל מוריד כברירת מחדל) נתמכים:</p>
+  <button class="btn outline" type="button" id="poiImportFileBtn" style="width:100%">📁 בחירת קובץ KML</button>
+  <input id="poiImportFileInput" type="file" accept=".kml,.kmz,.xml" class="file-input-vh">
+</div>
+
+<div id="poiImportReview" style="display:none">
+  <p class="muted" id="poiImportCount"></p>
+  <div class="toggle-row" style="margin:0 0 10px;cursor:pointer" id="poiAutoAssignRow">
+    <div><div class="lbl">שיוך אוטומטי ליום לפי מיקום</div><div class="sub">אפשר לשנות ידנית כל נקודה בנפרד למטה</div></div>
+    <div class="switch" id="poiAutoAssignSwitch"></div>
+  </div>
+  <div id="poiImportList"></div>
+  <button class="btn green" id="poiImportConfirmBtn" type="button" style="width:100%;margin-top:10px">✅ אישור והוספה למסלול</button>
+</div>
+
+</div></div>
+
 <div id="backupModal" class="modal"><div class="modal-box"><h2>💾 גיבוי וייבוא נתוני מסלול</h2><p class="muted">מומלץ אקסל לעריכה נוחה (נפתח כטבלה), או JSON לגיבוי מלא ומדויק.</p><div class="row"><button class="btn gold" id="backupDownloadXlsx">📊 הורדה כאקסל</button><button class="btn outline" id="backupDownload">⬇️ הורדה כ-JSON</button><button class="btn blue" id="backupCopy">📋 העתק JSON ללוח</button></div><small id="backupFeedback" class="muted"></small><hr><b>📂 ייבוא</b><p class="muted">מחליף את כל המסלול הנוכחי. יש לשמור על מבנה העמודות/השדות כפי שהוא בקובץ שהורדתם מכאן.</p><div class="row"><button class="btn outline" type="button" id="importExcelBtn">בחר קובץ אקסל (.xlsx)</button><input id="importExcelInput" type="file" accept=".xlsx,.xls" class="file-input-vh"><button class="btn outline" type="button" id="importJsonBtn">בחר קובץ JSON</button><input id="importInput" type="file" accept=".json" class="file-input-vh"></div><small id="importExcelFeedback" class="muted"></small><hr><textarea id="backupText" readonly style="min-height:180px;font-family:monospace;font-size:.78rem" onclick="this.select()"></textarea><button class="btn outline close">סגור</button></div></div>
 <button id="globalFxBtn" class="global-fx" type="button" aria-label="המרת מטבע">₪ ⇄ $</button>
 <!-- CHANGE 2026-08-26 GM-17: chat FAB + sheet, placed here (before the main <script>) for the same
@@ -595,7 +638,15 @@ const TZ_CITY_HE={'Asia/Dubai':'אבו דאבי','Asia/Abu_Dhabi':'אבו דאב
 function tzCityLabel(tz){if(TZ_CITY_HE[tz])return TZ_CITY_HE[tz];const parts=String(tz||'').split('/');return(parts[parts.length-1]||tz||'').replace(/_/g,' ')||'שעון מקומי'}
 function tzOffsetMinutes(tz,d){try{const dtf=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});const parts=Object.fromEntries(dtf.formatToParts(d).map(p=>[p.type,p.value]));const hh=parts.hour==='24'?0:Number(parts.hour);const asUTC=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),hh,Number(parts.minute),Number(parts.second));return(asUTC-d.getTime())/60000}catch{return 0}}
 function tickClocks(){const localTz=Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Ho_Chi_Minh';const now=new Date();const fmt=tz=>{try{return now.toLocaleTimeString('he-IL',{timeZone:tz,hour:'2-digit',minute:'2-digit'})}catch{return'--:--'}};if($('clockLocalTime'))$('clockLocalTime').textContent=fmt(localTz);if($('clockLocalCity'))$('clockLocalCity').textContent=tzCityLabel(localTz);if($('clockIsraelTime'))$('clockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('clockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('clockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`מקדימים ב-${diffH} שעות`:`מפגרים ב-${Math.abs(diffH)} שעות`}}
-const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null},mapProvider='google',mapLoadTimer=null,poiKmlLayer=null;const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;
+/* CHANGE 2026-08-31 POI-02: config list of external Google My Maps layers shown together under the
+   "🧭 נק' עניין" map mode. To add another public/personal My Maps document later: add one object here
+   with its mid (the id from the map's share URL, e.g. .../data=!3m1!4b1!4m2!6m1!1s<mid>) — nothing else
+   in the code needs to change. */
+const POI_LAYERS=[
+  {id:'main',label:'נקודות שמורות',mid:'13O7w5lgrnw524cSRt7Kmj6nexk7XvOo'}
+];
+let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null},mapProvider='google',mapLoadTimer=null,poiKmlLayers=[];const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',reservations:'planner:reservations'};
 const QKEY='planner:__queue__';
 const hasCloud=()=>!!(window.storage&&typeof window.storage.set==='function');
@@ -706,21 +757,25 @@ function initMap() {
     zoomControl: true
   });
   if (tripData.length) drawMap();
-  /* CHANGE 2026-08-31 POI-01: personal My Maps points-of-interest layer (public map confirmed by Or).
-     Created detached (map:null) and only attached when mapMode==='poi' — see the [data-map] handler
-     below — so it doesn't clash visually with the existing GM-13 internal-waypoints POI mode or
-     clutter the default route/day views. Google-provider only; no equivalent in the schematic fallback. */
-  try{
-    poiKmlLayer = new google.maps.KmlLayer({
-      url: 'https://www.google.com/maps/d/kml?mid=13O7w5lgrnw524cSRt7Kmj6nexk7XvOo&forcekml=1',
-      map: null,
-      preserveViewport: true,
-      suppressInfoWindows: false
-    });
-    google.maps.event.addListener(poiKmlLayer,'status_changed',()=>{
-      if(poiKmlLayer.getStatus()!=='OK') console.warn('POI KmlLayer load issue:', poiKmlLayer.getStatus());
-    });
-  }catch(e){ console.warn('POI KmlLayer failed to init:', e.message) }
+  /* CHANGE 2026-08-31 POI-02: builds one KmlLayer per entry in POI_LAYERS (all detached: map:null),
+     only attached together when mapMode==='poi' — see the [data-map] handler below. Adding a map to
+     POI_LAYERS is the only code change needed for a future addition; nothing here needs to be touched.
+     Google-provider only; no equivalent in the schematic fallback. */
+  poiKmlLayers=[];
+  POI_LAYERS.forEach(layerCfg=>{
+    try{
+      const layer=new google.maps.KmlLayer({
+        url:`https://www.google.com/maps/d/kml?mid=${layerCfg.mid}&forcekml=1`,
+        map:null,
+        preserveViewport:true,
+        suppressInfoWindows:false
+      });
+      google.maps.event.addListener(layer,'status_changed',()=>{
+        if(layer.getStatus()!=='OK') console.warn(`POI KmlLayer "${layerCfg.label}" load issue:`, layer.getStatus());
+      });
+      poiKmlLayers.push(layer);
+    }catch(e){ console.warn(`POI KmlLayer "${layerCfg.label}" failed to init:`, e.message) }
+  });
 }
 function clearMap() {
   markers.forEach(m => m.setMap(null));
@@ -1064,6 +1119,134 @@ function parseMaps(v){const m=String(v).match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+
    already auto-fills coordinates, since a missing name was the other reason "פרטי נקודה לא תקינים"
    fired in the reported case. See CHANGELOG_v1.6.1.txt. */
 function parseMapsPlaceName(v){const m=String(v).match(/\/maps\/place\/([^/@]+)/);if(!m)return null;try{return decodeURIComponent(m[1].replace(/\+/g,' '))}catch{return m[1].replace(/\+/g,' ')}}
+
+/* ===== CHANGE 2026-08-31 POI-03: import points from a pasted Google My Maps link straight into real
+   waypoints (tripData[i].waypoints — same exact shape newWaypoint/saveWaypoint already use: name/lat/
+   lng/notes/addedBy/addedAt). Two data paths feed the same review screen: (1) direct fetch+parse of the
+   public KML export (works if Google's endpoint allows browser-side CORS — unverified in this sandbox,
+   no internet access here), or (2) manual KML file upload as a fallback if (1) fails. Nothing here
+   touches the existing waypointModal/parseMaps single-place flow, or the v1.8.5 POI_LAYERS visual layer
+   — those keep working exactly as before. See CHANGELOG for the CORS caveat. ===== */
+let poiImportPoints=[],poiAutoAssign=true;
+function parseMyMapsMid(v){const m=String(v).match(/(?:[?&]mid=|!1s)([A-Za-z0-9_-]{15,})/);return m?m[1]:null}
+function haversineKm(lat1,lng1,lat2,lng2){const R=6371,toRad=x=>x*Math.PI/180;const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(a))}
+function nearestDayIndex(lat,lng){let best=-1,bestDist=Infinity;tripData.forEach((d,i)=>{if(!valid(d.lat,d.lng))return;const dist=haversineKm(lat,lng,d.lat,d.lng);if(dist<bestDist){bestDist=dist;best=i}});return best}
+function parseKmlPlacemarks(xmlText){
+  const doc=new DOMParser().parseFromString(xmlText,'text/xml');
+  if(doc.querySelector('parsererror'))return [];
+  const placemarks=[...doc.getElementsByTagName('Placemark')];
+  return placemarks.map(p=>{
+    const name=(p.getElementsByTagName('name')[0]?.textContent||'').trim();
+    const coordText=p.getElementsByTagName('coordinates')[0]?.textContent||'';
+    const [lngStr,latStr]=coordText.trim().split(',');
+    const lat=Number(latStr),lng=Number(lngStr);
+    return valid(lat,lng)?{name:name||'נקודה ללא שם',lat,lng}:null;
+  }).filter(Boolean);
+}
+/* CHANGE 2026-08-31 POI-04: minimal in-browser ZIP central-directory reader, just enough to pull the
+   doc.kml entry out of a KMZ file — Google My Maps' "Export" button downloads KMZ by default (the
+   direct-link fetch path above is unaffected: it already passes forcekml=1, which forces Google to
+   serve plain KML instead). No external library; standard ZIP format + the browser's built-in
+   DecompressionStream for the (standard) deflate compression Google uses. */
+async function extractKmlFromKmz(arrayBuffer){
+  const bytes=new Uint8Array(arrayBuffer),dv=new DataView(arrayBuffer);
+  let eocd=-1;
+  for(let i=bytes.length-22;i>=Math.max(0,bytes.length-22-65557);i--){
+    if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}
+  }
+  if(eocd===-1)throw new Error('הקובץ אינו ZIP/KMZ תקין');
+  let offset=dv.getUint32(eocd+16,true);
+  const entries=dv.getUint16(eocd+10,true);
+  let kmlEntry=null;
+  for(let i=0;i<entries;i++){
+    if(dv.getUint32(offset,true)!==0x02014b50)break;
+    const method=dv.getUint16(offset+10,true);
+    const compSize=dv.getUint32(offset+20,true);
+    const nameLen=dv.getUint16(offset+28,true);
+    const extraLen=dv.getUint16(offset+30,true);
+    const commentLen=dv.getUint16(offset+32,true);
+    const localHeaderOffset=dv.getUint32(offset+42,true);
+    const name=new TextDecoder().decode(bytes.slice(offset+46,offset+46+nameLen));
+    if(/\.kml$/i.test(name)&&!kmlEntry)kmlEntry={method,compSize,localHeaderOffset};
+    offset+=46+nameLen+extraLen+commentLen;
+  }
+  if(!kmlEntry)throw new Error('לא נמצא קובץ kml בתוך ה-KMZ');
+  const lh=kmlEntry.localHeaderOffset;
+  if(dv.getUint32(lh,true)!==0x04034b50)throw new Error('מבנה ZIP לא תקין');
+  const dataStart=lh+30+dv.getUint16(lh+26,true)+dv.getUint16(lh+28,true);
+  const compData=bytes.slice(dataStart,dataStart+kmlEntry.compSize);
+  if(kmlEntry.method===0)return new TextDecoder('utf-8').decode(compData);
+  if(kmlEntry.method===8){
+    const stream=new Blob([compData]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new TextDecoder('utf-8').decode(await new Response(stream).arrayBuffer());
+  }
+  throw new Error('שיטת דחיסה לא נתמכת ('+kmlEntry.method+')');
+}
+function showPoiImportError(msg){$('poiImportError').style.display='';$('poiImportError').textContent=msg}
+function resetPoiImportModal(){$('poiImportLoading').style.display='none';$('poiImportError').style.display='none';$('poiImportFallback').style.display='none';$('poiImportReview').style.display='none';poiImportPoints=[]}
+async function startPoiImport(url){
+  resetPoiImportModal();
+  const mid=parseMyMapsMid(url);
+  if(!mid){showPoiImportError('לא זוהה קישור תקין של Google My Maps בטקסט שהודבק.');openModal('poiImportModal');return}
+  openModal('poiImportModal');
+  $('poiImportLoading').style.display='';
+  try{
+    const res=await fetch(`https://www.google.com/maps/d/kml?mid=${mid}&forcekml=1`);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    await handleKmlTextResult(text);
+    $('poiImportLoading').style.display='none';
+  }catch(e){
+    $('poiImportLoading').style.display='none';
+    console.warn('Direct KML fetch failed (likely CORS):', e.message);
+    $('poiImportFallback').style.display='';
+  }
+}
+function extractNetworkLinkHref(xmlText){
+  const doc=new DOMParser().parseFromString(xmlText,'text/xml');
+  if(doc.querySelector('parsererror'))return null;
+  const href=doc.querySelector('NetworkLink Link href')?.textContent?.trim();
+  return href||null;
+}
+async function handleKmlTextResult(kmlText){
+  let points=parseKmlPlacemarks(kmlText);
+  if(!points.length){
+    const href=extractNetworkLinkHref(kmlText);
+    if(href){
+      /* CHANGE 2026-08-31 POI-05: this KML is just a pointer ("NetworkLink"), not the real data —
+         Google gives this when downloading from the map's share/view menu instead of the My Maps
+         editor's own Export option. Follow it transparently, one level only (no recursive chains). */
+      try{
+        const res2=await fetch(href);
+        if(res2.ok)points=parseKmlPlacemarks(await res2.text());
+      }catch(e){
+        console.warn('NetworkLink follow-up fetch failed (likely CORS):', e.message);
+        showPoiImportError('הקובץ שהועלה הוא קישור-הפניה (NetworkLink) לנתונים בגוגל, ולא הצלחנו לגשת אליהם ישירות מהדפדפן. נסו להדביק את כתובת המפה ישירות בשדה הקישור למעלה, במקום להעלות קובץ.');
+        return;
+      }
+    }
+  }
+  if(!points.length){showPoiImportError('לא נמצאו נקודות בקובץ/בקישור.');return}
+  openPoiImportReview(points);
+}
+function openPoiImportReview(points){
+  poiImportPoints=points;
+  poiAutoAssign=true;
+  $('poiAutoAssignSwitch').classList.remove('off');
+  $('poiImportCount').textContent=`נמצאו ${points.length} נקודות במפה`;
+  $('poiImportReview').style.display='';
+  renderPoiImportList();
+}
+function renderPoiImportList(){
+  const dayOptions=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');
+  $('poiImportList').innerHTML=poiImportPoints.map((pt,idx)=>{
+    const suggested=poiAutoAssign?nearestDayIndex(pt.lat,pt.lng):-1;
+    const opts='<option value="">— בחרו יום —</option>'+dayOptions;
+    return `<div class="poi-point-row"><div class="ic3">📍</div><div class="main"><b>${esc(pt.name)}</b></div><select data-poi-day="${idx}">${opts}</select>${poiAutoAssign&&suggested>-1?'<span class="poi-auto-tag">אוטו׳</span>':''}</div>`;
+  }).join('');
+  if(poiAutoAssign)poiImportPoints.forEach((pt,idx)=>{const s=nearestDayIndex(pt.lat,pt.lng);if(s>-1){const sel=document.querySelector(`[data-poi-day="${idx}"]`);if(sel)sel.value=s}});
+}
+
 $('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};$('parseMaps').onclick=()=>{const p=parseMaps($('mapsInput').value);if(!p)return $('mapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;const nm=parseMapsPlaceName($('mapsInput').value);const nameFilled=!!nm&&!$('wpName').value.trim();if(nameFilled)$('wpName').value=nm;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'+(nameFilled?' + שם המקום מולא אוטומטית':'')};$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();$('waypointModal').classList.remove('open');render()};$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
 function setMapVisible(show){document.querySelectorAll('#route .map,#route .map-controls,#openGmaps').forEach(el=>el.style.display=show?'':'none')}
 $('dayEditBtn').onclick=()=>{if(!requireUser())return;$('editSelect').value=globalDayIndex;loadForm();openModal('dayEditModal')};$('bookingBtn').onclick=()=>{if(!requireUser())return;const d=tripData[globalDayIndex];$('bookHotel').value=d.bookedHotel||'';$('bookRef').value=d.bookingRef||'';$('bookTotal').value=d.actualCost||'';$('bookNotes').value=d.bookingNotes||'';$('bookMapsInput').value='';$('bookMapsFeedback').textContent='';$('bookLat').value=valid(d.lat,d.lng)?d.lat:'';$('bookLng').value=valid(d.lat,d.lng)?d.lng:'';setMapVisible(false);openModal('bookingModal')};$('bookParseMaps').onclick=()=>{const p=parseMaps($('bookMapsInput').value);if(!p)return $('bookMapsFeedback').textContent='⚠️ לא נמצאו קואורדינטות';$('bookLat').value=p.lat;$('bookLng').value=p.lng;$('bookMapsFeedback').textContent='✅ קואורדינטות זוהו'};document.querySelectorAll('.close').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));$('saveBooking').onclick=async()=>{if(!requireUser())return;const d=tripData[globalDayIndex],block=stayBlock(globalDayIndex),total=Number($('bookTotal').value)||0,targets=$('bookAll').checked&&block?tripData.slice(block.start,block.end+1):[d];const nl=Number($('bookLat').value),ng=Number($('bookLng').value),hasLoc=valid(nl,ng);targets.forEach((x,i)=>{Object.assign(x,{isBooked:true,bookedHotel:$('bookHotel').value.trim()||x.hotel,bookingRef:$('bookRef').value.trim(),bookingNotes:$('bookNotes').value.trim(),actualCost:Math.floor(total/targets.length)+(i===targets.length-1?total%targets.length:0),bookingUpdatedBy:activeUser,bookingUpdatedAt:Date.now()});if(hasLoc){x.lat=nl;x.lng=ng}});await saveTrip();$('bookingModal').classList.remove('open');setMapVisible(true);render()};
@@ -1128,7 +1311,40 @@ $('resDocsRow').onclick=async e=>{const b=e.target.closest('[data-res-unlink-doc
 $('resLinkVaultBtn').onclick=async()=>{if(!$('resId').value)return alert('שמרו את ההזמנה תחילה');await renderVaultPicker();openModal('resVaultPickerModal')};
 $('resVaultPickerGrid').onclick=async e=>{const cb=e.target.closest('[data-res-vault-check]');if(!cb||!requireUser())return;const docs=await getDocuments();const doc=docs.find(d=>d.id===cb.dataset.resVaultCheck);if(!doc)return;doc.linkedReservationId=cb.checked?$('resId').value:'';await saveDocuments(docs)};
 $('resVaultPickerDone').onclick=async()=>{closeModal($('resVaultPickerModal'));await renderResDocs($('resId').value)};
-$('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));if(poiKmlLayer)poiKmlLayer.setMap(mapMode==='poi'&&map?map:null);drawMap()});$('saveBudgetTarget').onclick=async()=>{if(!requireUser())return;await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));renderBudget();renderDailyBurn();};
+/* CHANGE 2026-08-31 POI-03: POI-import event wiring, additive block. */
+$('poiImportBtn').onclick=()=>{if(!requireUser())return;const url=$('poiImportUrl').value.trim();if(!url)return alert('הדביקו קישור למפה תחילה');startPoiImport(url)};
+$('poiImportFileBtn').onclick=()=>$('poiImportFileInput').click();
+$('poiImportFileInput').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const head=await f.slice(0,2).text();
+    const isZip=/\.kmz$/i.test(f.name)||head==='PK';
+    const kmlText=isZip?await extractKmlFromKmz(await f.arrayBuffer()):await f.text();
+    $('poiImportFallback').style.display='none';
+    await handleKmlTextResult(kmlText);
+  }catch(err){
+    showPoiImportError('שגיאה בקריאת הקובץ: '+err.message);
+  }
+  e.target.value='';
+};
+$('poiAutoAssignRow').onclick=()=>{poiAutoAssign=!poiAutoAssign;$('poiAutoAssignSwitch').classList.toggle('off',!poiAutoAssign);renderPoiImportList()};
+$('poiImportConfirmBtn').onclick=async()=>{
+  if(!requireUser())return;
+  const selects=[...document.querySelectorAll('[data-poi-day]')];
+  let added=0,skipped=0;
+  selects.forEach(sel=>{
+    const idx=Number(sel.dataset.poiDay),dayIdx=sel.value;
+    const pt=poiImportPoints[idx];
+    if(!pt)return;
+    if(dayIdx===''){skipped++;return}
+    tripData[Number(dayIdx)].waypoints.push({name:pt.name,lat:pt.lat,lng:pt.lng,notes:'',addedBy:activeUser,addedAt:Date.now(),importedFromMap:true});
+    added++;
+  });
+  if(added){await saveTrip();render()}
+  closeModal($('poiImportModal'));
+  alert(`יובאו ${added} נקודות למסלול${skipped?` (${skipped} לא שויכו ולא יובאו)`:''}`);
+};
+$('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));poiKmlLayers.forEach(l=>l.setMap(mapMode==='poi'&&map?map:null));drawMap()});$('saveBudgetTarget').onclick=async()=>{if(!requireUser())return;await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));renderBudget();renderDailyBurn();};
 $('dayForm').onsubmit=async e=>{e.preventDefault();if(!requireUser())return;Object.assign(tripData[globalDayIndex],{date:$('fDate').value,region:$('fRegion').value,title:$('fTitle').value,activities:$('fActivities').value,hotel:$('fHotel').value,cost:Number($('fCost').value)||0,lat:Number($('fLat').value),lng:Number($('fLng').value),notes:$('fNotes').value,lastEditedBy:activeUser,lastEditedAt:Date.now()});
  const cascaded=globalDayIndex===0;if(cascaded)recalcDates();
  await saveTrip();updateDates();fillSelects();render();
