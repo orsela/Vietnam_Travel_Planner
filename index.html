@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.9.0 (ייבוא JSON: תמיכה בעדכון תקציב לפי קטגוריה)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.9.1 (ייבוא JSON: תמיכה בהזמנות לא-מאושרות)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -1439,11 +1439,39 @@ $('importExcelInput').onchange=async e=>{
   if(!isLegacyArray&&!isWrapped)throw Error();
   const days=isLegacyArray?v:v.days;
   const catBudgets=isWrapped&&v.catBudgets&&typeof v.catBudgets==='object'?v.catBudgets:null;
+  /* CHANGE 2026-09-03 JSON-02: optional third field "reservations" — each becomes a normal
+     unconfirmed reservation (no confirmationRef, no statusOverride), added via the exact same
+     saveReservations() store used everywhere else. Unconfirmed = resStatus() returns 'none', which
+     the existing save/delete logic already treats as zero budget impact — so importing these has no
+     effect on "בפועל" anywhere, by construction, not by a special case written for this import. */
+  const importedRes=isWrapped&&Array.isArray(v.reservations)?v.reservations:null;
   const budgetNote=catBudgets?` וגם יעדכן ${Object.keys(catBudgets).length} יעדי תקציב לפי קטגוריה`:'';
-  if(!confirm('הקובץ מכיל '+days.length+' ימים ויחליף את המסלול עבור כולם'+budgetNote+'. להמשיך?'))return;
+  const resNote=importedRes?` ויוסיף ${importedRes.length} הזמנות לא-מאושרות`:'';
+  if(!confirm('הקובץ מכיל '+days.length+' ימים ויחליף את המסלול עבור כולם'+budgetNote+resNote+'. להמשיך?'))return;
   tripData=days;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();
   if(catBudgets)for(const[cat,val]of Object.entries(catBudgets))await saveCatBudget(cat,Number(val)||0);
-  updateDates();fillSelects();render();renderBudget();renderDailyBurn()
+  if(importedRes){
+    const items=await getReservations();
+    const now=Date.now();
+    importedRes.forEach((r,idx)=>{
+      items.push({
+        id:'r'+now.toString(36)+idx.toString(36)+Math.random().toString(36).slice(2,5),
+        type:RES_TYPES[r.type]?r.type:'other',
+        title:String(r.title||'').slice(0,80),
+        provider:String(r.provider||''),
+        confirmationRef:'',
+        phone:'',link:'',address:'',datetime:'',
+        linkedDayStart:Number.isInteger(r.linkedDayStart)&&days[r.linkedDayStart]?r.linkedDayStart:null,
+        notes:String(r.notes||''),
+        cost:Number(r.cost)||0,
+        budgetCategory:r.budgetCategory&&CATEGORIES[r.budgetCategory]?r.budgetCategory:(RES_TYPES[r.type]?.budgetCat||'other'),
+        statusOverride:'',
+        createdBy:activeUser,createdAt:now,updatedBy:activeUser,updatedAt:now
+      });
+    });
+    await saveReservations(items);
+  }
+  updateDates();fillSelects();render();renderBudget();renderDailyBurn();await updateReservationsSummary()
 }catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};
 /* CHANGE 2026-08-22 GM-09: pull-based live refresh from the shared cloud store.
    Verified empirically (two simulated devices sharing one backend) that without
