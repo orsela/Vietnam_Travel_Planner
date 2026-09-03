@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.8.9 (תמיכה ב-PDF בכספת המסמכים)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v1.9.0 (ייבוא JSON: תמיכה בעדכון תקציב לפי קטגוריה)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -1428,7 +1428,23 @@ $('importExcelInput').onchange=async e=>{
   tripData=days;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render();
   $('importExcelFeedback').textContent='✅ המסלול יובא בהצלחה';
  }catch(err){$('importExcelFeedback').textContent=err?.message==='missing-sheet'?'⚠️ לא נמצא גיליון בשם "מסלול" בקובץ':'⚠️ קובץ אקסל לא תקין או שהמבנה שונה מהצפוי'}
- e.target.value=''};$('importInput').onchange=e=>{const r=new FileReader();r.onload=async()=>{try{const v=JSON.parse(r.result);if(!Array.isArray(v)||!v.length)throw Error();if(!confirm('הקובץ מכיל '+v.length+' ימים ויחליף את המסלול עבור כולם. להמשיך?'))return;tripData=v;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();updateDates();fillSelects();render()}catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};
+ e.target.value=''};$('importInput').onchange=e=>{const r=new FileReader();r.onload=async()=>{try{
+  const v=JSON.parse(r.result);
+  /* CHANGE 2026-09-03 JSON-01: accept either the legacy plain-array format, or a new wrapped
+     {days:[...], catBudgets:{...}} format that can also set category planned-budget targets in
+     one import. The legacy branch below is byte-identical to the pre-existing single-path logic —
+     nothing changes for any file exported the old way. See CHANGELOG. */
+  const isLegacyArray=Array.isArray(v)&&v.length;
+  const isWrapped=v&&typeof v==='object'&&Array.isArray(v.days)&&v.days.length;
+  if(!isLegacyArray&&!isWrapped)throw Error();
+  const days=isLegacyArray?v:v.days;
+  const catBudgets=isWrapped&&v.catBudgets&&typeof v.catBudgets==='object'?v.catBudgets:null;
+  const budgetNote=catBudgets?` וגם יעדכן ${Object.keys(catBudgets).length} יעדי תקציב לפי קטגוריה`:'';
+  if(!confirm('הקובץ מכיל '+days.length+' ימים ויחליף את המסלול עבור כולם'+budgetNote+'. להמשיך?'))return;
+  tripData=days;globalDayIndex=0;await saveTrip();await ensureDefaultLodgingBudget();
+  if(catBudgets)for(const[cat,val]of Object.entries(catBudgets))await saveCatBudget(cat,Number(val)||0);
+  updateDates();fillSelects();render();renderBudget();renderDailyBurn()
+}catch{alert('קובץ JSON לא תקין')}};r.readAsText(e.target.files[0])};
 /* CHANGE 2026-08-22 GM-09: pull-based live refresh from the shared cloud store.
    Verified empirically (two simulated devices sharing one backend) that without
    this, a change saved on one device never appeared on another device that was
