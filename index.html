@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v1.9.1 (ייבוא JSON: תמיכה בהזמנות לא-מאושרות)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.0 (Budget v2 — כל 4 המסכים החדשים הושלמו)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -314,6 +314,91 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .res-hotel-note{background:var(--booking-light);color:var(--booking);border-radius:var(--radius);padding:10px 12px;font-size:.78rem;margin:4px 0 10px}
 .res-row-del{background:none;border:0;color:var(--muted);font-size:1rem;padding:6px;cursor:pointer;flex-shrink:0;margin-inline-start:4px}
 .res-row-del:hover{color:var(--primary)}
+/* CHANGE 2026-09-07 HV2-01: Home v2 styles, additive only — nothing existing edited. */
+#homeV2{padding-bottom:0}
+.hv2-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px}
+.hv2-head-left{display:flex;align-items:center;gap:8px}
+.hv2-title{font-size:.86rem;font-weight:800}
+.hv2-sub{font-size:.64rem;color:var(--muted)}
+.hv2-clock-chip{background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:5px 11px;font-size:.68rem;font-weight:700;cursor:pointer}
+.hv2-clocks-panel{display:flex;gap:8px;padding:0 16px 10px}
+.hv2-clock-card{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:9px 12px}
+.hv2-clock-label{font-size:.66rem;color:var(--muted);display:block;margin-bottom:2px}
+.hv2-clock-card b{font-size:1.05rem}
+.hv2-clock-diff{font-size:.62rem;color:var(--muted);display:block}
+.hv2-map-hero{position:relative;height:220px;margin:0 12px;border-radius:var(--radius-lg);overflow:hidden;cursor:pointer}
+.hv2-map-bg,.hv2-route-line,.hv2-dots{position:absolute;inset:0;width:100%;height:100%}
+.hv2-route-line{fill:none;stroke:var(--primary);stroke-width:2.5;stroke-dasharray:6 5;opacity:.8}
+.hv2-dot{stroke:#fff;stroke-width:2}
+.hv2-dot.today{fill:var(--primary)}
+.hv2-dot.other{fill:#9db8ae}
+.hv2-dot.done{fill:#c7c2b6}
+.hv2-today-pin{position:absolute;left:12px;right:12px;bottom:-24px;z-index:3;background:var(--card);border-radius:16px;padding:11px 13px;box-shadow:0 6px 16px #0000001a;display:flex;align-items:center;gap:10px}
+.hv2-pin-ic{width:36px;height:36px;border-radius:11px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
+.hv2-today-pin b{font-size:.88rem;display:block}
+.hv2-pin-meta{font-size:.68rem;color:var(--muted)}
+.hv2-pin-go{color:var(--muted);font-size:1rem}
+.hv2-below{margin-top:38px;padding:0 14px 90px}
+.hv2-quickstats{display:flex;justify-content:space-around;background:var(--bg);border-radius:12px;padding:9px 4px;margin-bottom:10px;font-size:.72rem}
+.hv2-quickstats span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hv2-quickstats b{font-size:.8rem;font-weight:800}
+.hv2-mini-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.hv2-ic{font-size:1.05rem}
+.hv2-txt b{font-size:.78rem;display:block}
+.hv2-txt span{font-size:.66rem;color:var(--muted)}
+.hv2-go{color:var(--muted);font-size:1rem;margin-inline-start:auto}
+.hv2-weather-card{display:flex;align-items:center;gap:10px}
+.hv2-weather-card .weather-main{flex:1}
+/* CHANGE 2026-09-07 RV2-01: Route v2 — CSS-only bottom-sheet layout, per the mockup approved by Or
+   (route_v2_detailed_mockup.html). No JS added: reuses the native <details class="subsection"> open/
+   close (already has the chevron animation) as the sheet expand/collapse. No element is duplicated —
+   this repositions the SAME #map/mode-buttons/day-card via order+position, since the live Google Map
+   instance can't be duplicated the way Home's decorative mini-map was. Toggle: ROUTE_LAYOUT (see
+   script) — set to 'v1' to remove the .route-v2 class and instantly get the original layout back. */
+#route.route-v2 #routeDayWeather{margin-bottom:var(--sp-2)}
+/* .grid is a CSS Grid whose two rows are .card and .route-map-wrap — reordering happens HERE,
+   inside .grid's own grid context (order already works natively in CSS Grid, no flex needed on
+   #route itself; fixed after catching the wrong assumption in testing) */
+#route.route-v2 .grid>.route-map-wrap{order:1;position:relative;padding:0}
+#route.route-v2 .grid>.card{order:2;position:relative;z-index:3;margin-top:-22px;background:var(--card);border-radius:20px 20px 0 0;box-shadow:0 -8px 20px #0000000f;padding:14px 4px 4px}
+.route-v2 .grid>.card::before{content:'';display:block;width:34px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 10px}
+.route-v2 .route-map-wrap .row:not(.map-mode-row){position:absolute;bottom:10px;right:10px;left:10px;z-index:5;background:#fff;border-radius:12px;padding:7px 9px;box-shadow:0 2px 10px #0002;margin:0}
+.route-v2 .map-mode-row{position:absolute;top:10px;right:10px;left:10px;z-index:8;margin:0;gap:6px}
+.route-v2 .map-provider-toggle{top:auto;bottom:56px;left:10px}
+/* CHANGE 2026-09-07 JV2-01: Journal v2 — CSS-only, per the mockup approved by Or
+   (journal_v2_detailed_mockup.html). Same technique as Route v2: reorders the SAME existing
+   elements (photoGrid/journalTitle/journalText/saveJournal/photosBtn) via CSS order, inside the
+   .journal-card container which is already a plain block (no live external instance to worry
+   about here, unlike the map). No new JS — photosBtn still opens the same hidden #photos input.
+   Toggle: JOURNAL_LAYOUT — 'v1' removes .journal-v2 and restores the original order instantly. */
+.journal-v2 .journal-card{display:flex;flex-direction:column}
+.journal-v2 #journalTitle{order:1;font-size:.95rem;margin:0 0 10px}
+.journal-v2 #photoGrid{order:2;grid-template-columns:repeat(2,1fr)}
+.journal-v2 #photosBtn{order:3;border-radius:99px;padding:9px 16px;font-size:.8rem;margin-top:var(--sp-2)}
+.journal-v2 hr{order:4;display:none}
+.journal-v2 #journalText{order:5;background:var(--bg);border-color:var(--border);margin-top:var(--sp-3)}
+.journal-v2 #saveJournal{order:6}
+/* CHANGE 2026-09-07 BV2-01: Budget v2 — per the mockup approved by Or (budget_v2_detailed_mockup.html).
+   CSS-only restyle of .sumcard/.pbar2/.tile (their values are already set by the existing
+   renderBudget() — untouched — this only changes appearance). The add-expense form was wrapped in
+   a native <details> (same technique as Route/Journal's "עוד פרטים") for the collapse/expand;
+   the one small JS addition is the floating + button toggling that details' .open, mirroring the
+   Home v2 clock-chip toggle pattern. Category tiles keep their exact existing structure (including
+   the editable "planned" input) — turning them into true progress bars would need renderBudget()
+   itself changed to expose the planned/actual ratio to CSS, which was intentionally left out of
+   this round to keep this a CSS-only change; can be added separately if wanted.
+   Toggle: BUDGET_LAYOUT — 'v1' removes .budget-v2 and restores the original appearance instantly. */
+.budget-v2 .sumcard{background:var(--grad-home);color:#fff;border-radius:20px;padding:22px}
+.budget-v2 .sumcard .amt{font-size:1.7rem;font-weight:800}
+.budget-v2 .sumcard .lbl{opacity:.85;font-size:.74rem}
+.budget-v2 .pbar2{height:10px;background:#ffffff30;margin-top:12px}
+.budget-v2 .pbar2 div{background:#fff}
+.budget-v2 .tile{padding:9px 6px}
+.budget-fab{display:none}
+.budget-v2 .budget-fab{position:absolute;left:14px;bottom:64px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:0 4px 14px #d976064a;z-index:9;border:0;cursor:pointer}
+.route-v2 .map-mode-row .pillbtn{padding:6px 8px;font-size:.7rem;box-shadow:0 2px 8px #0002}
+.route-v2 .map{height:min(52vh,420px)}
+.route-v2 #openGmaps{display:none!important}
 .day-res-item{display:flex;align-items:center;gap:10px;background:var(--booking-light);border-radius:var(--radius);padding:9px 11px;margin-bottom:8px;cursor:pointer}
 .day-res-item .ic2{font-size:1.1rem}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px}
@@ -485,6 +570,44 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   </div>
  </div>
 </section>
+<!-- CHANGE 2026-09-07 HV2-01: parallel "map-first" Home screen, per the mockup approved by Or
+     (home_v2_detailed_mockup.html). The #home section above is completely untouched — this is a
+     separate, additive section. A single flag (HOME_LAYOUT, see script) decides which one is
+     active; flipping it back to 'v1' is the entire rollback. Reuses existing data/markup builders
+     (weatherMarkup, burnMarkup, paintAvatar, resStatus/getReservations) rather than duplicating
+     their logic — only the container HTML/CSS here is new. -->
+<section id="homeV2" class="panel">
+ <div class="hv2-head">
+  <div class="hv2-head-left"><div class="avatar-circle" id="hv2Avatar" style="width:26px;height:26px;font-size:.68rem"></div>
+   <div><div class="hv2-title" id="hv2TripTitle">🇻🇳 ויאטנם</div><div class="hv2-sub" id="hv2Dates"></div></div></div>
+  <div class="hv2-head-left"><button type="button" class="hv2-clock-chip" id="hv2ClockChip">🕐 --:--</button><span class="menuic" data-go="more">⚙️</span></div>
+ </div>
+ <div class="hv2-clocks-panel" id="hv2ClocksPanel" style="display:none">
+  <div class="hv2-clock-card"><span class="hv2-clock-label" id="hv2ClockLocalCity">📍 מקומי</span><b id="hv2ClockLocalTime">--:--</b></div>
+  <div class="hv2-clock-card"><span class="hv2-clock-label">🏠 ישראל</span><b id="hv2ClockIsraelTime">--:--</b><span class="hv2-clock-diff" id="hv2ClockDiff"></span></div>
+ </div>
+ <div class="hv2-map-hero" data-go="route">
+  <svg class="hv2-map-bg" viewBox="0 0 300 230" preserveAspectRatio="none"><rect width="300" height="230" fill="#e7ecdf"/><circle cx="90" cy="46" r="90" fill="#cfe3d4" opacity=".6"/><circle cx="210" cy="138" r="100" fill="#bcd8e0" opacity=".55"/></svg>
+  <svg class="hv2-route-line" id="hv2RouteLine" viewBox="0 0 300 230" preserveAspectRatio="none"></svg>
+  <svg class="hv2-dots" id="hv2MapDots" viewBox="0 0 300 230" preserveAspectRatio="none"></svg>
+  <div class="hv2-today-pin">
+   <div class="hv2-pin-ic">📍</div>
+   <div style="flex:1;min-width:0"><b id="hv2TodayRegion"></b><div class="hv2-pin-meta" id="hv2TodayMeta"></div></div>
+   <div class="hv2-pin-go">‹</div>
+  </div>
+ </div>
+ <div class="hv2-below">
+  <div class="hv2-quickstats">
+   <span>📅<b id="hv2Days">0</b>ימים</span>
+   <span>📍<b id="hv2Points">0</b>נק' עניין</span>
+   <span>🎫<b id="hv2ResCount">0/0</b>הזמנות</span>
+   <span>📷<b id="hv2Photos">0</b>תמונות</span>
+  </div>
+  <div class="hv2-mini-card hv2-weather-card" id="hv2Weather" data-go="route" style="display:none"></div>
+  <div class="hv2-mini-card" id="hv2ResCard" data-go="more"><span class="hv2-ic">🎫</span><div class="hv2-txt"><b>הזמנות</b><span id="hv2ResSummary">אין עדיין הזמנות</span></div><span class="hv2-go">‹</span></div>
+  <div class="hv2-mini-card" id="hv2WalletCard"></div>
+ </div>
+</section>
 <!-- CHANGE 2026-08-26 GM-10/GM-11/GM-12/GM-13: route/day screen redesign, per the mockup
      shown to and approved by the user (see Route_Decision_Log.md and CHANGELOG_v1.5.5.txt).
      - GM-12: the old daySelect+move-arrows row (redundant with the day-strip below it) is
@@ -500,12 +623,12 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      - GM-13: a third data-map="poi" button reuses the existing generic
        [data-map] click handler unchanged; only drawGoogleMap/drawSchematicMap gained a poi
        branch (see script). -->
-<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div><!-- CHANGE 2026-08-31 POI-03: import row, additive, sits above the existing map-mode buttons which are untouched below -->
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><span id="hotel" class="info-value"></span><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><!-- CHANGE 2026-08-31 POI-03: import row, additive, sits above the existing map-mode buttons which are untouched below -->
 <div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><input id="poiImportUrl" style="flex:1" placeholder="🔗 קישור למפת Google (My Maps) לייבוא נקודות"><button class="btn outline" id="poiImportBtn" type="button">ייבוא</button></div>
-<div class="row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
-<section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
+<div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
+<section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
-<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><div class="card"><h3>➕ הוספת הוצאה</h3><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
+<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><details class="card" id="addExpenseDetails"><summary><h3 style="display:inline">➕ הוספת הוצאה</h3></summary><div class="subsection-body"><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details><button type="button" class="budget-fab" id="budgetFab">➕</button></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
@@ -640,7 +763,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 const TZ_CITY_HE={'Asia/Dubai':'אבו דאבי','Asia/Abu_Dhabi':'אבו דאבי','Europe/Athens':'יוון','Asia/Bangkok':'בנגקוק','Asia/Ho_Chi_Minh':'וייטנאם','Asia/Saigon':'וייטנאם','Asia/Jerusalem':'ישראל','Asia/Tel_Aviv':'ישראל'};
 function tzCityLabel(tz){if(TZ_CITY_HE[tz])return TZ_CITY_HE[tz];const parts=String(tz||'').split('/');return(parts[parts.length-1]||tz||'').replace(/_/g,' ')||'שעון מקומי'}
 function tzOffsetMinutes(tz,d){try{const dtf=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});const parts=Object.fromEntries(dtf.formatToParts(d).map(p=>[p.type,p.value]));const hh=parts.hour==='24'?0:Number(parts.hour);const asUTC=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),hh,Number(parts.minute),Number(parts.second));return(asUTC-d.getTime())/60000}catch{return 0}}
-function tickClocks(){const localTz=Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Ho_Chi_Minh';const now=new Date();const fmt=tz=>{try{return now.toLocaleTimeString('he-IL',{timeZone:tz,hour:'2-digit',minute:'2-digit'})}catch{return'--:--'}};if($('clockLocalTime'))$('clockLocalTime').textContent=fmt(localTz);if($('clockLocalCity'))$('clockLocalCity').textContent=tzCityLabel(localTz);if($('clockIsraelTime'))$('clockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('clockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('clockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`מקדימים ב-${diffH} שעות`:`מפגרים ב-${Math.abs(diffH)} שעות`}}
+function tickClocks(){const localTz=Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Ho_Chi_Minh';const now=new Date();const fmt=tz=>{try{return now.toLocaleTimeString('he-IL',{timeZone:tz,hour:'2-digit',minute:'2-digit'})}catch{return'--:--'}};if($('clockLocalTime'))$('clockLocalTime').textContent=fmt(localTz);if($('clockLocalCity'))$('clockLocalCity').textContent=tzCityLabel(localTz);if($('clockIsraelTime'))$('clockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('clockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('clockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`מקדימים ב-${diffH} שעות`:`מפגרים ב-${Math.abs(diffH)} שעות`}
+if($('hv2ClockChip'))$('hv2ClockChip').textContent='🕐 '+fmt(localTz);if($('hv2ClockLocalTime'))$('hv2ClockLocalTime').textContent=fmt(localTz);if($('hv2ClockLocalCity'))$('hv2ClockLocalCity').textContent='📍 '+tzCityLabel(localTz);if($('hv2ClockIsraelTime'))$('hv2ClockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('hv2ClockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('hv2ClockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`+${diffH} שעות`:`${diffH} שעות`}}
 const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;
 /* CHANGE 2026-08-31 POI-02: config list of external Google My Maps layers shown together under the
    "🧭 נק' עניין" map mode. To add another public/personal My Maps document later: add one object here
@@ -649,6 +773,18 @@ const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIE
 const POI_LAYERS=[
   {id:'main',label:'נקודות שמורות',mid:'13O7w5lgrnw524cSRt7Kmj6nexk7XvOo'}
 ];
+/* CHANGE 2026-09-07 HV2-01: 'v2' = new map-first Home (default). Set to 'v1' to instantly revert
+   to the original Home screen — that section's code is completely untouched and still fully wired. */
+let HOME_LAYOUT='v2';
+/* CHANGE 2026-09-07 RV2-01: 'v2' = new bottom-sheet Route layout (default). Set to 'v1' for the
+   original layout — pure CSS class removal, nothing else to undo. */
+let ROUTE_LAYOUT='v2';
+/* CHANGE 2026-09-07 JV2-01: 'v2' = new visual-first Journal layout (default). Set to 'v1' for the
+   original layout — pure CSS class removal. */
+let JOURNAL_LAYOUT='v2';
+/* CHANGE 2026-09-07 BV2-01: 'v2' = new visual Budget layout (default). Set to 'v1' to restore
+   the original appearance — pure CSS class removal, category tile editing untouched either way. */
+let BUDGET_LAYOUT='v2';
 let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null},mapProvider='google',mapLoadTimer=null,poiKmlLayers=[];const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',reservations:'planner:reservations'};
 const QKEY='planner:__queue__';
@@ -960,7 +1096,53 @@ async function renderHome(){
  const nd=tripData[globalDayIndex];
  if(nd){$('nextTitle').textContent=nd.region;$('nextMeta').textContent=`יום ${nd.day} — ${nd.title}`;
   $('nextThumb').style.background=`linear-gradient(135deg,${avatarColor(nd.region)},#f2b134)`}
- await renderDailyBurn(); await renderWeatherWidget(); updateRouteDayStrip(); updateDocumentsSummary();}
+ await renderDailyBurn(); await renderWeatherWidget(); updateRouteDayStrip(); updateDocumentsSummary();
+ await renderHomeV2(); /* CHANGE 2026-09-07 HV2-01: keeps the new Home in sync wherever renderHome() is already called */
+}
+/* CHANGE 2026-09-07 HV2-01: renderHomeV2 — self-contained (recomputes its own stats rather than
+   reaching into renderHome's local variables, to avoid restructuring that function's body).
+   Reuses weatherMarkup/getTomorrowWeather, burnMarkup/calcDailyBurn, paintAvatar, and
+   resStatus/getReservations exactly as they already exist — only the container markup is new. */
+async function renderHomeV2(){
+  if(!$('homeV2'))return;
+  const counts=await Promise.all(tripData.map(async d=>{try{const raw=await SS.get('planner:journal:'+d.day);if(raw){const m=JSON.parse(raw);return(m.photoIds||[]).length}}catch{}return 0}));
+  const photos=counts.reduce((a,b)=>a+b,0);
+  $('hv2Days').textContent=tripData.length;
+  $('hv2Points').textContent=tripData.reduce((n,d)=>n+(d.waypoints||[]).length,0);
+  $('hv2Photos').textContent=photos;
+  await paintAvatar($('hv2Avatar'),activeUser);
+  if($('hv2Dates'))$('hv2Dates').textContent=$('homeDates')?$('homeDates').textContent:'';
+  const reservations=await getReservations();
+  const confirmed=reservations.filter(r=>resStatus(r)==='confirmed').length;
+  $('hv2ResCount').textContent=`${confirmed}/${reservations.length}`;
+  $('hv2ResSummary').textContent=reservations.length?`${confirmed} מתוך ${reservations.length} מאושרות`:'אין עדיין הזמנות';
+  const nd=tripData[globalDayIndex];
+  if(nd){
+    $('hv2TodayRegion').textContent=nd.region;
+    const wpCount=(nd.waypoints||[]).length;
+    const hasHotel=nd.isBooked||(nd.hotel&&nd.hotel!=='בטיסה'&&nd.hotel!=='טיסה חזרה');
+    $('hv2TodayMeta').textContent=`יום ${nd.day} · ${nd.date}${nd.activities?' · 🥾 פעילות':''}${hasHotel?' · 🏨':''}${wpCount?' · 📍'+wpCount:''}`;
+  }
+  const w=await getTomorrowWeather();
+  if($('hv2Weather')){if(w){$('hv2Weather').innerHTML=weatherMarkup(w);$('hv2Weather').style.display='flex'}else{$('hv2Weather').style.display='none'}}
+  const b=await calcDailyBurn();
+  if($('hv2WalletCard'))$('hv2WalletCard').innerHTML=burnMarkup(b);
+  drawHomeV2Map();
+}
+function drawHomeV2Map(){
+  const dotsEl=$('hv2MapDots'),lineEl=$('hv2RouteLine');
+  if(!dotsEl||!lineEl)return;
+  const pts=tripData.filter(d=>valid(d.lat,d.lng));
+  if(!pts.length){dotsEl.innerHTML='';lineEl.innerHTML='';return}
+  const lats=pts.map(d=>d.lat),lngs=pts.map(d=>d.lng);
+  const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+  const padX=30,padY=26,w=300-padX*2,h=230-padY*2;
+  const rangeLat=Math.max(0.0001,maxLat-minLat),rangeLng=Math.max(0.0001,maxLng-minLng);
+  const xy=d=>({x:padX+((d.lng-minLng)/rangeLng)*w,y:padY+h-((d.lat-minLat)/rangeLat)*h});
+  const coords=tripData.map(d=>valid(d.lat,d.lng)?xy(d):null);
+  lineEl.innerHTML='<path d="'+coords.filter(Boolean).map((c,i)=>(i===0?'M':'L')+c.x.toFixed(1)+' '+c.y.toFixed(1)).join(' ')+'"/>';
+  dotsEl.innerHTML=coords.map((c,i)=>{if(!c)return'';const cls=i===globalDayIndex?'today':i<globalDayIndex?'done':'other';const r=cls==='today'?7.5:5;return `<circle class="hv2-dot ${cls}" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${r}"/>`}).join('');
+}
 async function calcDailyBurn(){const target=await getBudgetTarget(),items=await getExpenses();let spent=items.reduce((s,e)=>s+Number(e.amount||0),0);tripData.forEach(d=>{if(d.isBooked)spent+=Number(d.actualCost||0)});const today=globalDayIndex;const catBudgets=await getCatBudgets();const plannedLodgingBudget=Number(catBudgets.lodging||0);const bookedLodging=tripData.reduce((s,d)=>s+(d.isBooked?Number(d.actualCost||0):0),0);const futureLodging=Math.max(0,plannedLodgingBudget-bookedLodging);const daysLeft=Math.max(1,tripData.length-today);const available=Math.max(0,target-spent-futureLodging);const perDay=available/daysLeft;return{target,spent,futureLodging,daysLeft,available,perDay}}
 function burnMarkup(b){const level=b.perDay<0?'danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?'warning':'ok';return `<div class="row" style="justify-content:space-between"><div><div class="muted">ארנק יומי</div><div class="burn-amount">${Math.max(0,b.perDay).toLocaleString('he-IL',{maximumFractionDigits:0})} ₪</div><div class="muted">נשאר להוציא ליום</div></div><span class="badge">${level==='ok'?'✓ במסגרת':level==='warning'?'⚠️ כדאי להאט':'🔴 חריגה'}</span></div><div class="burn-meta"><span>${b.daysLeft} ימים נותרו</span><span>${b.available.toLocaleString('he-IL',{maximumFractionDigits:0})} ₪ זמינים</span></div>`}
 async function renderDailyBurn(){const b=await calcDailyBurn();for(const id of ['homeBurn','budgetBurn']){const el=$(id);if(!el)continue;el.innerHTML=burnMarkup(b);el.className='daily-burn'+(b.perDay<0?' danger':b.perDay<Math.max(1,b.target/Math.max(1,tripData.length))*0.7?' warning':'')}; if($('homeBurn'))$('homeBurn').style.display='block'; if($('budgetBurn'))$('budgetBurn').style.display='block';}
@@ -1306,7 +1488,7 @@ function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.
 /* CHANGE 2026-08-27 GM-19: bottom nav swap -- budget is now a primary tab (was reached only via
    'more'), album moved under 'more' (used to have its own tab). See CHANGELOG_v1.5.9.txt. */
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',budget:'budget',more:'more',album:'more',management:'more',backup:'more'};
-function switchPanel(id){document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more'){updateDocumentsSummary();updateReservationsSummary()}window.scrollTo(0,0)}
+function switchPanel(id){const activeId=(id==='home'&&HOME_LAYOUT==='v2')?'homeV2':id;document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===activeId));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more'){updateDocumentsSummary();updateReservationsSummary()}window.scrollTo(0,0)}
 function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
 $('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser,...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};
 /* CHANGE 2026-08-30 RES-01: Reservations Center event wiring — additive, inserted between two pre-existing handlers without altering either. See CHANGELOG_v1.8.0.txt. */
@@ -1357,6 +1539,8 @@ $('poiImportConfirmBtn').onclick=async()=>{
   alert(`יובאו ${added} נקודות למסלול${skipped?` (${skipped} לא שויכו ולא יובאו)`:''}`);
 };
 $('routePrevDay').onclick=()=>{globalDayIndex=Math.max(0,globalDayIndex-1);fillSelects();render()};$('routeNextDay').onclick=()=>{globalDayIndex=Math.min(tripData.length-1,globalDayIndex+1);fillSelects();render()};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchPanel(b.dataset.go));document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{globalDayIndex=Math.max(0,Math.min(tripData.length-1,globalDayIndex+Number(b.dataset.move)));fillSelects();render()});['daySelect','journalDay','editSelect'].forEach(id=>$(id).onchange=e=>{globalDayIndex=Number(e.target.value);fillSelects();render()});document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapMode=b.dataset.map;document.querySelectorAll('[data-map]').forEach(x=>x.classList.toggle('active',x.dataset.map===mapMode));poiKmlLayers.forEach(l=>l.setMap(mapMode==='poi'&&map?map:null));drawMap()});$('saveBudgetTarget').onclick=async()=>{if(!requireUser())return;await SS.set(SHARED.budget,String(Math.max(0,Number($('budgetTarget').value)||0)));renderBudget();renderDailyBurn();};
+if($('hv2ClockChip'))$('hv2ClockChip').onclick=()=>{const p=$('hv2ClocksPanel');p.style.display=p.style.display==='none'?'flex':'none'};
+if($('budgetFab'))$('budgetFab').onclick=()=>{const d=$('addExpenseDetails');d.open=!d.open;if(d.open)d.scrollIntoView({behavior:'smooth',block:'start'})};
 $('dayForm').onsubmit=async e=>{e.preventDefault();if(!requireUser())return;Object.assign(tripData[globalDayIndex],{date:$('fDate').value,region:$('fRegion').value,title:$('fTitle').value,activities:$('fActivities').value,hotel:$('fHotel').value,cost:Number($('fCost').value)||0,lat:Number($('fLat').value),lng:Number($('fLng').value),notes:$('fNotes').value,lastEditedBy:activeUser,lastEditedAt:Date.now()});
  const cascaded=globalDayIndex===0;if(cascaded)recalcDates();
  await saveTrip();updateDates();fillSelects();render();
@@ -1695,6 +1879,10 @@ loadChatHistory();
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullRemoteUpdates()});
  startGoogleMapsWatch(); /* CHANGE 2026-08-22 GM-03 */
  tickClocks();setInterval(tickClocks,30000); /* CHANGE 2026-08-27 GM-18 */
+ switchPanel('home'); /* CHANGE 2026-09-07 HV2-03: normalizes initial visible Home section per HOME_LAYOUT */
+ $('route').classList.toggle('route-v2',ROUTE_LAYOUT==='v2'); /* CHANGE 2026-09-07 RV2-02 */
+ $('journal').classList.toggle('journal-v2',JOURNAL_LAYOUT==='v2'); /* CHANGE 2026-09-07 JV2-02 */
+ $('budget').classList.toggle('budget-v2',BUDGET_LAYOUT==='v2'); /* CHANGE 2026-09-07 BV2-02 */
 })();
 </script>
 </body>
