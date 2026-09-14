@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.14 (Chat assistant: attach one photo per message)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.15 (Journal entries no longer overwrite each other; chat camera opens directly)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -88,6 +88,17 @@ if('serviceWorker' in navigator){
    const{error}=await withTimeout(sb.from('planner_kv').delete().eq('key',key),8000);
    if(error)throw error;
    return true
+  },
+  /* CHANGE 2026-09-14 JOURNAL-FEED-01: list every row whose key starts with `prefix`, via a plain
+     LIKE query against the same planner_kv table -- no new table/column needed, it already stores
+     arbitrary keys. Used so each journal entry can live under its own key
+     (planner:journal:<day>:entry:<id>) instead of one shared blob, which is what actually removes
+     the overwrite race: two people adding entries at once now write to two different keys, not the
+     same one, so there is nothing left to race over. */
+  async list(prefix){
+   const{data,error}=await withTimeout(sb.from('planner_kv').select('key,value').like('key',prefix+'%'),8000);
+   if(error)throw error;
+   return(data||[]).map(r=>({key:r.key,value:r.value}))
   }
  };
 })();
@@ -497,6 +508,17 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .chat-preview-thumb img{width:100%;height:100%;object-fit:cover}
 .chat-preview-thumb .x{position:absolute;top:-4px;left:-4px;width:18px;height:18px;border-radius:50%;background:#17211bcc;color:#fff;font-size:.62rem;border:0;line-height:1;cursor:pointer}
 .chat-img{max-width:100%;border-radius:10px;display:block;margin-bottom:6px}
+.journal-feed{margin-bottom:10px}
+.journal-feed:empty{display:none}
+.journal-entry{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.journal-entry:last-child{border-bottom:none}
+.journal-entry .avatar-circle{width:32px;height:32px;font-size:.78rem;flex:none}
+.journal-entry-body{flex:1;min-width:0}
+.journal-entry-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.journal-entry-name{font-weight:800;font-size:.85rem}
+.journal-entry-time{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.journal-entry-text{font-size:.88rem;line-height:1.5;white-space:pre-wrap;margin-top:2px}
+.journal-compose-label{display:block;font-size:.78rem;margin:2px 2px 6px}
 .chat-send:disabled{opacity:.5;cursor:default}
 @media(max-width:420px){.chat-fab{bottom:78px}.chat-sheet{height:min(78vh,620px)}}
 
@@ -699,7 +721,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div class="poi-import-toggle"><button class="btn outline" id="poiImportToggle" type="button" aria-expanded="false">＋ ייבוא Google Maps</button></div>
 <div class="poi-import-panel" id="poiImportPanel" hidden><div class="poi-import-row"><input id="poiImportUrl" style="flex:1" placeholder="🔗 קישור למפת Google (My Maps) לייבוא נקודות"><button class="btn outline" id="poiImportBtn" type="button">ייבוא</button><button class="btn outline" id="poiImportClose" type="button" aria-label="סגירת ייבוא">×</button></div></div>
 <div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
-<section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><textarea id="journalText" rows="5" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">שמור רשמים</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
+<section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><div id="journalFeed" class="journal-feed"></div><label class="muted journal-compose-label">הוספת רשומה חדשה (לא מוחקת שום דבר שכבר נכתב)</label><textarea id="journalText" rows="3" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">+ הוסף רשומה</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
 <section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><details class="card" id="addExpenseDetails"><summary><h3 style="display:inline">➕ הוספת הוצאה</h3></summary><div class="subsection-body"><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select><select id="expenseDay"><option value="">— לא משויך ליום —</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
@@ -826,7 +848,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
  <div id="chatPreviewStrip" class="chat-preview-strip" style="display:none"></div>
  <div class="chat-input-row">
   <button id="chatAttachBtn" class="chat-attach" type="button" aria-label="צירוף תמונה">📎</button>
-  <input id="chatImageInput" type="file" accept="image/*" class="file-input-vh">
+  <input id="chatImageInput" type="file" accept="image/*" capture="environment" class="file-input-vh">
   <input id="chatInput" type="text" placeholder="שאל שאלה על הטיול…" maxlength="500">
   <button id="chatSendBtn" class="chat-send" type="button" aria-label="שליחה">➤</button>
  </div>
@@ -907,6 +929,14 @@ const SS={
   try{localStorage.removeItem(key)}catch{}
   if(hasCloud()){try{await window.storage.delete(key,true);dequeue(key);return true}catch{}}
   enqueue('del',key,null);return false
+ },
+ async list(prefix){
+  if(hasCloud()){try{const rows=await window.storage.list(prefix,true);if(Array.isArray(rows))return rows}catch{}}
+  try{
+   const out=[];
+   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(prefix)===0)out.push({key:k,value:localStorage.getItem(k)})}
+   return out
+  }catch{return[]}
  }
 };
 function compressImage(file){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const img=new Image();
@@ -915,6 +945,20 @@ function compressImage(file){return new Promise(res=>{const r=new FileReader();r
   const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
   try{res(c.toDataURL('image/jpeg',.82))}catch{res(r.result)}};
  img.onerror=()=>res(r.result);img.src=r.result};r.onerror=()=>res(null);r.readAsDataURL(file)})}
+async function getJournalEntries(day){
+ try{
+  const rows=await SS.list('planner:journal:'+day+':entry:');
+  const entries=rows.map(r=>{try{return JSON.parse(r.value)}catch{return null}}).filter(Boolean);
+  entries.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  return entries
+ }catch{return[]}
+}
+async function addJournalEntry(day,text,by){
+ const id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+ const entry={id,text,by,createdAt:Date.now()};
+ await SS.set('planner:journal:'+day+':entry:'+id,JSON.stringify(entry));
+ return entry
+}
 async function getJournal(day){
  let meta=null;try{const raw=await SS.get('planner:journal:'+day);if(raw)meta=JSON.parse(raw)}catch{}
  if(!meta||typeof meta!=='object')meta={};
@@ -922,12 +966,17 @@ async function getJournal(day){
  const photos=[];
  for(const pid of meta.photoIds){const v=await SS.get('planner:photo:'+day+':'+pid);if(!v)continue;
   try{const p=JSON.parse(v);photos.push({id:pid,src:p.src,by:p.by||'',uploadedAt:p.uploadedAt||0,favorite:!!p.favorite})}catch{photos.push({id:pid,src:v,by:'',favorite:false})}}
- meta.photos=photos;return meta}
+ meta.photos=photos;
+ let entries=await getJournalEntries(day);
+ if(!entries.length&&meta.text.trim())entries=[{id:'legacy',text:meta.text,by:meta.by,createdAt:meta.editedAt||0}];
+ meta.entries=entries;
+ return meta}
 async function saveJournalMeta(day,meta){
  await SS.set('planner:journal:'+day,JSON.stringify({text:meta.text||'',by:meta.by||'',editedAt:meta.editedAt||0,photoIds:meta.photoIds||[]}))}
 async function migrateJournal(from,to){
  if(from===to)return;const m=await getJournal(from);
  for(const p of m.photos){if(p.src)await SS.set('planner:photo:'+to+':'+p.id,JSON.stringify({src:p.src,by:p.by,uploadedAt:p.uploadedAt}));await SS.del('planner:photo:'+from+':'+p.id)}
+ for(const e of m.entries){if(e.id==='legacy')continue;await SS.set('planner:journal:'+to+':entry:'+e.id,JSON.stringify({id:e.id,text:e.text,by:e.by,createdAt:e.createdAt}));await SS.del('planner:journal:'+from+':entry:'+e.id)}
  await SS.set('planner:journal:'+to,JSON.stringify({text:m.text,by:m.by,editedAt:m.editedAt||0,photoIds:m.photoIds}));
  await SS.del('planner:journal:'+from)}
 function recalcDates(){const a=parseDate(tripData[0]&&tripData[0].date);if(!a)return;
@@ -1226,11 +1275,17 @@ function regionClusters(includeFlights=true){
 }
 // ---------------------------------------------
 function loadForm(){const d=tripData[globalDayIndex];$('fDate').value=d.date;$('fRegion').value=d.region;$('fTitle').value=d.title;$('fActivities').value=d.activities;$('fHotel').value=d.hotel;$('fCost').value=d.cost;$('fLat').value=d.lat;$('fLng').value=d.lng;$('fNotes').value=d.notes}function currentDayNum(){return tripData[globalDayIndex].day}
+function journalEntryHtml(e){
+ const name=e.by||'?';
+ const time=e.createdAt?new Date(e.createdAt).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+ return `<div class="journal-entry"><div class="avatar-circle" style="background:${avatarColor(name)}">${esc(name.slice(0,1))}</div><div class="journal-entry-body"><div class="journal-entry-head"><span class="journal-entry-name">${esc(name)}</span><span class="journal-entry-time">${esc(time)}</span></div><div class="journal-entry-text">${esc(e.text)}</div></div></div>`
+}
 async function loadJournal(){const d=tripData[globalDayIndex];
  $('journalTitle').textContent=`יומן יום ${d.day} — ${d.title}`;
  const j=await getJournal(d.day);
  if(tripData[globalDayIndex]!==d)return;
- $('journalText').value=j.text;
+ $('journalFeed').innerHTML=(j.entries||[]).map(journalEntryHtml).join('');
+ $('journalText').value='';
  $('photoGrid').innerHTML=(j.photos||[]).map(p=>`<div class="photo"><img src="${p.src}"><small>${esc(p.by||'')}</small></div>`).join('')}const AVATAR_COLORS=['#b42318','#d97706','#15803d','#7c3aed','#0f766e','#be185d','#0369a1'];
 function avatarColor(name){let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
 /* CHANGE 2026-08-26 GM-15: getUserPhotos() was being re-fetched from scratch once per family
@@ -1698,9 +1753,8 @@ function renderPoiImportList(){
 $('newWaypoint').onclick=()=>{if(requireUser())openModal('waypointModal')};$('parseMaps').onclick=()=>{const raw=$('mapsInput').value;const p=parseMaps(raw);if(!p)return $('mapsFeedback').textContent=isGoogleMapsShortLink(raw)?MAPS_SHORT_LINK_MSG:'⚠️ לא נמצאו קואורדינטות';$('wpLat').value=p.lat;$('wpLng').value=p.lng;const nm=parseMapsPlaceName(raw);const nameFilled=!!nm&&!$('wpName').value.trim();if(nameFilled)$('wpName').value=nm;$('mapsFeedback').textContent='✅ קואורדינטות זוהו'+(nameFilled?' + שם המקום מולא אוטומטית':'')};$('saveWaypoint').onclick=async()=>{if(!requireUser())return;const n=$('wpName').value.trim(),lat=Number($('wpLat').value),lng=Number($('wpLng').value);if(!n||!valid(lat,lng))return alert('פרטי נקודה לא תקינים');tripData[globalDayIndex].waypoints.push({name:n,lat,lng,notes:$('wpNotes').value,addedBy:activeUser,addedAt:Date.now()});await saveTrip();$('waypointModal').classList.remove('open');render()};$('waypoints').onclick=async e=>{const b=e.target.closest('[data-delete-waypoint]');if(!b||!requireUser())return;tripData[globalDayIndex].waypoints.splice(Number(b.dataset.deleteWaypoint),1);await saveTrip();render()};
 function setMapVisible(show){document.querySelectorAll('#route .map,#route .map-controls,#openGmaps').forEach(el=>el.style.display=show?'':'none')}
 $('dayEditBtn').onclick=()=>{if(!requireUser())return;$('editSelect').value=globalDayIndex;loadForm();openModal('dayEditModal')};$('bookingBtn').onclick=async()=>{if(!requireUser())return;const d=tripData[globalDayIndex];$('bookHotel').value=d.bookedHotel||'';$('bookRef').value=d.bookingRef||'';$('bookTotal').value=d.actualCost||'';$('bookLink').value=d.bookingLink||'';$('bookNotes').value=d.bookingNotes||'';$('bookMapsInput').value='';$('bookMapsFeedback').textContent='';$('bookLat').value=valid(d.lat,d.lng)?d.lat:'';$('bookLng').value=valid(d.lat,d.lng)?d.lng:'';const existingId=d.bookingSourceReservationId||'';$('bookingModal').dataset.resId=existingId;let bSel=new Set([globalDayIndex]),bCi=iso(d.date),bCo=checkout(d.date);if(existingId){const items=await getReservations();const rec=items.find(r=>r.id===existingId);if(rec){$('bookTotal').value=rec.cost||d.actualCost||''}if(rec&&Array.isArray(rec.linkedDays)&&rec.linkedDays.length){bSel=new Set(rec.linkedDays);bCi=rec.checkin||bCi;bCo=rec.checkout||bCo}else if(rec){const block=stayBlock(globalDayIndex);if(block){bSel=new Set(Array.from({length:block.end-block.start+1},(_,k)=>block.start+k));bCi=block.checkin;bCo=block.checkout}}}$('bookCheckin').value=bCi;$('bookCheckout').value=bCo;renderManualDaysList('bookManualDays',bSel);updateDaysMatchHint('bookDaysMatchHint',[...bSel].sort((a,b)=>a-b));$('bookManualDays').style.display='none';setMapVisible(false);openModal('bookingModal')};$('bookParseMaps').onclick=()=>{const raw=$('bookMapsInput').value;const p=parseMaps(raw);if(!p)return $('bookMapsFeedback').textContent=isGoogleMapsShortLink(raw)?MAPS_SHORT_LINK_MSG:'⚠️ לא נמצאו קואורדינטות';$('bookLat').value=p.lat;$('bookLng').value=p.lng;$('bookMapsFeedback').textContent='✅ קואורדינטות זוהו'};document.querySelectorAll('.close').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));$('saveBooking').onclick=async()=>{if(!requireUser())return;const d=tripData[globalDayIndex],total=Number($('bookTotal').value)||0;const linkedDays=readManualDaysList('bookManualDays');if(!linkedDays.length){alert('יש לבחור לפחות יום אחד (טווח תאריכים או בחירה ידנית למטה)');return}const targets=linkedDays.map(i=>tripData[i]).filter(Boolean);const nl=Number($('bookLat').value),ng=Number($('bookLng').value),hasLoc=valid(nl,ng);const existingId=$('bookingModal').dataset.resId||'';let items=await getReservations();const idx=existingId?items.findIndex(r=>r.id===existingId):-1;const id=idx>-1?items[idx].id:('r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7));const base=idx>-1?items[idx]:{type:'hotel',createdBy:activeUser,createdAt:Date.now()};const rec={...base,id,type:'hotel',title:$('bookHotel').value.trim()||d.hotel,confirmationRef:$('bookRef').value.trim(),notes:$('bookNotes').value.trim(),cost:total,link:$('bookLink').value.trim(),linkedDays,linkedDayStart:linkedDays[0],checkin:$('bookCheckin').value||'',checkout:$('bookCheckout').value||'',budgetCategory:base.budgetCategory||'lodging',updatedBy:activeUser,updatedAt:Date.now()};if(idx>-1)items[idx]=rec;else items.push(rec);await saveReservations(items);await clearHotelDaysById(id);await writeHotelReservationToDays(rec);if(hasLoc)targets.forEach(x=>{x.lat=nl;x.lng=ng});await saveTrip();await updateReservationsSummary();$('bookingModal').classList.remove('open');setMapVisible(true);render()};
-$('saveJournal').onclick=async()=>{if(!requireUser())return;const day=currentDayNum();
- const j=await getJournal(day);j.text=$('journalText').value;j.by=activeUser;j.editedAt=Date.now();
- await saveJournalMeta(day,j);loadJournal();renderAlbum()};
+$('saveJournal').onclick=async()=>{if(!requireUser())return;const day=currentDayNum();const text=$('journalText').value.trim();if(!text)return;
+ await addJournalEntry(day,text,activeUser);await loadJournal();renderAlbum()};
 $('photosBtn').onclick=()=>{if(requireUser())$('photos').click()};
 $('photos').onchange=async e=>{if(!requireUser()){e.target.value='';return}
  const files=[...e.target.files];if(!files.length)return;
@@ -2030,8 +2084,9 @@ async function buildChatExtraContext(){
  items.forEach(e=>{const di=e.dayIndex!=null&&tripData[e.dayIndex]?e.dayIndex:null;expenses.push({date:di!=null?tripData[di].date:'',category:CATEGORIES[e.category]||e.category,detail:e.description||'',amount:Number(e.amount||0)})});
  const docs=await getDocuments(),resItems=await getReservations().catch(()=>[]);
  const documents=docs.map(d=>{const rec=d.linkedReservationId?resItems.find(r=>r.id===d.linkedReservationId):null;return{name:d.name,category:d.categoryLabel,uploadedAt:new Date(d.createdAt).toLocaleDateString('he-IL'),linkedTo:rec?rec.title:null}});
- const journalRaw=await Promise.all(tripData.map(async(d,i)=>{try{const raw=await SS.get('planner:journal:'+i);if(!raw)return null;const m=JSON.parse(raw);if(!m||!m.text)return null;return{day:d.day,date:d.date,region:d.region,by:m.by||'',text:m.text}}catch{return null}}));
- return{budget,expenses,documents,journal:journalRaw.filter(Boolean)};
+ const journalPerDay=await Promise.all(tripData.map(async d=>{const entries=await getJournalEntries(d.day).catch(()=>[]);return entries.length?{day:d.day,date:d.date,region:d.region,entries:entries.map(e=>({by:e.by||'',text:e.text}))}:null}));
+ const journal=journalPerDay.filter(Boolean);
+ return{budget,expenses,documents,journal};
 }
 async function sendChatMessage(text){
  text=String(text||'').trim();
