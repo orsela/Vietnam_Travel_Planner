@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.16 (Fix: chat now actually sees existing journal entries)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.17 (Vault: standard share icon on document thumbnail)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -319,6 +319,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .budget-detail-table tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 .global-fx{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:28;border:1px solid #cfd7df;background:#fff;color:var(--text);box-shadow:0 4px 14px #00000018;border-radius:999px;padding:7px 13px;font-weight:800;font-size:.76rem;cursor:pointer;touch-action:manipulation}
 .doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.doc-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:10px;min-width:0}.doc-card img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:10px;background:#f3f4f6}.doc-name{font-weight:800;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-meta{font-size:.68rem;color:var(--muted)}
+.doc-thumb-wrap{position:relative}
+.doc-share-icon{position:absolute;top:6px;inset-inline-end:6px;width:28px;height:28px;border-radius:50%;background:#ffffffe0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text);box-shadow:0 1px 4px #00000022}
+.doc-share-icon svg{width:15px;height:15px}
 .pdf-tile{width:100%;aspect-ratio:1.35;border-radius:10px;background:var(--booking-light);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--booking);font-weight:800;font-size:1.6rem;text-decoration:none}
 .pdf-tile span{font-size:.62rem;font-weight:700;margin-top:2px}
 .res-doc-thumb .pdf-tile{aspect-ratio:auto;height:100%;font-size:1.1rem}
@@ -1519,7 +1522,8 @@ async function deleteReservationById(id){if(!requireUser()||!id)return;if(!confi
 async function renderVaultPicker(){const resId=$('resId').value;const docs=await getDocuments();$('resVaultPickerGrid').innerHTML=docs.length?docs.map(d=>`<article class="doc-card">${docThumbHtml(d)}<div class="doc-name">${esc(d.name)}</div><label class="muted" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:.72rem"><input type="checkbox" data-res-vault-check="${esc(d.id)}" ${d.linkedReservationId===resId?'checked':''}> קשר להזמנה זו</label></article>`).join(''):'<p class="muted">אין עדיין מסמכים בכספת</p>'}
 
 async function updateDocumentsSummary(){const el=$('documentsSummary');if(!el)return;const docs=await getDocuments();el.textContent=docs.length?`${docs.length} מסמכים · זמין ללא אינטרנט`:'זמין ללא אינטרנט'}
-async function renderDocuments(){const docs=await getDocuments();$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card">${docThumbHtml(d)}<div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.categoryLabel)} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><div class="row" style="margin-top:7px;gap:6px"><button class="btn outline" style="flex:1" data-doc-share="${esc(d.id)}">📤 שיתוף</button><button class="btn outline" style="flex:1" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></div></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים</p>'}
+const SHARE_ICON_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="10.51" x2="15.42" y2="6.49"/><line x1="8.59" y1="13.49" x2="15.42" y2="17.51"/></svg>';
+async function renderDocuments(){const docs=await getDocuments();$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card"><div class="doc-thumb-wrap">${docThumbHtml(d)}<button type="button" class="doc-share-icon" data-doc-share="${esc(d.id)}" aria-label="שיתוף">${SHARE_ICON_SVG}</button></div><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.categoryLabel)} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><button class="btn outline" style="width:100%;margin-top:7px" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים</p>'}
 const WEATHER_KEY='planner:weather:';
 const weatherCodeMap={0:['☀️','בהיר'],1:['🌤️','בהיר ברובו'],2:['⛅','מעונן חלקית'],3:['☁️','מעונן'],45:['🌫️','ערפל'],48:['🌫️','ערפל'],51:['🌦️','טפטוף'],53:['🌦️','טפטוף'],55:['🌧️','גשם קל'],61:['🌧️','גשם'],63:['🌧️','גשם'],65:['🌧️','גשם חזק'],71:['🌨️','שלג'],73:['🌨️','שלג'],75:['❄️','שלג כבד'],80:['🌦️','ממטרים'],81:['🌧️','ממטרים'],82:['⛈️','ממטרים חזקים'],95:['⛈️','סופת רעמים'],96:['⛈️','סופת רעמים'],99:['⛈️','סופת רעמים']};
 async function getTomorrowWeather(dayIndex=globalDayIndex){const d=tripData[dayIndex];if(!d||!valid(d.lat,d.lng))return null;const target=parseDate(d.date);if(!target)return null;target.setDate(target.getDate()+1);const date=target.toISOString().slice(0,10);const cacheKey=WEATHER_KEY+date+':'+d.lat+':'+d.lng;try{const cached=localStorage.getItem(cacheKey);if(cached){const c=JSON.parse(cached);if(Date.now()-c.ts<30*60*1000)return c.data}}catch{}
