@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.17 (Vault: standard share icon on document thumbnail)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.19 (Fix: mobile vault sharing)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -326,6 +326,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .pdf-tile span{font-size:.62rem;font-weight:700;margin-top:2px}
 .res-doc-thumb .pdf-tile{aspect-ratio:auto;height:100%;font-size:1.1rem}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.modal-box{position:relative}.modal-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:#fff;font-size:1.2rem;cursor:pointer;flex:0 0 auto}
+/* CHANGE 2026-09-14 SHARE-02: compact mobile document-share sheet. */
+.share-file-name{display:flex;align-items:center;gap:12px;min-width:0}.share-file-name>b{overflow:hidden;text-overflow:ellipsis}.share-preview{width:72px;height:72px;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:#f8faf9;flex:0 0 72px}.share-preview-pdf{display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:1.8rem}.share-preview-pdf span{font-size:.62rem;font-weight:800}.share-file-name>div:last-child{min-width:0}.info-box{padding:10px 12px;border-radius:12px;background:#f6f8f7;border:1px solid var(--border);font-size:.8rem}
 @media(max-width:420px){.global-fx{bottom:78px}.doc-grid{grid-template-columns:1fr 1fr}.day-chip{min-width:62px}}
 /* CHANGE 2026-08-30 RES-01: Reservations Center — additive rules only, does not modify any existing selector above. See CHANGELOG_v1.8.0.txt. */
 .res-filters{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin-bottom:4px}
@@ -733,6 +735,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><select id="quickFxFrom"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="EUR">אירו — EUR</option></select><select id="quickFxTo"><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="ILS">שקל — ILS</option><option value="EUR">אירו — EUR</option></select></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small></div></div>
 <div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
 <div id="documentsModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔐 כספת מסמכים</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">המסמכים נשמרים מקומית במכשיר וזמינים גם ללא אינטרנט. תמונות נדחסות אוטומטית; קובצי PDF נתמכים עד 3MB (מגבלת אחסון המכשיר).</p><div class="row"><select id="docCategory" style="flex:1"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><input id="docName" style="flex:1" maxlength="50" placeholder="שם המסמך"></div><button class="btn blue" id="docAddBtn" type="button">➕ הוסף מסמך</button><input id="docInput" type="file" accept="image/*,application/pdf,.pdf" multiple class="file-input-vh"><div id="documentsGrid" class="doc-grid" style="margin-top:12px"></div></div></div>
+<!-- CHANGE 2026-09-14 SHARE-02: In-app share sheet. It is only a safe fallback/preparation surface; existing vault remains unchanged. -->
+<div id="shareDocumentModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="shareDocumentTitle">שיתוף מסמך</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="shareDocumentBody"></div><div class="row" style="margin-top:8px"><button class="btn green" id="shareNativeBtn" type="button">📤 שיתוף</button><button class="btn blue" id="shareOpenBtn" type="button">🖼️ פתח תמונה</button></div><button class="btn outline" id="shareSaveBtn" type="button">💾 שמור במכשיר</button></div></div>
 <div id="tripSettingsModal" class="modal"><div class="modal-box"><h2>🧭 הגדרות מסע</h2><label class="muted">שם הטיול</label><input id="tripNameInput" placeholder="שם הטיול" maxlength="60"><button class="btn green" id="saveTripName">שמור</button><button class="btn outline close" type="button">סגור</button></div></div>
 <div id="dayEditModal" class="modal"><div class="modal-box"><h2>✎ עריכת יום</h2><select id="editSelect"></select><form id="dayForm"><div class="grid"><input id="fDate" required placeholder="תאריך DD/MM/YYYY"><input id="fRegion" required placeholder="אזור"><input id="fTitle" required placeholder="כותרת"><textarea id="fActivities" required placeholder="פעילויות"></textarea><input id="fHotel" required placeholder="מלון"><input id="fCost" type="number" min="0" required placeholder="עלות"><input id="fLat" type="number" step="any" required placeholder="Latitude"><input id="fLng" type="number" step="any" required placeholder="Longitude"><textarea id="fNotes" placeholder="דגשים"></textarea></div><button class="btn green">שמור שינויים</button><button class="btn outline" type="button" id="deleteDay">מחק יום</button><button class="btn outline close" type="button">סגור</button></form></div></div>
 <div id="userModal" class="modal"><div class="modal-box"><h2>👋 מי נכנס לאפליקציה?</h2><p class="muted">הבחירה תסומן בכל תמונה, רשומה, הוצאה, נקודת עניין והזמנה.</p><div id="userChoices"></div><input id="customUser" maxlength="30" placeholder="או שם אחר"><button class="btn green" id="saveUser">כניסה</button><small class="muted">💡 לוחצים על תג המצלמה כדי להוסיף תמונת פנים אישית (נשמרת בלי צורך באינטרנט)</small><input id="userPhotoInput" type="file" accept="image/*" class="file-input-vh"></div></div>
@@ -1508,7 +1512,64 @@ function docThumbHtml(d){
     ? `<a href="${d.src}" target="_blank" rel="noopener" class="pdf-tile" aria-label="פתח PDF">📄<span>PDF</span></a>`
     : `<img src="${d.src}" alt="${esc(d.name)}">`;
 }
-async function shareDocument(id){const docs=await getDocuments();const d=docs.find(x=>x.id===id);if(!d)return;let file=null;try{const blob=await(await fetch(d.src)).blob();const mime=d.isPdf?'application/pdf':(blob.type||'image/jpeg');const fileName=d.name+(d.isPdf&&!/\.pdf$/i.test(d.name)?'.pdf':'');file=new File([blob],fileName,{type:mime})}catch{file=null}if(file&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:d.name});return}catch(err){if(err&&err.name==='AbortError')return}}window.open(d.src,'_blank')}
+function dataUrlToBlob(dataUrl){
+ const m=String(dataUrl).match(/^data:([^;]+);base64,(.*)$/);
+ if(!m)return null;
+ const mime=m[1],binary=atob(m[2]),len=binary.length,bytes=new Uint8Array(len);
+ for(let i=0;i<len;i++)bytes[i]=binary.charCodeAt(i);
+ return new Blob([bytes],{type:mime})
+}
+/* CHANGE 2026-09-14 SHARE-02: Mobile vault sharing fix.
+   Prepare the File first, then open a small in-app share sheet. The actual
+   navigator.share() call happens from the user's second tap, preserving the
+   transient user activation required by Web Share. Never open a large data:
+   URL as the fallback; use a Blob URL instead. */
+let pendingDocumentShare=null;
+function closeShareFallback(){pendingDocumentShare=null;closeModal($('shareDocumentModal'))}
+function renderShareFallback(d,file,canShareFiles){
+ const title=$('shareDocumentTitle'),body=$('shareDocumentBody');
+ title.textContent='שיתוף מסמך';
+ const preview=d.isPdf
+   ? '<div class="share-preview share-preview-pdf">📄<span>PDF</span></div>'
+   : `<img class="share-preview" src="${d.src}" alt="${esc(d.name)}">`;
+ body.innerHTML=`<div class="share-file-name">${preview}<div><b>${esc(d.name)}</b><div class="muted" style="font-size:.76rem;margin-top:3px">${d.isPdf?'קובץ PDF':'תמונה'}</div></div></div>`+
+   (canShareFiles?'':'<div class="info-box" style="margin-top:10px">השיתוף הישיר אינו זמין במכשיר זה. אפשר לפתוח את הקובץ או לשמור אותו במקום זאת.</div>');
+ $('shareNativeBtn').style.display=canShareFiles?'':'none';
+ $('shareOpenBtn').textContent=d.isPdf?'📄 פתח מסמך':'🖼️ פתח תמונה';
+ openModal('shareDocumentModal');
+}
+async function shareDocument(id){
+ const btn=document.querySelector(`[data-doc-share="${CSS.escape(id)}"]`);
+ if(btn)btn.style.opacity='.45';
+ try{
+  const docs=await getDocuments();const d=docs.find(x=>x.id===id);if(!d)return;
+  const blob=dataUrlToBlob(d.src);if(!blob)throw new Error('document-data-invalid');
+  const mime=d.isPdf?'application/pdf':(blob.type||'image/jpeg');
+  const fileName=d.name+(d.isPdf&&!/\.pdf$/i.test(d.name)?'.pdf':'');
+  const file=new File([blob],fileName,{type:mime});
+  let canShareFiles=false;
+  try{canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[file]}))}catch{canShareFiles=false}
+  pendingDocumentShare={d,file};
+  renderShareFallback(d,file,canShareFiles);
+ }catch(err){
+  console.warn('share preparation failed',err);
+  pendingDocumentShare=null;
+  alert('לא ניתן להכין את המסמך לשיתוף במכשיר זה.');
+ }finally{if(btn)btn.style.opacity=''}
+}
+$('shareNativeBtn').onclick=async()=>{
+ const p=pendingDocumentShare;if(!p)return;
+ try{await navigator.share({files:[p.file],title:p.d.name});closeShareFallback()}
+ catch(err){if(err&&err.name==='AbortError')return;console.warn('native share failed',err);alert('השיתוף לא הצליח. אפשר לנסות לפתוח או לשמור את הקובץ.');}
+};
+$('shareOpenBtn').onclick=()=>{
+ const p=pendingDocumentShare;if(!p)return;
+ const url=URL.createObjectURL(p.file);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);
+};
+$('shareSaveBtn').onclick=()=>{
+ const p=pendingDocumentShare;if(!p)return;
+ const a=document.createElement('a');a.href=URL.createObjectURL(p.file);a.download=p.file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+};
 async function renderResDocs(resId){const wrap=$('resDocsRow');if(!resId){wrap.innerHTML='<span class="muted" style="font-size:.76rem">שמרו את ההזמנה כדי לצרף מסמכים</span>';return}const docs=(await getDocuments()).filter(d=>d.linkedReservationId===resId);wrap.innerHTML=docs.length?docs.map(d=>`<div class="res-doc-thumb">${docThumbHtml(d)}<button class="res-doc-unlink" type="button" data-res-unlink-doc="${esc(d.id)}">×</button></div>`).join(''):'<span class="muted" style="font-size:.76rem">אין עדיין מסמכים מצורפים</span>'}
 async function openReservationDetail(id,prefillType){if(!requireUser())return;const items=await getReservations();const rec=items.find(r=>r.id===id)||null;$('resDetailTitle').textContent=rec?'עריכת הזמנה':'הזמנה חדשה';$('resId').value=rec?rec.id:'';$('resType').value=rec?rec.type:(prefillType&&RES_TYPES[prefillType]?prefillType:'flight');$('resTitle').value=rec?rec.title||'':'';$('resProvider').value=rec?rec.provider||'':'';$('resRef').value=rec?rec.confirmationRef||'':'';$('resStatusOverride').value=rec?rec.statusOverride||'':'';$('resPhone').value=rec?rec.phone||'':'';$('resLink').value=rec?rec.link||'':'';$('resAddress').value=rec?rec.address||'':'';$('resDatetime').value=rec?rec.datetime||'':'';$('resNotes').value=rec?rec.notes||'':'';$('resCost').value=rec&&rec.cost?rec.cost:'';$('resDay').innerHTML='<option value="">— ללא —</option>'+tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$('resDay').value=rec&&rec.linkedDayStart!=null?rec.linkedDayStart:'';$('resBudgetCat').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');$('resBudgetCat').value=rec?(rec.budgetCategory||resMeta(rec.type).budgetCat||'other'):(resMeta($('resType').value).budgetCat||'other');$('resDeleteBtn').style.display=rec?'':'none';$('resDeleteBtn').dataset.id=rec?rec.id:'';
  let hSel=new Set(),hCi='',hCo='';
