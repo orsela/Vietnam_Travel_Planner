@@ -1539,23 +1539,29 @@ function renderShareFallback(d,file,canShareFiles){
  openModal('shareDocumentModal');
 }
 async function shareDocument(id){
+ const docs=await getDocuments();const d=docs.find(x=>x.id===id);if(!d)return;
  const btn=document.querySelector(`[data-doc-share="${CSS.escape(id)}"]`);
  if(btn)btn.style.opacity='.45';
+ let file=null;
  try{
-  const docs=await getDocuments();const d=docs.find(x=>x.id===id);if(!d)return;
-  const blob=dataUrlToBlob(d.src);if(!blob)throw new Error('document-data-invalid');
-  const mime=d.isPdf?'application/pdf':(blob.type||'image/jpeg');
-  const fileName=d.name+(d.isPdf&&!/\.pdf$/i.test(d.name)?'.pdf':'');
-  const file=new File([blob],fileName,{type:mime});
-  let canShareFiles=false;
-  try{canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[file]}))}catch{canShareFiles=false}
-  pendingDocumentShare={d,file};
-  renderShareFallback(d,file,canShareFiles);
- }catch(err){
-  console.warn('share preparation failed',err);
-  pendingDocumentShare=null;
-  alert('לא ניתן להכין את המסמך לשיתוף במכשיר זה.');
- }finally{if(btn)btn.style.opacity=''}
+  const blob=dataUrlToBlob(d.src);
+  if(blob){const mime=d.isPdf?'application/pdf':(blob.type||'image/jpeg');const fileName=d.name+(d.isPdf&&!/\.pdf$/i.test(d.name)?'.pdf':'');file=new File([blob],fileName,{type:mime})}
+ }catch{file=null}
+ if(btn)btn.style.opacity='';
+ let canShareFiles=false;
+ try{canShareFiles=!!(file&&navigator.canShare&&navigator.canShare({files:[file]}))}catch{canShareFiles=false}
+ if(canShareFiles){
+  try{await navigator.share({files:[file],title:d.name});return}
+  catch(err){if(err&&err.name==='AbortError')return}
+ }
+ 
+ const a = document.createElement('a');
+ a.href = d.src;
+ a.download = file ? file.name : (d.name + (d.isPdf ? '.pdf' : '.jpg'));
+ a.style.display = 'none';
+ document.body.appendChild(a);
+ a.click();
+ setTimeout(() => document.body.removeChild(a), 100);
 }
 $('shareNativeBtn').onclick=async()=>{
  const p=pendingDocumentShare;if(!p)return;
