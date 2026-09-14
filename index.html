@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.11 (Reservations list sorted by real fulfillment date)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.14 (Chat assistant: attach one photo per message)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -491,6 +491,12 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .chat-input-row{display:flex;align-items:center;gap:8px;padding:10px 16px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:0 0 auto}
 .chat-input-row input{flex:1;min-height:44px;border-radius:999px;background:#faf8f5}
 .chat-send{width:44px;height:44px;border-radius:50%;background:var(--primary);border:0;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:1.1rem}
+.chat-attach{width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--border);flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:1.05rem}
+.chat-preview-strip{display:flex;gap:8px;padding:8px 16px 0;flex:0 0 auto}
+.chat-preview-thumb{position:relative;width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--border);flex:none}
+.chat-preview-thumb img{width:100%;height:100%;object-fit:cover}
+.chat-preview-thumb .x{position:absolute;top:-4px;left:-4px;width:18px;height:18px;border-radius:50%;background:#17211bcc;color:#fff;font-size:.62rem;border:0;line-height:1;cursor:pointer}
+.chat-img{max-width:100%;border-radius:10px;display:block;margin-bottom:6px}
 .chat-send:disabled{opacity:.5;cursor:default}
 @media(max-width:420px){.chat-fab{bottom:78px}.chat-sheet{height:min(78vh,620px)}}
 
@@ -817,7 +823,10 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
  </div>
  <div class="chat-privacy">🔒 השיחה נשמרת רק במכשיר הזה</div>
  <div id="chatBody" class="chat-body"></div>
+ <div id="chatPreviewStrip" class="chat-preview-strip" style="display:none"></div>
  <div class="chat-input-row">
+  <button id="chatAttachBtn" class="chat-attach" type="button" aria-label="צירוף תמונה">📎</button>
+  <input id="chatImageInput" type="file" accept="image/*" class="file-input-vh">
   <input id="chatInput" type="text" placeholder="שאל שאלה על הטיול…" maxlength="500">
   <button id="chatSendBtn" class="chat-send" type="button" aria-label="שליחה">➤</button>
  </div>
@@ -1425,6 +1434,7 @@ function docThumbHtml(d){
     ? `<a href="${d.src}" target="_blank" rel="noopener" class="pdf-tile" aria-label="פתח PDF">📄<span>PDF</span></a>`
     : `<img src="${d.src}" alt="${esc(d.name)}">`;
 }
+async function shareDocument(id){const docs=await getDocuments();const d=docs.find(x=>x.id===id);if(!d)return;let file=null;try{const blob=await(await fetch(d.src)).blob();const mime=d.isPdf?'application/pdf':(blob.type||'image/jpeg');const fileName=d.name+(d.isPdf&&!/\.pdf$/i.test(d.name)?'.pdf':'');file=new File([blob],fileName,{type:mime})}catch{file=null}if(file&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:d.name});return}catch(err){if(err&&err.name==='AbortError')return}}window.open(d.src,'_blank')}
 async function renderResDocs(resId){const wrap=$('resDocsRow');if(!resId){wrap.innerHTML='<span class="muted" style="font-size:.76rem">שמרו את ההזמנה כדי לצרף מסמכים</span>';return}const docs=(await getDocuments()).filter(d=>d.linkedReservationId===resId);wrap.innerHTML=docs.length?docs.map(d=>`<div class="res-doc-thumb">${docThumbHtml(d)}<button class="res-doc-unlink" type="button" data-res-unlink-doc="${esc(d.id)}">×</button></div>`).join(''):'<span class="muted" style="font-size:.76rem">אין עדיין מסמכים מצורפים</span>'}
 async function openReservationDetail(id,prefillType){if(!requireUser())return;const items=await getReservations();const rec=items.find(r=>r.id===id)||null;$('resDetailTitle').textContent=rec?'עריכת הזמנה':'הזמנה חדשה';$('resId').value=rec?rec.id:'';$('resType').value=rec?rec.type:(prefillType&&RES_TYPES[prefillType]?prefillType:'flight');$('resTitle').value=rec?rec.title||'':'';$('resProvider').value=rec?rec.provider||'':'';$('resRef').value=rec?rec.confirmationRef||'':'';$('resStatusOverride').value=rec?rec.statusOverride||'':'';$('resPhone').value=rec?rec.phone||'':'';$('resLink').value=rec?rec.link||'':'';$('resAddress').value=rec?rec.address||'':'';$('resDatetime').value=rec?rec.datetime||'':'';$('resNotes').value=rec?rec.notes||'':'';$('resCost').value=rec&&rec.cost?rec.cost:'';$('resDay').innerHTML='<option value="">— ללא —</option>'+tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$('resDay').value=rec&&rec.linkedDayStart!=null?rec.linkedDayStart:'';$('resBudgetCat').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');$('resBudgetCat').value=rec?(rec.budgetCategory||resMeta(rec.type).budgetCat||'other'):(resMeta($('resType').value).budgetCat||'other');$('resDeleteBtn').style.display=rec?'':'none';$('resDeleteBtn').dataset.id=rec?rec.id:'';
  let hSel=new Set(),hCi='',hCo='';
@@ -1438,7 +1448,7 @@ async function deleteReservationById(id){if(!requireUser()||!id)return;if(!confi
 async function renderVaultPicker(){const resId=$('resId').value;const docs=await getDocuments();$('resVaultPickerGrid').innerHTML=docs.length?docs.map(d=>`<article class="doc-card">${docThumbHtml(d)}<div class="doc-name">${esc(d.name)}</div><label class="muted" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:.72rem"><input type="checkbox" data-res-vault-check="${esc(d.id)}" ${d.linkedReservationId===resId?'checked':''}> קשר להזמנה זו</label></article>`).join(''):'<p class="muted">אין עדיין מסמכים בכספת</p>'}
 
 async function updateDocumentsSummary(){const el=$('documentsSummary');if(!el)return;const docs=await getDocuments();el.textContent=docs.length?`${docs.length} מסמכים · זמין ללא אינטרנט`:'זמין ללא אינטרנט'}
-async function renderDocuments(){const docs=await getDocuments();$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card">${docThumbHtml(d)}<div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.categoryLabel)} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><button class="btn outline" style="width:100%;margin-top:7px" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים</p>'}
+async function renderDocuments(){const docs=await getDocuments();$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card">${docThumbHtml(d)}<div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.categoryLabel)} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><div class="row" style="margin-top:7px;gap:6px"><button class="btn outline" style="flex:1" data-doc-share="${esc(d.id)}">📤 שיתוף</button><button class="btn outline" style="flex:1" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></div></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים</p>'}
 const WEATHER_KEY='planner:weather:';
 const weatherCodeMap={0:['☀️','בהיר'],1:['🌤️','בהיר ברובו'],2:['⛅','מעונן חלקית'],3:['☁️','מעונן'],45:['🌫️','ערפל'],48:['🌫️','ערפל'],51:['🌦️','טפטוף'],53:['🌦️','טפטוף'],55:['🌧️','גשם קל'],61:['🌧️','גשם'],63:['🌧️','גשם'],65:['🌧️','גשם חזק'],71:['🌨️','שלג'],73:['🌨️','שלג'],75:['❄️','שלג כבד'],80:['🌦️','ממטרים'],81:['🌧️','ממטרים'],82:['⛈️','ממטרים חזקים'],95:['⛈️','סופת רעמים'],96:['⛈️','סופת רעמים'],99:['⛈️','סופת רעמים']};
 async function getTomorrowWeather(dayIndex=globalDayIndex){const d=tripData[dayIndex];if(!d||!valid(d.lat,d.lng))return null;const target=parseDate(d.date);if(!target)return null;target.setDate(target.getDate()+1);const date=target.toISOString().slice(0,10);const cacheKey=WEATHER_KEY+date+':'+d.lat+':'+d.lng;try{const cached=localStorage.getItem(cacheKey);if(cached){const c=JSON.parse(cached);if(Date.now()-c.ts<30*60*1000)return c.data}}catch{}
@@ -1734,7 +1744,7 @@ function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',budget:'budget',more:'more',album:'more',management:'more',backup:'more'};
 function switchPanel(id){const activeId=(id==='home'&&HOME_LAYOUT==='v2')?'homeV2':id;document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===activeId));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more'){updateDocumentsSummary();updateReservationsSummary()}window.scrollTo(0,0)}
 function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser,...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};
+$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser,...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const shareBtn=e.target.closest('[data-doc-share]');if(shareBtn){await shareDocument(shareBtn.dataset.docShare);return}const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};
 /* CHANGE 2026-08-30 RES-01: Reservations Center event wiring — additive, inserted between two pre-existing handlers without altering either. See CHANGELOG_v1.8.0.txt. */
 $('reservationsBtn').onclick=async()=>{openModal('reservationsModal');currentResFilter='all';document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c.dataset.resFilter==='all'));await renderReservationsList()};
 $('resFilters').onclick=async e=>{const chip=e.target.closest('[data-res-filter]');if(!chip)return;currentResFilter=chip.dataset.resFilter;document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c===chip));await renderReservationsList()};
@@ -1943,6 +1953,13 @@ const CHAT_NO_ANSWER_FALLBACKS=['הממ, לא הצלחתי לגבש תשובה �
 const CHAT_ERROR_FALLBACKS=['אופס, הייתה בעיית תקשורת רגעית 🙈 אפשר לנסות שוב?','נראה שמשהו השתבש בדרך -- ננסה שוב בעוד רגע?'];
 function chatPick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 let chatHistory=[];
+let pendingChatImage=null;
+function renderChatPreview(){
+ const el=$('chatPreviewStrip');if(!el)return;
+ if(!pendingChatImage){el.style.display='none';el.innerHTML='';return}
+ el.style.display='flex';
+ el.innerHTML=`<div class="chat-preview-thumb"><img src="${pendingChatImage.dataUrl}" alt=""><button type="button" class="x" data-chat-remove-preview aria-label="הסרת תמונה">✕</button></div>`;
+}
 function loadChatHistory(){try{const raw=localStorage.getItem(CHAT_KEY);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))chatHistory=v}catch{chatHistory=[]}}
 function saveChatHistory(){try{localStorage.setItem(CHAT_KEY,JSON.stringify(chatHistory.slice(-40)))}catch{}}
 function chatSuggestions(d){
@@ -1954,9 +1971,10 @@ function chatSuggestions(d){
  list.push('מה לעשות אם יורד גשם היום?');
  return list.slice(0,3);
 }
-function chatBubbleHtml(role,text,extraClass){
+function chatBubbleHtml(role,text,extraClass,img){
  const justify=role==='user'?'flex-start':'flex-end';
- return `<div class="chat-row" style="justify-content:${justify}"><div class="chat-bubble ${esc(role)}${extraClass?' '+esc(extraClass):''}">${esc(text)}</div></div>`;
+ const imgHtml=img?`<img class="chat-img" src="${img}" alt="">`:'';
+ return `<div class="chat-row" style="justify-content:${justify}"><div class="chat-bubble ${esc(role)}${extraClass?' '+esc(extraClass):''}">${imgHtml}${text?esc(text):''}</div></div>`;
 }
 /* CHANGE 2026-08-29 GM-21: render a confirmation card under any assistant message that carries a
    proposed action. Nothing here ever mutates tripData by itself -- it only wires the two buttons
@@ -1972,7 +1990,7 @@ function chatActionCardHtml(idx,action,status){
  return `<div class="chat-row" style="justify-content:flex-end"><div class="chat-action-card"><div class="chat-action-desc">${desc}</div>${body}</div></div>`;
 }
 function chatMessageHtml(m,idx){
- let html=chatBubbleHtml(m.role,m.text);
+ let html=chatBubbleHtml(m.role,m.text,null,m.img);
  if(m.action)html+=chatActionCardHtml(idx,m.action,m.status||'pending');
  return html;
 }
@@ -2000,16 +2018,33 @@ function openChatSheet(){
  setTimeout(()=>$('chatInput')?.focus(),50);
 }
 function closeChatSheet(){$('chatScrim').classList.remove('open');$('chatSheet').classList.remove('open')}
+async function buildChatExtraContext(){
+ const target=await getBudgetTarget(),items=await getExpenses();
+ const by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));
+ items.forEach(e=>by[e.category]=(by[e.category]||0)+Number(e.amount||0));
+ tripData.forEach(d=>{if(d.isBooked)by.lodging=(by.lodging||0)+Number(d.actualCost||0)});
+ const spent=Object.values(by).reduce((a,b)=>a+b,0);
+ const budget={target,spent,byCategory:Object.fromEntries(Object.entries(by).map(([k,v])=>[CATEGORIES[k]||k,v]))};
+ const expenses=[];
+ tripData.forEach(d=>{if(d.isBooked)expenses.push({date:d.date,category:'לינה',detail:d.bookedHotel||d.hotel||'',amount:Number(d.actualCost||0)})});
+ items.forEach(e=>{const di=e.dayIndex!=null&&tripData[e.dayIndex]?e.dayIndex:null;expenses.push({date:di!=null?tripData[di].date:'',category:CATEGORIES[e.category]||e.category,detail:e.description||'',amount:Number(e.amount||0)})});
+ const docs=await getDocuments(),resItems=await getReservations().catch(()=>[]);
+ const documents=docs.map(d=>{const rec=d.linkedReservationId?resItems.find(r=>r.id===d.linkedReservationId):null;return{name:d.name,category:d.categoryLabel,uploadedAt:new Date(d.createdAt).toLocaleDateString('he-IL'),linkedTo:rec?rec.title:null}});
+ const journalRaw=await Promise.all(tripData.map(async(d,i)=>{try{const raw=await SS.get('planner:journal:'+i);if(!raw)return null;const m=JSON.parse(raw);if(!m||!m.text)return null;return{day:d.day,date:d.date,region:d.region,by:m.by||'',text:m.text}}catch{return null}}));
+ return{budget,expenses,documents,journal:journalRaw.filter(Boolean)};
+}
 async function sendChatMessage(text){
  text=String(text||'').trim();
- if(!text)return;
+ const img=pendingChatImage;
+ if(!text&&!img)return;
  $('chatInput').value='';
+ pendingChatImage=null;renderChatPreview();
  if(!CHAT_ENDPOINT){
-  chatHistory.push({role:'user',text});
+  chatHistory.push({role:'user',text,img:img?img.dataUrl:undefined});
   chatHistory.push({role:'assistant',text:'אופס, השיחה הזו עדיין לא מחוברת לענן 🙈 מי שמתחזק את האפליקציה צריך להפעיל את זה קודם.'});
   saveChatHistory();renderChatBody();return;
  }
- chatHistory.push({role:'user',text});
+ chatHistory.push({role:'user',text,img:img?img.dataUrl:undefined});
  saveChatHistory();renderChatBody();
  const el=$('chatBody');
  el.insertAdjacentHTML('beforeend',chatBubbleHtml('assistant','חושב…','chat-typing'));
@@ -2022,7 +2057,7 @@ async function sendChatMessage(text){
      just weren't being sent to the assistant before. No new network calls or API keys needed:
      getFxRates() reads the already-shared rates, getDayWeather() reuses the same 30-min
      localStorage cache the route-screen weather widget already uses. See CHANGELOG_v1.5.9.txt. */
-  const [fx,weather]=await Promise.all([getFxRates().catch(()=>null),getDayWeather(globalDayIndex).catch(()=>null)]);
+  const [fx,weather,extras]=await Promise.all([getFxRates().catch(()=>null),getDayWeather(globalDayIndex).catch(()=>null),buildChatExtraContext().catch(()=>null)]);
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),40000); /* CHANGE 2026-08-30 GM-25: 20s->40s -- confirmed via Supabase Invocations that some requests (esp. Gemini via the "-latest" alias, which can route to a slower/thinking-enabled model) were completing successfully server-side (200) just after the old 20s client timeout had already aborted and shown an error. See CHANGELOG_v1.7.4.txt. */
   let res;
@@ -2032,10 +2067,15 @@ async function sendChatMessage(text){
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+window.SUPABASE_ANON_KEY,'apikey':window.SUPABASE_ANON_KEY},
     body:JSON.stringify({
      question:text,
+     image:img?{mime:img.mime,data:img.data}:null,
      currentDay:d?{day:d.day,date:d.date,region:d.region,title:d.title,activities:d.activities,hotel:d.bookedHotel||d.hotel,notes:d.notes,cost:d.cost,waypoints:(d.waypoints||[]).map(w=>w.name),isBooked:!!d.isBooked,bookingRef:d.bookingRef||null,actualCost:d.isBooked?(d.actualCost??null):null}:null,
      trip:tripData.map(x=>({day:x.day,date:x.date,region:x.region,title:x.title})),
      fx:fx?{USD:fx.USD,EUR:fx.EUR,VND:fx.VND}:null,
      weather:weather?{region:weather.region,max:weather.max,min:weather.min,rain:weather.rain,date:weather.date}:null,
+     budget:extras?extras.budget:null,
+     expenses:extras?extras.expenses:null,
+     documents:extras?extras.documents:null,
+     journal:extras?extras.journal:null,
      history:chatHistory.slice(-8).map(m=>({role:m.role,text:m.text}))
     }),
     signal:controller.signal
@@ -2115,6 +2155,17 @@ $('chatCloseBtn').onclick=closeChatSheet;
 $('chatScrim').onclick=closeChatSheet;
 $('chatSendBtn').onclick=()=>sendChatMessage($('chatInput').value);
 $('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChatMessage($('chatInput').value)}});
+$('chatAttachBtn').onclick=()=>$('chatImageInput').click();
+$('chatImageInput').onchange=async e=>{
+ const f=e.target.files[0];e.target.value='';
+ if(!f)return;
+ const dataUrl=await compressImage(f);
+ if(!dataUrl)return;
+ const m=dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+ pendingChatImage=m?{mime:m[1],data:m[2],dataUrl}:null;
+ renderChatPreview();
+};
+$('chatPreviewStrip').onclick=e=>{if(e.target.closest('[data-chat-remove-preview]')){pendingChatImage=null;renderChatPreview()}};
 loadChatHistory();
 
 (async function boot(){
