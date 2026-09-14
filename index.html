@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.15 (Journal entries no longer overwrite each other; chat camera opens directly)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.16 (Fix: chat now actually sees existing journal entries)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -953,6 +953,24 @@ async function getJournalEntries(day){
   return entries
  }catch{return[]}
 }
+/* CHANGE 2026-09-14 JOURNAL-CHAT-FIX-01: entries + the legacy-single-blob-text fallback, WITHOUT
+   resolving photos (unlike getJournal() below, which does -- fetching every photo's full base64
+   image data). Any caller that only needs the text feed (the journal screen's own read path via
+   getJournal, and the chat context builder) should go through this, not getJournalEntries() alone
+   -- calling getJournalEntries() directly would silently skip any day whose journal text was
+   written before the per-entry-key redesign and never re-saved since (i.e. most real existing
+   data on a trip already underway), because that text only ever lived in the legacy blob this
+   function also checks. */
+async function getJournalEntriesWithLegacy(day){
+ let entries=await getJournalEntries(day);
+ if(!entries.length){
+  try{
+   const raw=await SS.get('planner:journal:'+day);
+   if(raw){const m=JSON.parse(raw);if(m&&typeof m.text==='string'&&m.text.trim())entries=[{id:'legacy',text:m.text,by:m.by||'',createdAt:m.editedAt||0}]}
+  }catch{}
+ }
+ return entries
+}
 async function addJournalEntry(day,text,by){
  const id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const entry={id,text,by,createdAt:Date.now()};
@@ -967,9 +985,7 @@ async function getJournal(day){
  for(const pid of meta.photoIds){const v=await SS.get('planner:photo:'+day+':'+pid);if(!v)continue;
   try{const p=JSON.parse(v);photos.push({id:pid,src:p.src,by:p.by||'',uploadedAt:p.uploadedAt||0,favorite:!!p.favorite})}catch{photos.push({id:pid,src:v,by:'',favorite:false})}}
  meta.photos=photos;
- let entries=await getJournalEntries(day);
- if(!entries.length&&meta.text.trim())entries=[{id:'legacy',text:meta.text,by:meta.by,createdAt:meta.editedAt||0}];
- meta.entries=entries;
+ meta.entries=await getJournalEntriesWithLegacy(day);
  return meta}
 async function saveJournalMeta(day,meta){
  await SS.set('planner:journal:'+day,JSON.stringify({text:meta.text||'',by:meta.by||'',editedAt:meta.editedAt||0,photoIds:meta.photoIds||[]}))}
@@ -2084,7 +2100,7 @@ async function buildChatExtraContext(){
  items.forEach(e=>{const di=e.dayIndex!=null&&tripData[e.dayIndex]?e.dayIndex:null;expenses.push({date:di!=null?tripData[di].date:'',category:CATEGORIES[e.category]||e.category,detail:e.description||'',amount:Number(e.amount||0)})});
  const docs=await getDocuments(),resItems=await getReservations().catch(()=>[]);
  const documents=docs.map(d=>{const rec=d.linkedReservationId?resItems.find(r=>r.id===d.linkedReservationId):null;return{name:d.name,category:d.categoryLabel,uploadedAt:new Date(d.createdAt).toLocaleDateString('he-IL'),linkedTo:rec?rec.title:null}});
- const journalPerDay=await Promise.all(tripData.map(async d=>{const entries=await getJournalEntries(d.day).catch(()=>[]);return entries.length?{day:d.day,date:d.date,region:d.region,entries:entries.map(e=>({by:e.by||'',text:e.text}))}:null}));
+ const journalPerDay=await Promise.all(tripData.map(async d=>{const entries=await getJournalEntriesWithLegacy(d.day).catch(()=>[]);return entries.length?{day:d.day,date:d.date,region:d.region,entries:entries.map(e=>({by:e.by||'',text:e.text}))}:null}));
  const journal=journalPerDay.filter(Boolean);
  return{budget,expenses,documents,journal};
 }
