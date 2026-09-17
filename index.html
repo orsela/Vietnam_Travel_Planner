@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.3.19 (Fix: mobile vault sharing)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.0 (Budget: currency + day-strip + transport category)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -317,6 +317,19 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .budget-detail-table .bd-actions{white-space:nowrap;text-align:end}
 .budget-detail-table .bd-actions button{padding:3px 7px;min-height:26px;font-size:.78rem}
 .budget-detail-table tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
+/* CHANGE 2026-09-17 BUD-CUR-02: styles for the new pay-in-original-currency chips on the
+   add-expense form. Mirrors the existing day-chip visual language already used elsewhere.
+   Additive only -- no existing selector above is touched. */
+.currow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:var(--sp-2)}
+.curchip{border:1.5px solid var(--border);background:#fff;border-radius:var(--radius);padding:10px 4px;text-align:center;font-weight:700;font-size:.95rem;cursor:pointer;touch-action:manipulation;color:var(--muted)}
+.curchip .code{display:block;font-size:.6rem;font-weight:700;color:var(--muted);margin-top:1px}
+.curchip.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+.curchip.active .code{color:var(--primary)}
+.calcbox{border:1px dashed var(--border);border-radius:var(--radius);padding:10px 12px;font-size:.82rem;color:var(--muted);display:none}
+.calcbox.show{display:block}
+.calcbox b{color:var(--success);font-size:1rem}
+.err{color:var(--primary);font-size:.78rem;display:none;margin-top:-4px}
+.err.show{display:block}
 .global-fx{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:28;border:1px solid #cfd7df;background:#fff;color:var(--text);box-shadow:0 4px 14px #00000018;border-radius:999px;padding:7px 13px;font-weight:800;font-size:.76rem;cursor:pointer;touch-action:manipulation}
 .doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.doc-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:10px;min-width:0}.doc-card img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:10px;background:#f3f4f6}.doc-name{font-weight:800;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-meta{font-size:.68rem;color:var(--muted)}
 .doc-thumb-wrap{position:relative}
@@ -728,7 +741,16 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><div id="journalFeed" class="journal-feed"></div><label class="muted journal-compose-label">הוספת רשומה חדשה (לא מוחקת שום דבר שכבר נכתב)</label><textarea id="journalText" rows="3" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">+ הוסף רשומה</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
-<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><details class="card" id="addExpenseDetails"><summary><h3 style="display:inline">➕ הוספת הוצאה</h3></summary><div class="subsection-body"><div class="grid"><input id="expenseDescription" placeholder="תיאור"><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="markets">שווקים</option><option value="shopping">קניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select><select id="expenseDay"><option value="">— לא משויך ליום —</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
+<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><!-- CHANGE 2026-09-17 BUD-CUR-01 + BUD-DAY-01: the add-expense form gained (1) a day-strip
+     (replacing the old expenseDay <select>, which always reset to "not linked" on every
+     renderBudget() rebuild) defaulting to whichever trip day matches today's real calendar
+     date, and (2) a currency chip row + explicit "חשב לשקלים" step so amounts can be entered
+     in the original currency and converted to ILS before saving. Category select updated for
+     the merged/added categories below. See renderExpenseDayStrip/applyExpenseCurrencyUI and the
+     rewritten saveExpense handler further down. --><details class="card" id="addExpenseDetails"><summary><h3 style="display:inline">➕ הוספת הוצאה</h3></summary><div class="subsection-body"><div class="day-nav-wrap" style="margin-bottom:var(--sp-3)"><button class="btn outline nav-arrow" id="expenseDayPrev" type="button">‹</button><div id="expenseDayStrip" class="day-strip" aria-label="בחירת יום להוצאה"></div><button class="btn outline nav-arrow" id="expenseDayNext" type="button">›</button></div><div class="grid"><input id="expenseDescription" placeholder="תיאור"><div><div class="muted" style="margin-bottom:6px;font-weight:700;font-size:.78rem">שולם ב־</div><div class="currow" id="expenseCurRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="code">VND</span></button></div></div><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><div class="err" id="expenseAmtErr">⚠️ הזן סכום תקין</div><div class="row" id="expenseCalcRow" style="display:none"><button class="btn outline" id="expenseCalcBtn" type="button" style="flex:1">🔄 חשב לשקלים</button></div><div class="calcbox" id="expenseCalcBox"></div><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="transport">נסיעות</option><option value="shopping">שווקים וקניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div></details><!-- CHANGE 2026-09-17 BUD-MIG-01: one-time, explicitly-confirmed scan of existing 'אחר'
+     expenses for transport keywords, offering to move matches to the new 'transport'
+     category. Nothing changes until the user clicks the approval button -- see
+     scanTransportCandidates/renderCategoryMigration in the script below. --><details class="card" id="categoryMigrationDetails"><summary><h3 style="display:inline">🔁 עדכון קטגוריות ישנות</h3></summary><div class="subsection-body"><p class="muted" style="margin-top:0">בדיקה חד-פעמית: הוצאות שסומנו "אחר" ומכילות מילת מפתח של נסיעות (נסיעה, Grab, מונית, טקסי, אוטובוס, רכבת, טיסה) יוצעו למעבר לקטגוריית "נסיעות". שום דבר לא משתנה בלי אישור מפורש.</p><button class="btn outline" id="scanTransportBtn" type="button">🔍 סרוק הוצאות ישנות</button><div id="categoryMigrationResult"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
@@ -877,7 +899,16 @@ function tzCityLabel(tz){if(TZ_CITY_HE[tz])return TZ_CITY_HE[tz];const parts=Str
 function tzOffsetMinutes(tz,d){try{const dtf=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});const parts=Object.fromEntries(dtf.formatToParts(d).map(p=>[p.type,p.value]));const hh=parts.hour==='24'?0:Number(parts.hour);const asUTC=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),hh,Number(parts.minute),Number(parts.second));return(asUTC-d.getTime())/60000}catch{return 0}}
 function tickClocks(){const localTz=Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Ho_Chi_Minh';const now=new Date();const fmt=tz=>{try{return now.toLocaleTimeString('he-IL',{timeZone:tz,hour:'2-digit',minute:'2-digit'})}catch{return'--:--'}};if($('clockLocalTime'))$('clockLocalTime').textContent=fmt(localTz);if($('clockLocalCity'))$('clockLocalCity').textContent=tzCityLabel(localTz);if($('clockIsraelTime'))$('clockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('clockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('clockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`מקדימים ב-${diffH} שעות`:`מפגרים ב-${Math.abs(diffH)} שעות`}
 if($('hv2ClockChip'))$('hv2ClockChip').textContent='🕐 '+fmt(localTz);if($('hv2ClockLocalTime'))$('hv2ClockLocalTime').textContent=fmt(localTz);if($('hv2ClockLocalCity'))$('hv2ClockLocalCity').textContent='📍 '+tzCityLabel(localTz);if($('hv2ClockIsraelTime'))$('hv2ClockIsraelTime').textContent=fmt('Asia/Jerusalem');if($('hv2ClockDiff')){const diffH=Math.round((tzOffsetMinutes(localTz,now)-tzOffsetMinutes('Asia/Jerusalem',now))/60);$('hv2ClockDiff').textContent=diffH===0?'זהה לשעון ישראל':diffH>0?`+${diffH} שעות`:`${diffH} שעות`}}
-const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',markets:'שווקים',shopping:'קניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;
+/* CHANGE 2026-09-17 BUD-CAT-01: merged the 'markets' category into 'shopping' (now "שווקים וקניות")
+   and added a new 'transport' category ("נסיעות"), per Or's explicit decision. CATEGORIES already
+   drives the category <select>, the budget tiles, and the detail table automatically -- this one
+   line is the whole change for those three UIs. Existing expenses already saved with
+   category:'markets' are NOT rewritten here -- normalizeCategory() below folds them into
+   'shopping' for display/totals only, since that's a straight rename, not a guess; the separate
+   'אחר'→'נסיעות' migration (scanTransportCandidates) is the one that needs explicit confirmation,
+   since it's inferring intent from free text. */
+function normalizeCategory(c){return c==='markets'?'shopping':c}
+const USERS=['אור','שירי','שחר','עמית','עפרי'];const CATEGORIES={lodging:'לינה',food:'אוכל',transport:'נסיעות',shopping:'שווקים וקניות',attractions:'אטרקציות',other:'אחר'};const KEYS={trip:'vietnam_planner_trip_v1',user:'vietnam_planner_user_v1',expenses:'vietnam_planner_expenses_v1',budget:'vietnam_planner_budget_v1'};const DEFAULT_BUDGET=23000;
 /* CHANGE 2026-08-31 POI-02: config list of external Google My Maps layers shown together under the
    "🧭 נק' עניין" map mode. To add another public/personal My Maps document later: add one object here
    with its mid (the id from the map's share URL, e.g. .../data=!3m1!4b1!4m2!6m1!1s<mid>) — nothing else
@@ -1636,13 +1667,13 @@ async function getExpenses(){try{const raw=await SS.get(SHARED.expenses);const v
 async function saveExpenses(items){await SS.set(SHARED.expenses,JSON.stringify(items))}
 async function getBudgetTarget(){const raw=await SS.get(SHARED.budget);const n=Number(raw);if(Number.isFinite(n)&&n>0)return n;
  const old=Number(localStorage.getItem(KEYS.budget));return Number.isFinite(old)&&old>0?old:DEFAULT_BUDGET}
-const CAT_ICONS={lodging:'🏨',food:'🍜',markets:'🏮',shopping:'🛍️',attractions:'🎟️',other:'💰'};
+const CAT_ICONS={lodging:'🏨',food:'🍜',transport:'🚕',shopping:'🛍️',attractions:'🎟️',other:'💰'};
 const CAT_BUDGET_KEY='planner:catbudgets';
 async function getCatBudgets(){try{const raw=await SS.get(CAT_BUDGET_KEY);return raw?JSON.parse(raw):{}}catch{return{}}}
 async function saveCatBudget(cat,value){const cur=await getCatBudgets();cur[cat]=value;await SS.set(CAT_BUDGET_KEY,JSON.stringify(cur))}
 async function ensureDefaultLodgingBudget(){const cur=await getCatBudgets();if(cur.lodging!=null)return;
  const total=tripData.reduce((s,d)=>s+Number(d.cost||0),0);if(total>0)await saveCatBudget('lodging',total)}
-async function renderBudget(){const target=await getBudgetTarget(),items=await getExpenses(),by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));items.forEach(e=>by[e.category]=(by[e.category]||0)+Number(e.amount||0));tripData.forEach(d=>{if(d.isBooked)by.lodging+=Number(d.actualCost||0)});const total=Object.values(by).reduce((a,b)=>a+b,0);$('budgetTarget').value=target;const pct=Math.min(100,total/target*100);$('budgetBar').style.width=pct+'%';$('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;$('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
+async function renderBudget(){const target=await getBudgetTarget(),items=await getExpenses(),by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));items.forEach(e=>{const c=normalizeCategory(e.category);by[c]=(by[c]||0)+Number(e.amount||0)});tripData.forEach(d=>{if(d.isBooked)by.lodging+=Number(d.actualCost||0)});const total=Object.values(by).reduce((a,b)=>a+b,0);$('budgetTarget').value=target;const pct=Math.min(100,total/target*100);$('budgetBar').style.width=pct+'%';$('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;$('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
  const catBudgets=await getCatBudgets();
  $('catChips').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>{
   const planned=Number(catBudgets[k]||0),actual=Number(by[k]||0);
@@ -1652,18 +1683,100 @@ async function renderBudget(){const target=await getBudgetTarget(),items=await g
   <div class="trow actual ${planned>0?(over?'over':'under'):''}">בפועל<b>${actual.toLocaleString('he-IL')}₪${planned>0?(over?' ⚠️':' ✅'):''}</b></div></div>`}).join('');
  document.querySelectorAll('.tile input').forEach(inp=>inp.onchange=async()=>{await saveCatBudget(inp.dataset.cat,Number(inp.value)||0);renderBudget()});
 
- $('expenseDay').innerHTML='<option value="">— לא משויך ליום —</option>'+tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.date)}</option>`).join('');
+ if(!expenseFormDayInited){expenseFormDayIndex=expenseDefaultDayIndex();expenseFormDayInited=true}
+ renderExpenseDayStrip();
  const lodgingRows=[];tripData.forEach((d,i)=>{if(d.isBooked)lodgingRows.push({dateStr:d.date,dateIso:iso(d.date)||'',category:'lodging',detail:d.bookedHotel||d.hotel||'',amount:Number(d.actualCost||0),source:'lodging',dayIndex:i})});
- const expenseRows=items.map((e,idx)=>{const di=e.dayIndex!=null&&tripData[e.dayIndex]?e.dayIndex:null;return{dateStr:di!=null?tripData[di].date:'',dateIso:di!=null?(iso(tripData[di].date)||''):'',category:e.category||'other',detail:e.description||'',amount:Number(e.amount||0),source:'expense',expenseIdx:idx}});
+ const expenseRows=items.map((e,idx)=>{const di=e.dayIndex!=null&&tripData[e.dayIndex]?e.dayIndex:null;return{dateStr:di!=null?tripData[di].date:'',dateIso:di!=null?(iso(tripData[di].date)||''):'',category:normalizeCategory(e.category)||'other',detail:e.description||'',amount:Number(e.amount||0),source:'expense',expenseIdx:idx}});
  const detailRows=[...lodgingRows,...expenseRows].sort((a,b)=>(a.dateIso||'9999-99-99').localeCompare(b.dateIso||'9999-99-99'));
  const detailTotal=detailRows.reduce((s,r)=>s+r.amount,0);
  $('expenseList').innerHTML=`<table class="budget-detail-table"><thead><tr><th>תאריך</th><th>סעיף</th><th>פרוט</th><th>עלות</th><th></th></tr></thead><tbody>${
   detailRows.map(r=>`<tr class="${r.source==='lodging'?'lodging-row':''}"><td class="bd-date">${esc(r.dateStr||'—')}</td><td class="bd-cat">${esc(CATEGORIES[r.category]||r.category)}</td><td class="bd-detail" title="${esc(r.detail)}">${esc(r.detail)}${r.source==='lodging'?' <span class="muted">🏨</span>':''}</td><td class="bd-amount">${r.amount.toLocaleString('he-IL')} ₪</td><td class="bd-actions">${r.source==='expense'?`<button class="btn outline" data-edit-expense="${r.expenseIdx}">✎</button><button class="btn outline" data-delete-expense="${r.expenseIdx}">🗑️</button>`:''}</td></tr>`).join('')||`<tr><td colspan="5" class="muted" style="text-align:center;padding:14px">אין עדיין הוצאות רשומות</td></tr>`
  }</tbody>${detailRows.length?`<tfoot><tr><td colspan="3">סה״כ</td><td class="bd-amount">${detailTotal.toLocaleString('he-IL')} ₪</td><td></td></tr></tfoot>`:''}</table>`;
 }
-$('expenseList').onclick=async e=>{const editBtn=e.target.closest('[data-edit-expense]');const delBtn=e.target.closest('[data-delete-expense]');if(delBtn){if(!requireUser())return;if(!confirm('למחוק הוצאה זו?'))return;const items=await getExpenses();items.splice(Number(delBtn.dataset.deleteExpense),1);await saveExpenses(items);renderBudget();renderDailyBurn();}else if(editBtn){if(!requireUser())return;const idx=Number(editBtn.dataset.editExpense);const items=await getExpenses();const exp=items[idx];$('expenseDescription').value=exp.description;$('expenseAmount').value=exp.amount;$('expenseCategory').value=exp.category||'other';$('expenseDay').value=exp.dayIndex!=null?exp.dayIndex:'';$('saveExpense').dataset.editIdx=idx;$('saveExpense').textContent='עדכן הוצאה';$('cancelEditExpense').style.display='inline-block';$('expenseDescription').focus()}};
-$('saveExpense').onclick=async()=>{if(!requireUser())return;const a=Number($('expenseAmount').value),d=$('expenseDescription').value.trim();if(!d||!Number.isFinite(a)||a<0)return alert('פרטי הוצאה לא תקינים');const items=await getExpenses();const dayIndex=$('expenseDay').value===''?null:Number($('expenseDay').value);const editIdx=$('saveExpense').dataset.editIdx;if(editIdx!==undefined&&editIdx!==''){items[Number(editIdx)]={...items[Number(editIdx)],description:d,amount:a,category:$('expenseCategory').value,dayIndex,by:activeUser,editedAt:Date.now()};delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none'}else{items.push({description:d,amount:a,category:$('expenseCategory').value,dayIndex,by:activeUser,createdAt:Date.now()})}await saveExpenses(items);$('expenseDescription').value='';$('expenseAmount').value='';$('expenseDay').value='';renderBudget();renderDailyBurn();};
-$('cancelEditExpense').onclick=()=>{delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none';$('expenseDescription').value='';$('expenseAmount').value='';$('expenseDay').value=''};
+/* CHANGE 2026-09-17 BUD-DAY-01: day-strip for the add-expense form, replacing the old
+   expenseDay <select> (see the HTML change above). Defaults to whichever trip day's real
+   calendar date matches today; persists across consecutive saves in the same session instead
+   of resetting to "not linked" every time, the way the old <select> did (renderBudget() rebuilt
+   its innerHTML on every call, which discarded any selection). A "ללא יום" chip keeps the
+   existing ability to leave an expense unlinked. */
+let expenseFormDayIndex=null,expenseFormDayInited=false;
+function expenseDefaultDayIndex(){
+ const now=new Date();
+ const todayIso=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+ const idx=tripData.findIndex(dd=>iso(dd.date)===todayIso);
+ return idx>-1?idx:null;
+}
+function renderExpenseDayStrip(){
+ const el=$('expenseDayStrip');if(!el)return;
+ el.innerHTML='<button type="button" class="day-chip'+(expenseFormDayIndex===null?' active':'')+'" data-expense-day-idx=""><strong>ללא</strong>יום</button>'+
+  tripData.map((dd,i)=>`<button type="button" class="day-chip ${expenseFormDayIndex===i?'active':''}" data-expense-day-idx="${i}"><strong>יום ${dd.day}</strong>${esc(String(dd.date).slice(0,5))}</button>`).join('');
+ el.querySelectorAll('[data-expense-day-idx]').forEach(b=>{
+  b.onclick=()=>{const v=b.dataset.expenseDayIdx;expenseFormDayIndex=v===''?null:Number(v);renderExpenseDayStrip()};
+ });
+ const active=el.querySelector('.active');if(active)active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+$('expenseDayPrev').onclick=()=>{const cur=expenseFormDayIndex??0;expenseFormDayIndex=Math.max(0,cur-1);renderExpenseDayStrip()};
+$('expenseDayNext').onclick=()=>{const cur=expenseFormDayIndex??-1;expenseFormDayIndex=Math.min(tripData.length-1,cur+1);renderExpenseDayStrip()};
+
+/* CHANGE 2026-09-17 BUD-CUR-01: currency chips on the add-expense form. Uses the app's existing
+   shared FX rates (getFxRates/ilsPerUnit, same ones the "💱 מחשבון המרה" panel already uses) so
+   there is exactly one source of truth for exchange rates. The last currency chosen is remembered
+   per-device via localStorage, per Or's explicit decision; calculation is an explicit step
+   ("חשב לשקלים") required before saving, also per Or's decision -- not live-as-you-type. */
+let expenseSelectedCur=localStorage.getItem('planner:lastExpenseCurrency')||'ILS',expenseCalculatedILS=null;
+function applyExpenseCurrencyUI(){
+ document.querySelectorAll('#expenseCurRow .curchip').forEach(c=>c.classList.toggle('active',c.dataset.cur===expenseSelectedCur));
+ const isILS=expenseSelectedCur==='ILS';
+ $('expenseAmount').placeholder=isILS?'סכום בש״ח':'סכום ב-'+expenseSelectedCur;
+ $('expenseCalcRow').style.display=isILS?'none':'flex';
+ $('expenseCalcBox').classList.remove('show');
+ expenseCalculatedILS=null;
+}
+document.querySelectorAll('#expenseCurRow .curchip').forEach(chip=>{
+ chip.onclick=()=>{expenseSelectedCur=chip.dataset.cur;localStorage.setItem('planner:lastExpenseCurrency',expenseSelectedCur);applyExpenseCurrencyUI()};
+});
+$('expenseCalcBtn').onclick=async()=>{
+ const amt=Number($('expenseAmount').value);
+ $('expenseAmtErr').classList.remove('show');
+ if(!Number.isFinite(amt)||amt<=0){$('expenseAmtErr').classList.add('show');return}
+ const rates=await getFxRates();
+ const rate=ilsPerUnit(rates,expenseSelectedCur);
+ const ils=amt*rate;
+ expenseCalculatedILS=ils;
+ const rateTxt=expenseSelectedCur==='VND'?`1,000 VND = ${(rate*1000).toLocaleString('he-IL',{maximumFractionDigits:2})} ₪`:`1 ${expenseSelectedCur} = ${rate.toLocaleString('he-IL',{maximumFractionDigits:2})} ₪`;
+ $('expenseCalcBox').innerHTML=`${amt.toLocaleString('he-IL')} ${expenseSelectedCur} = <b>${ils.toLocaleString('he-IL',{maximumFractionDigits:2})} ₪</b><br>שער: ${rateTxt}`;
+ $('expenseCalcBox').classList.add('show');
+};
+$('expenseAmount').addEventListener('input',()=>{expenseCalculatedILS=null;$('expenseCalcBox').classList.remove('show');$('expenseAmtErr').classList.remove('show')});
+applyExpenseCurrencyUI();
+
+/* CHANGE 2026-09-17 BUD-MIG-01: one-time, explicitly-confirmed scan of existing 'אחר' expenses
+   for transport keywords (see the HTML change above for the "🔁 עדכון קטגוריות ישנות" card).
+   Nothing is written until the user clicks the approval button. */
+const TRANSPORT_MIGRATION_KEYWORDS=['נסיעה','grab','מונית','טקסי','אוטובוס','רכבת','טיסה'];
+async function scanTransportCandidates(){
+ const items=await getExpenses();
+ return items.map((e,i)=>({...e,i})).filter(e=>e.category==='other'&&TRANSPORT_MIGRATION_KEYWORDS.some(k=>String(e.description||'').toLowerCase().includes(k)));
+}
+async function renderCategoryMigration(matches){
+ const el=$('categoryMigrationResult');if(!el)return;
+ if(!matches.length){el.innerHTML='<p class="muted">לא נמצאו הוצאות מתאימות לעדכון.</p>';return}
+ el.innerHTML=`<div class="chat-action-card"><div class="chat-action-desc">נמצאו ${matches.length} הוצאות שסומנו "אחר" ותואמות מילת מפתח של נסיעות. להעביר אותן לקטגוריית "נסיעות"?</div><ul style="font-size:.78rem;margin:0 0 10px;padding-inline-start:18px">${matches.map(m=>`<li>${esc(m.description)} — ${Number(m.amount||0).toLocaleString('he-IL')} ₪</li>`).join('')}</ul><div class="chat-action-btns"><button type="button" class="btn gold" id="migApproveBtn">✅ אישור והעברה</button><button type="button" class="btn outline" id="migCancelBtn">ביטול</button></div></div>`;
+ $('migApproveBtn').onclick=async()=>{
+  if(!requireUser())return;
+  const items=await getExpenses();
+  matches.forEach(m=>{if(items[m.i])items[m.i]={...items[m.i],category:'transport',editedAt:Date.now(),editedBy:activeUser}});
+  await saveExpenses(items);
+  el.innerHTML='<div class="chat-action-card"><div class="chat-action-result ok">✅ '+matches.length+' הוצאות עודכנו ונשמרו</div></div>';
+  renderBudget();renderDailyBurn();
+ };
+ $('migCancelBtn').onclick=()=>{el.innerHTML=''};
+}
+$('scanTransportBtn').onclick=async()=>{const matches=await scanTransportCandidates();await renderCategoryMigration(matches)};
+
+$('expenseList').onclick=async e=>{const editBtn=e.target.closest('[data-edit-expense]');const delBtn=e.target.closest('[data-delete-expense]');if(delBtn){if(!requireUser())return;if(!confirm('למחוק הוצאה זו?'))return;const items=await getExpenses();items.splice(Number(delBtn.dataset.deleteExpense),1);await saveExpenses(items);renderBudget();renderDailyBurn();}else if(editBtn){if(!requireUser())return;const idx=Number(editBtn.dataset.editExpense);const items=await getExpenses();const exp=items[idx];$('expenseDescription').value=exp.description;expenseSelectedCur=exp.originalCurrency||'ILS';applyExpenseCurrencyUI();$('expenseAmount').value=exp.originalCurrency?exp.originalAmount:exp.amount;$('expenseCategory').value=exp.category||'other';expenseFormDayIndex=exp.dayIndex!=null?exp.dayIndex:null;renderExpenseDayStrip();$('saveExpense').dataset.editIdx=idx;$('saveExpense').textContent='עדכן הוצאה';$('cancelEditExpense').style.display='inline-block';$('expenseDescription').focus()}};
+$('saveExpense').onclick=async()=>{if(!requireUser())return;const d=$('expenseDescription').value.trim();const rawAmt=Number($('expenseAmount').value);$('expenseAmtErr').classList.remove('show');if(!d||!Number.isFinite(rawAmt)||rawAmt<=0){$('expenseAmtErr').classList.add('show');return}const isILS=expenseSelectedCur==='ILS';if(!isILS&&expenseCalculatedILS===null){alert('לחץ על "חשב לשקלים" לפני השמירה');return}const a=isILS?rawAmt:expenseCalculatedILS;const items=await getExpenses();const dayIndex=expenseFormDayIndex;const currencyExtra=isILS?{}:{originalAmount:rawAmt,originalCurrency:expenseSelectedCur};const editIdx=$('saveExpense').dataset.editIdx;if(editIdx!==undefined&&editIdx!==''){items[Number(editIdx)]={...items[Number(editIdx)],description:d,amount:a,category:$('expenseCategory').value,dayIndex,by:activeUser,editedAt:Date.now(),...currencyExtra};delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none'}else{items.push({description:d,amount:a,category:$('expenseCategory').value,dayIndex,by:activeUser,createdAt:Date.now(),...currencyExtra})}await saveExpenses(items);$('expenseDescription').value='';$('expenseAmount').value='';expenseCalculatedILS=null;$('expenseCalcBox').classList.remove('show');renderBudget();renderDailyBurn();};
+$('cancelEditExpense').onclick=()=>{delete $('saveExpense').dataset.editIdx;$('saveExpense').textContent='שמור הוצאה';$('cancelEditExpense').style.display='none';$('expenseDescription').value='';$('expenseAmount').value='';expenseCalculatedILS=null;$('expenseCalcBox').classList.remove('show')};
 function openUserModal(){renderUserChoices();openModal('userModal')}
 let pendingPhotoUser='';
 async function renderUserChoices(){const el=$('userChoices');el.innerHTML='';
@@ -2162,7 +2275,7 @@ function closeChatSheet(){$('chatScrim').classList.remove('open');$('chatSheet')
 async function buildChatExtraContext(){
  const target=await getBudgetTarget(),items=await getExpenses();
  const by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));
- items.forEach(e=>by[e.category]=(by[e.category]||0)+Number(e.amount||0));
+ items.forEach(e=>{const c=normalizeCategory(e.category);by[c]=(by[c]||0)+Number(e.amount||0)});
  tripData.forEach(d=>{if(d.isBooked)by.lodging=(by.lodging||0)+Number(d.actualCost||0)});
  const spent=Object.values(by).reduce((a,b)=>a+b,0);
  const budget={target,spent,byCategory:Object.fromEntries(Object.entries(by).map(([k,v])=>[CATEGORIES[k]||k,v]))};
