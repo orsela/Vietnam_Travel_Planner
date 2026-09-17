@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.0 (Budget: currency + day-strip + transport category)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.1 (Quick converter: chip-based source/destination)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -330,6 +330,21 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .calcbox b{color:var(--success);font-size:1rem}
 .err{color:var(--primary);font-size:.78rem;display:none;margin-top:-4px}
 .err.show{display:block}
+/* CHANGE 2026-09-17 FX-QUICK-01: source/destination chip states for the quick converter
+   modal (#fxQuickModal) -- additive to the existing .curchip base rule above, which the
+   quick converter's chips now reuse instead of the old <select> pair. */
+.curchip.src{border-color:var(--success);background:var(--success-bg);color:var(--success)}
+.curchip.src .code{color:var(--success)}
+.curchip.dst{border-color:var(--muted);background:#f1f0ee;color:var(--text)}
+.curchip .tag{display:none;position:absolute;top:-9px;right:50%;transform:translateX(50%);font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:99px;color:#fff;white-space:nowrap}
+.curchip{position:relative}
+.curchip.src .tag.tag-src{display:inline-block;background:var(--success)}
+.curchip.dst .tag.tag-dst{display:inline-block;background:var(--muted)}
+.currow-legend{display:flex;gap:14px;justify-content:center;font-size:.72rem;color:var(--muted);margin-top:8px}
+.currow-legend span{display:flex;align-items:center;gap:4px}
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.legend-dot.g{background:var(--success)}
+.legend-dot.a{background:var(--muted)}
 .global-fx{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:28;border:1px solid #cfd7df;background:#fff;color:var(--text);box-shadow:0 4px 14px #00000018;border-radius:999px;padding:7px 13px;font-weight:800;font-size:.76rem;cursor:pointer;touch-action:manipulation}
 .doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.doc-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:10px;min-width:0}.doc-card img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:10px;background:#f3f4f6}.doc-name{font-weight:800;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-meta{font-size:.68rem;color:var(--muted)}
 .doc-thumb-wrap{position:relative}
@@ -754,7 +769,12 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
-<div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><select id="quickFxFrom"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="EUR">אירו — EUR</option></select><select id="quickFxTo"><option value="USD">דולר — USD</option><option value="VND">דונג — VND</option><option value="ILS">שקל — ILS</option><option value="EUR">אירו — EUR</option></select></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small></div></div>
+<!-- CHANGE 2026-09-17 FX-QUICK-01: the two <select> dropdowns (quickFxFrom/quickFxTo) are
+     replaced with a single chip row using sequential 2-click selection (first click = source,
+     shown green; second click = destination, shown gray), per the mockup approved by Or.
+     quickFxCalculate() below reads the two module-level vars quickFxFromCur/quickFxToCur
+     instead of the old selects' .value. -->
+<div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="quickFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small></div></div>
 <div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
 <div id="documentsModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔐 כספת מסמכים</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">המסמכים נשמרים מקומית במכשיר וזמינים גם ללא אינטרנט. תמונות נדחסות אוטומטית; קובצי PDF נתמכים עד 3MB (מגבלת אחסון המכשיר).</p><div class="row"><select id="docCategory" style="flex:1"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><input id="docName" style="flex:1" maxlength="50" placeholder="שם המסמך"></div><button class="btn blue" id="docAddBtn" type="button">➕ הוסף מסמך</button><input id="docInput" type="file" accept="image/*,application/pdf,.pdf" multiple class="file-input-vh"><div id="documentsGrid" class="doc-grid" style="margin-top:12px"></div></div></div>
 <!-- CHANGE 2026-09-14 SHARE-02: In-app share sheet. It is only a safe fallback/preparation surface; existing vault remains unchanged. -->
@@ -1660,7 +1680,35 @@ async function renderRouteDayWeather(){const el=$('routeDayWeather');if(!el)retu
  el.innerHTML=dayWeatherMarkup(tier,w,d);el.style.display='flex';
  const clickable=tier===1||tier===2;el.style.cursor=clickable?'pointer':'default';
  el.onclick=clickable?()=>{$('weatherModalTitle').textContent=`🌦️ מזג אוויר · יום ${d.day} — ${esc(d.region)}`;$('weatherDetails').innerHTML=dayWeatherMarkup(tier,w,d);openModal('weatherModal')}:null}
-async function quickFxCalculate(){const a=Number($('quickFxAmount').value),f=$('quickFxFrom').value,t=$('quickFxTo').value;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.'}
+/* CHANGE 2026-09-17 FX-QUICK-01: sequential 2-click chip selection for the quick converter,
+   replacing the old quickFxFrom/quickFxTo <select> pair. State lives in quickFxFromCur/
+   quickFxToCur (defaults ILS -> USD, matching the old selects' default selected options).
+   Click behavior: 1st click on an unset chip = source; 2nd click on a different chip =
+   destination; clicking the current source again clears both; clicking the current
+   destination again clears just the destination; clicking a third chip once both are set
+   restarts the sequence with that chip as the new source. */
+let quickFxFromCur='ILS',quickFxToCur='USD';
+function applyQuickFxUI(){
+ document.querySelectorAll('#quickFxRow .curchip').forEach(c=>{
+  c.classList.toggle('src',c.dataset.cur===quickFxFromCur);
+  c.classList.toggle('dst',c.dataset.cur===quickFxToCur&&c.dataset.cur!==quickFxFromCur);
+ });
+}
+document.querySelectorAll('#quickFxRow .curchip').forEach(chip=>{
+ chip.onclick=()=>{
+  const picked=chip.dataset.cur;
+  if(picked===quickFxFromCur){quickFxFromCur=null;quickFxToCur=null}
+  else if(picked===quickFxToCur){quickFxToCur=null}
+  else if(quickFxFromCur===null){quickFxFromCur=picked}
+  else if(quickFxToCur===null){quickFxToCur=picked}
+  else{quickFxFromCur=picked;quickFxToCur=null}
+  applyQuickFxUI();
+  $('quickFxResult').textContent='';
+ };
+});
+applyQuickFxUI();
+
+async function quickFxCalculate(){if(!quickFxFromCur||!quickFxToCur){$('quickFxResult').textContent='⚠️ בחרו מטבע מקור ומטבע יעד';return}const a=Number($('quickFxAmount').value),f=quickFxFromCur,t=quickFxToCur;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.'}
 async function getExpenses(){try{const raw=await SS.get(SHARED.expenses);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))return v}catch{}
  try{const old=JSON.parse(localStorage.getItem(KEYS.expenses)||'[]');if(Array.isArray(old))return old}catch{}
  return[]}
