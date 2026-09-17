@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.1 (Quick converter: chip-based source/destination)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.4 (Quick converter: add expense hand-off)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -345,6 +345,24 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .legend-dot.g{background:var(--success)}
 .legend-dot.a{background:var(--muted)}
+/* CHANGE 2026-09-17 TRAVEL-TIME-01: travel-time-between-two-points modal. point-block/
+   point-label/point-status/quickchip are new; nav-options-grid/nav-option-card/nav-ic/
+   nav-title/nav-meta are adopted verbatim from the CSS snippet Or provided, using this
+   app's own --primary/--primary-light/--border/--text/--muted/--radius-lg variables
+   (already matched 1:1, no renaming needed). Additive only. */
+.point-block{border:1px solid var(--border);border-radius:14px;padding:12px}
+.point-label{font-weight:800;font-size:.8rem;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.point-status{font-size:.76rem;color:var(--muted);margin-top:6px;min-height:18px}
+.point-status.ok{color:var(--success);font-weight:600}
+.point-status.err{color:var(--primary);font-weight:600}
+.quickchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:#fff;border-radius:99px;padding:5px 11px;font-size:.72rem;font-weight:700;color:var(--text);cursor:pointer;margin-inline-end:6px;margin-top:6px}
+.nav-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0}
+.nav-option-card{border:2px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;background:#fff;cursor:pointer;transition:all .2s ease}
+.nav-option-card.active,.nav-option-card:hover{border-color:var(--primary);background:var(--primary-light)}
+.nav-option-card .nav-ic{font-size:1.8rem;margin-bottom:8px}
+.nav-option-card .nav-title{font-weight:800;font-size:.95rem;color:var(--text);margin-bottom:4px}
+.nav-option-card .nav-meta{font-size:.78rem;color:var(--muted)}
+.nav-option-card.disabled{opacity:.5;cursor:default;pointer-events:none}
 .global-fx{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:28;border:1px solid #cfd7df;background:#fff;color:var(--text);box-shadow:0 4px 14px #00000018;border-radius:999px;padding:7px 13px;font-weight:800;font-size:.76rem;cursor:pointer;touch-action:manipulation}
 .doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.doc-card{border:1px solid var(--border);border-radius:14px;background:#fff;padding:10px;min-width:0}.doc-card img{width:100%;aspect-ratio:1.35;object-fit:cover;border-radius:10px;background:#f3f4f6}.doc-name{font-weight:800;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-meta{font-size:.68rem;color:var(--muted)}
 .doc-thumb-wrap{position:relative}
@@ -753,7 +771,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><a id="hotel" class="info-value hotel-link" target="_blank" rel="noopener noreferrer"></a><a class="grab-link" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer">🚕 הזמנת Grab למלון</a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><!-- CHANGE 2026-09-08 UI-04: Google My Maps import is collapsed below the map so the map stays unobstructed. -->
 <div class="poi-import-toggle"><button class="btn outline" id="poiImportToggle" type="button" aria-expanded="false">＋ ייבוא Google Maps</button></div>
 <div class="poi-import-panel" id="poiImportPanel" hidden><div class="poi-import-row"><input id="poiImportUrl" style="flex:1" placeholder="🔗 קישור למפת Google (My Maps) לייבוא נקודות"><button class="btn outline" id="poiImportBtn" type="button">ייבוא</button><button class="btn outline" id="poiImportClose" type="button" aria-label="סגירת ייבוא">×</button></div></div>
-<div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a></div></div></section>
+<div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><div id="journalFeed" class="journal-feed"></div><label class="muted journal-compose-label">הוספת רשומה חדשה (לא מוחקת שום דבר שכבר נכתב)</label><textarea id="journalText" rows="3" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">+ הוסף רשומה</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
 <section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><!-- CHANGE 2026-09-17 BUD-CUR-01 + BUD-DAY-01: the add-expense form gained (1) a day-strip
@@ -765,7 +783,13 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      rewritten saveExpense handler further down. --><details class="card" id="addExpenseDetails"><summary><h3 style="display:inline">➕ הוספת הוצאה</h3></summary><div class="subsection-body"><div class="day-nav-wrap" style="margin-bottom:var(--sp-3)"><button class="btn outline nav-arrow" id="expenseDayPrev" type="button">‹</button><div id="expenseDayStrip" class="day-strip" aria-label="בחירת יום להוצאה"></div><button class="btn outline nav-arrow" id="expenseDayNext" type="button">›</button></div><div class="grid"><input id="expenseDescription" placeholder="תיאור"><div><div class="muted" style="margin-bottom:6px;font-weight:700;font-size:.78rem">שולם ב־</div><div class="currow" id="expenseCurRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="code">VND</span></button></div></div><input id="expenseAmount" type="number" min="0" step=".01" placeholder="סכום בש״ח"><div class="err" id="expenseAmtErr">⚠️ הזן סכום תקין</div><div class="row" id="expenseCalcRow" style="display:none"><button class="btn outline" id="expenseCalcBtn" type="button" style="flex:1">🔄 חשב לשקלים</button></div><div class="calcbox" id="expenseCalcBox"></div><select id="expenseCategory"><option value="lodging">לינה</option><option value="food">אוכל</option><option value="transport">נסיעות</option><option value="shopping">שווקים וקניות</option><option value="attractions">אטרקציות</option><option value="other">אחר</option></select></div><div class="row" style="margin-top:10px;"><button class="btn green" id="saveExpense">שמור הוצאה</button><button class="btn outline" id="cancelEditExpense" style="display:none;">ביטול עריכה</button></div><div id="expenseList" style="margin-top:15px;"></div></div></details><!-- CHANGE 2026-09-17 BUD-MIG-01: one-time, explicitly-confirmed scan of existing 'אחר'
      expenses for transport keywords, offering to move matches to the new 'transport'
      category. Nothing changes until the user clicks the approval button -- see
-     scanTransportCandidates/renderCategoryMigration in the script below. --><details class="card" id="categoryMigrationDetails"><summary><h3 style="display:inline">🔁 עדכון קטגוריות ישנות</h3></summary><div class="subsection-body"><p class="muted" style="margin-top:0">בדיקה חד-פעמית: הוצאות שסומנו "אחר" ומכילות מילת מפתח של נסיעות (נסיעה, Grab, מונית, טקסי, אוטובוס, רכבת, טיסה) יוצעו למעבר לקטגוריית "נסיעות". שום דבר לא משתנה בלי אישור מפורש.</p><button class="btn outline" id="scanTransportBtn" type="button">🔍 סרוק הוצאות ישנות</button><div id="categoryMigrationResult"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><select id="fxFrom"><option value="VND">מטבע מקומי — VND</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="ILS">שקל — ILS</option></select><select id="fxTo"><option value="ILS">שקל — ILS</option><option value="USD">דולר — USD</option><option value="EUR">אירו — EUR</option><option value="VND">מטבע מקומי — VND</option></select></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
+     scanTransportCandidates/renderCategoryMigration in the script below. --><details class="card" id="categoryMigrationDetails"><summary><h3 style="display:inline">🔁 עדכון קטגוריות ישנות</h3></summary><div class="subsection-body"><p class="muted" style="margin-top:0">בדיקה חד-פעמית: הוצאות שסומנו "אחר" ומכילות מילת מפתח של נסיעות (נסיעה, Grab, מונית, טקסי, אוטובוס, רכבת, טיסה) יוצעו למעבר לקטגוריית "נסיעות". שום דבר לא משתנה בלי אישור מפורש.</p><button class="btn outline" id="scanTransportBtn" type="button">🔍 סרוק הוצאות ישנות</button><div id="categoryMigrationResult"></div></div></details><details class="card"><summary><h3 style="display:inline">💱 מחשבון המרה</h3></summary><div class="subsection-body"><p class="muted">אפשר לעדכן שערי חליפין אוטומטית מהרשת (מומלץ לפני הנסיעה ומדי כמה ימים), או להזין אותם ידנית. השערים שנשמרים משותפים לכל בני המשפחה.</p><div class="grid"><div class="info-item"><span class="info-label">1 USD</span><div class="row"><input id="rateUSD" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1 EUR</span><div class="row"><input id="rateEUR" type="number" min="0" step="any"><span class="muted">₪</span></div></div><div class="info-item"><span class="info-label">1000 VND</span><div class="row"><input id="rateVND" type="number" min="0" step="any"><span class="muted">₪</span></div></div></div><div class="row" style="gap:8px"><button class="btn outline" id="fxAutoUpdate" type="button">🔄 עדכן שערים אוטומטית</button><button class="btn blue" id="fxUpdate">שמור שערים</button></div><small id="fxRatesInfo" class="muted"></small><hr><div class="grid"><!-- CHANGE 2026-09-17 FX-BUDGET-01: fxFrom/fxTo <select> replaced with the same chip pattern
+     already used for the quick converter (#fxQuickModal, v2.4.1) -- reuses its .currow/
+     .curchip/.src/.dst/.tag/.currow-legend CSS as-is, no new styles needed. Default source/
+     destination (VND -> ILS) matches the old selects' default selected options. See
+     budgetFxFromCur/budgetFxToCur and the rewritten fxCalculate below; fxSave's existing
+     ILS-destination-only rule is untouched. -->
+<input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="budgetFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
 <section id="backup" class="panel"><div class="topbar"><button class="topbar-back" data-go="management">›</button><h1>גיבוי וטעינה</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="statuscard ok" id="backupStatusCard"><div class="chk" id="backupStatusChk">✓</div><div><b id="backupStatusTitle">הגיבוי בענן פעיל</b><span id="backupStatusSub">הנתונים מעודכנים</span></div></div><div class="listitem" style="cursor:default"><span style="font-size:1rem">☁️</span><div class="lbl">גיבוי אחרון<span class="val" id="backupLastSync" style="display:block;font-weight:400"></span></div></div><button class="btn red pillbtn" id="backupNowBtn" style="width:100%;margin-bottom:10px">⬇️ גיבוי / טעינה עכשיו</button><p class="muted" style="text-align:center;font-size:.75rem">כולל אקסל, JSON, והעתקה ללוח — הכל בחלונית אחת. שימו לב: הגיבוי כולל את נתוני המסלול בלבד (לא יומן/תמונות/הוצאות).</p></div></section>
@@ -774,7 +798,21 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      shown green; second click = destination, shown gray), per the mockup approved by Or.
      quickFxCalculate() below reads the two module-level vars quickFxFromCur/quickFxToCur
      instead of the old selects' .value. -->
-<div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="quickFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small></div></div>
+<div id="fxQuickModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>💱 המרת מטבע</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="grid"><input id="quickFxAmount" type="number" min="0" step="any" placeholder="סכום"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="quickFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="quickFxCalculate" type="button">חשב</button><p id="quickFxResult" class="info-value"></p><small id="quickFxInfo" class="muted"></small><!-- CHANGE 2026-09-17 FX-QUICK-ADD-01: only shown after a successful calc whose destination
+     is ILS -- same rule the budget FX calculator's existing fxSave already enforces. See
+     the quickFxCalculate rewrite and $('quickFxAddExpenseBtn').onclick below. -->
+<button class="btn gold" id="quickFxAddExpenseBtn" type="button" style="display:none">➕ הוסף כהוצאה</button><p class="muted" id="quickFxAddExpenseHint" style="display:none;text-align:center;font-size:.72rem">מופיע רק כשהיעד הוא ₪</p></div></div>
+<!-- CHANGE 2026-09-17 TRAVEL-TIME-01: travel-time-between-two-points modal, per the mockup
+     approved by Or. Point A/B accept free text (resolved via google.maps.Geocoder), a pasted
+     Google Maps link/coordinates (resolved via the EXISTING parseMaps() -- not duplicated),
+     or a quick-pick chip for today's hotel/waypoints (already-known lat/lng, no lookup
+     needed). Times come from google.maps.DistanceMatrixService (driving + walking) -- the
+     already-loaded Maps JS library, not a separate fetch to the web-service endpoints (avoids
+     CORS issues the raw REST APIs have from a browser). Clicking a result card opens real
+     Google Maps navigation in that mode immediately -- no separate confirm step, per Or's
+     explicit decision. See travelTimePoints/resolveTravelPoint/geocodePlace/getDistanceMatrix
+     and the $('openTravelTimeBtn') wiring further down. -->
+<div id="travelTimeModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>⏱️ זמן נסיעה בין נקודות</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted" style="margin:0">אפשר להקליד כתובת/שם מקום, להדביק קישור Google Maps, או לבחור מנקודה שמורה.</p><div class="point-block"><div class="point-label">📍 נקודה א׳</div><input id="travelPointA" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsA"></div><div class="point-status" id="travelStatusA"></div></div><div class="point-block"><div class="point-label">📍 נקודה ב׳</div><input id="travelPointB" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsB"></div><div class="point-status" id="travelStatusB"></div></div><button class="btn green" id="travelCalcBtn" type="button">חשב זמני נסיעה</button><div class="nav-options-grid" id="travelNavGrid" style="display:none"><button type="button" class="nav-option-card" id="travelNavDrive" data-mode="DRIVING"><div class="nav-ic">🚗</div><div class="nav-title">נסיעה</div><div class="nav-meta" id="travelDriveMeta">—</div></button><button type="button" class="nav-option-card" id="travelNavWalk" data-mode="WALKING"><div class="nav-ic">🚶</div><div class="nav-title">הליכה</div><div class="nav-meta" id="travelWalkMeta">—</div></button></div><p class="muted" id="travelNavHint" style="display:none;text-align:center;margin:0">לחיצה על אחת האפשרויות פותחת ניווט ב-Google Maps באותו מצב</p></div></div>
 <div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
 <div id="documentsModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔐 כספת מסמכים</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">המסמכים נשמרים מקומית במכשיר וזמינים גם ללא אינטרנט. תמונות נדחסות אוטומטית; קובצי PDF נתמכים עד 3MB (מגבלת אחסון המכשיר).</p><div class="row"><select id="docCategory" style="flex:1"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><input id="docName" style="flex:1" maxlength="50" placeholder="שם המסמך"></div><button class="btn blue" id="docAddBtn" type="button">➕ הוסף מסמך</button><input id="docInput" type="file" accept="image/*,application/pdf,.pdf" multiple class="file-input-vh"><div id="documentsGrid" class="doc-grid" style="margin-top:12px"></div></div></div>
 <!-- CHANGE 2026-09-14 SHARE-02: In-app share sheet. It is only a safe fallback/preparation surface; existing vault remains unchanged. -->
@@ -1516,6 +1554,132 @@ function updateRouteDayStrip(){const el=$('routeDayStrip');if(!el)return;el.inne
 /* CHANGE 2026-08-26 GM-16: let a vertical mouse-wheel gesture over the day-strip scroll it
    horizontally -- most trackpads/mice don't produce horizontal wheel deltas on their own. */
 $('routeDayStrip').addEventListener('wheel',e=>{if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;e.preventDefault();$('routeDayStrip').scrollLeft+=e.deltaY},{passive:false});
+/* CHANGE 2026-09-17 TRAVEL-TIME-01: travel-time-between-two-points feature (see the HTML
+   comment above #travelTimeModal for the full design rationale). */
+function travelTimePoints(){
+ const d=tripData[globalDayIndex];if(!d)return[];
+ const pts=[];
+ if(valid(d.lat,d.lng)&&!isFlightDay(d))pts.push({name:d.bookedHotel||d.hotel||d.region,lat:d.lat,lng:d.lng,isHotel:true});
+ (d.waypoints||[]).forEach(w=>{if(valid(w.lat,w.lng))pts.push({name:w.name,lat:w.lat,lng:w.lng})});
+ return pts;
+}
+function geocodePlace(query){
+ return new Promise(resolve=>{
+  if(typeof google==='undefined'||!google.maps||!google.maps.Geocoder){resolve(null);return}
+  try{
+   new google.maps.Geocoder().geocode({address:query,region:'vn'},(results,status)=>{
+    if(status==='OK'&&results&&results[0]){
+     const loc=results[0].geometry.location;
+     resolve({lat:loc.lat(),lng:loc.lng(),label:results[0].formatted_address||query});
+    }else resolve(null);
+   });
+  }catch{resolve(null)}
+ });
+}
+function getDistanceMatrix(origin,destination,mode){
+ return new Promise(resolve=>{
+  if(typeof google==='undefined'||!google.maps||!google.maps.DistanceMatrixService){resolve(null);return}
+  try{
+   new google.maps.DistanceMatrixService().getDistanceMatrix({
+    origins:[{lat:origin.lat,lng:origin.lng}],
+    destinations:[{lat:destination.lat,lng:destination.lng}],
+    travelMode:mode
+   },(res,status)=>{
+    const el=res&&res.rows&&res.rows[0]&&res.rows[0].elements&&res.rows[0].elements[0];
+    if(status==='OK'&&el&&el.status==='OK'){
+     resolve({durationText:el.duration.text,distanceText:el.distance.text});
+    }else resolve(null);
+   });
+  }catch{resolve(null)}
+ });
+}
+async function resolveTravelPoint(query){
+ const q=String(query||'').trim();
+ if(!q)return{ok:false,error:''};
+ const mapsLatLng=parseMaps(q);
+ if(mapsLatLng)return{ok:true,lat:mapsLatLng.lat,lng:mapsLatLng.lng,label:'נקודה מקישור Google Maps'};
+ if(isGoogleMapsShortLink(q))return{ok:false,error:MAPS_SHORT_LINK_MSG};
+ const geo=await geocodePlace(q);
+ if(geo)return{ok:true,...geo};
+ return{ok:false,error:'⚠️ לא הצלחנו לזהות את המיקום — נסו כתובת מדויקת יותר'};
+}
+let travelResolvedA=null,travelResolvedB=null;
+function hideTravelResults(){$('travelNavGrid').style.display='none';$('travelNavHint').style.display='none'}
+function setTravelResolved(which,val){
+ if(which==='A')travelResolvedA=val;else travelResolvedB=val;
+ const statusEl=$('travelStatus'+which);
+ if(val){statusEl.textContent='✅ זוהה: '+val.label;statusEl.className='point-status ok'}
+ else{statusEl.textContent='';statusEl.className='point-status'}
+ hideTravelResults();
+}
+function renderTravelChips(){
+ const pts=travelTimePoints();
+ const chipHtml=pts.map(p=>`<span class="quickchip" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${esc(p.name)}">${p.isHotel?'🏨':'📍'} ${esc(p.name)}</span>`).join('');
+ $('travelChipsA').innerHTML=chipHtml;
+ $('travelChipsB').innerHTML=chipHtml;
+ ['A','B'].forEach(which=>{
+  $('travelChips'+which).querySelectorAll('[data-lat]').forEach(chip=>{
+   chip.onclick=()=>{
+    const name=chip.dataset.name,lat=Number(chip.dataset.lat),lng=Number(chip.dataset.lng);
+    $('travelPoint'+which).value=name;
+    setTravelResolved(which,{lat,lng,label:name});
+   };
+  });
+ });
+}
+async function resolveTravelField(which){
+ const val=$('travelPoint'+which).value;
+ if(!val.trim()){setTravelResolved(which,null);return}
+ const statusEl=$('travelStatus'+which);
+ statusEl.textContent='🔍 מחפש…';statusEl.className='point-status';
+ const r=await resolveTravelPoint(val);
+ if(r.ok)setTravelResolved(which,{lat:r.lat,lng:r.lng,label:r.label});
+ else{
+  if(which==='A')travelResolvedA=null;else travelResolvedB=null;
+  statusEl.textContent=r.error;statusEl.className='point-status err';
+  hideTravelResults();
+ }
+}
+$('travelPointA').addEventListener('change',()=>resolveTravelField('A'));
+$('travelPointB').addEventListener('change',()=>resolveTravelField('B'));
+$('travelCalcBtn').onclick=async()=>{
+ if(!travelResolvedA||!travelResolvedB){alert('יש לזהות את שתי הנקודות קודם (הקלידו כתובת/בחרו צ׳יפ)');return}
+ if(typeof google==='undefined'||!google.maps||!google.maps.DistanceMatrixService){alert('Google Maps לא זמין כרגע — לא ניתן לחשב זמני נסיעה');return}
+ const btn=$('travelCalcBtn'),orig=btn.textContent;btn.disabled=true;btn.textContent='מחשב…';
+ const[drive,walk]=await Promise.all([
+  getDistanceMatrix(travelResolvedA,travelResolvedB,google.maps.TravelMode.DRIVING),
+  getDistanceMatrix(travelResolvedA,travelResolvedB,google.maps.TravelMode.WALKING)
+ ]);
+ btn.disabled=false;btn.textContent=orig;
+ $('travelDriveMeta').textContent=drive?`${drive.durationText} · ${drive.distanceText}`:'לא זמין';
+ $('travelWalkMeta').textContent=walk?`${walk.durationText} · ${walk.distanceText}`:'לא זמין';
+ $('travelNavDrive').classList.toggle('disabled',!drive);
+ $('travelNavWalk').classList.toggle('disabled',!walk);
+ document.querySelectorAll('#travelNavGrid .nav-option-card').forEach(c=>c.classList.remove('active'));
+ $('travelNavGrid').style.display='grid';
+ $('travelNavHint').style.display='block';
+};
+function travelNavUrl(mode){
+ const o=`${travelResolvedA.lat},${travelResolvedA.lng}`,d=`${travelResolvedB.lat},${travelResolvedB.lng}`;
+ return`https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}&travelmode=${mode.toLowerCase()}`;
+}
+document.querySelectorAll('#travelNavGrid .nav-option-card').forEach(card=>{
+ card.onclick=()=>{
+  if(card.classList.contains('disabled')||!travelResolvedA||!travelResolvedB)return;
+  document.querySelectorAll('#travelNavGrid .nav-option-card').forEach(c=>c.classList.remove('active'));
+  card.classList.add('active');
+  window.open(travelNavUrl(card.dataset.mode),'_blank');
+ };
+});
+$('openTravelTimeBtn').onclick=()=>{
+ renderTravelChips();
+ const hotel=travelTimePoints().find(p=>p.isHotel);
+ $('travelPointA').value=hotel?hotel.name:'';
+ setTravelResolved('A',hotel?{lat:hotel.lat,lng:hotel.lng,label:hotel.name}:null);
+ $('travelPointB').value='';
+ setTravelResolved('B',null);
+ openModal('travelTimeModal');
+};
 const DOC_KEY='planner:documents';
 async function getDocuments(){try{const raw=localStorage.getItem(DOC_KEY);const v=raw?JSON.parse(raw):[];return Array.isArray(v)?v:[]}catch{return[]}}
 async function saveDocuments(v){try{localStorage.setItem(DOC_KEY,JSON.stringify(v));return true}catch{return false}}
@@ -1704,11 +1868,34 @@ document.querySelectorAll('#quickFxRow .curchip').forEach(chip=>{
   else{quickFxFromCur=picked;quickFxToCur=null}
   applyQuickFxUI();
   $('quickFxResult').textContent='';
+  $('quickFxAddExpenseBtn').style.display='none';
+  $('quickFxAddExpenseHint').style.display='none';
+  quickFxLastResult=null;
  };
 });
 applyQuickFxUI();
 
-async function quickFxCalculate(){if(!quickFxFromCur||!quickFxToCur){$('quickFxResult').textContent='⚠️ בחרו מטבע מקור ומטבע יעד';return}const a=Number($('quickFxAmount').value),f=quickFxFromCur,t=quickFxToCur;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.'}
+let quickFxLastResult=null;
+async function quickFxCalculate(){$('quickFxAddExpenseBtn').style.display='none';$('quickFxAddExpenseHint').style.display='none';quickFxLastResult=null;if(!quickFxFromCur||!quickFxToCur){$('quickFxResult').textContent='⚠️ בחרו מטבע מקור ומטבע יעד';return}const a=Number($('quickFxAmount').value),f=quickFxFromCur,t=quickFxToCur;if(!Number.isFinite(a)||a<0){$('quickFxResult').textContent='⚠️ סכום לא תקין';return}const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);$('quickFxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`;$('quickFxInfo').textContent='השערים נשמרים במכשיר ומשותפים למשפחה. לעדכון שערים מלא עברו לתקציב.';quickFxLastResult={amount:a,from:f,to:t,converted:v};if(t==='ILS'){$('quickFxAddExpenseBtn').style.display='block'}else{$('quickFxAddExpenseHint').style.display='block'}}
+/* CHANGE 2026-09-17 FX-QUICK-ADD-01: jumps to the budget screen's add-expense form with the
+   converted ILS amount and today's default day already filled in -- reuses the EXISTING
+   expenseDefaultDayIndex/renderExpenseDayStrip/applyExpenseCurrencyUI (v2.4.0), not new
+   logic. The user only has to pick a category and type a description. */
+$('quickFxAddExpenseBtn').onclick=()=>{
+ if(!requireUser()||!quickFxLastResult||quickFxLastResult.to!=='ILS')return;
+ closeModal($('fxQuickModal'));
+ switchPanel('budget');
+ $('addExpenseDetails').open=true;
+ expenseFormDayIndex=expenseDefaultDayIndex();
+ renderExpenseDayStrip();
+ expenseSelectedCur='ILS';
+ applyExpenseCurrencyUI();
+ $('expenseAmount').value=Number(quickFxLastResult.converted.toFixed(2));
+ $('expenseDescription').value='';
+ $('addExpenseDetails').scrollIntoView({behavior:'smooth',block:'start'});
+ setTimeout(()=>$('expenseDescription').focus(),300);
+};
+
 async function getExpenses(){try{const raw=await SS.get(SHARED.expenses);const v=raw?JSON.parse(raw):[];if(Array.isArray(v))return v}catch{}
  try{const old=JSON.parse(localStorage.getItem(KEYS.expenses)||'[]');if(Array.isArray(old))return old}catch{}
  return[]}
@@ -1855,7 +2042,32 @@ $('fxAutoUpdate').onclick=async()=>{if(!requireUser())return;$('fxRatesInfo').te
 $('fxUpdate').onclick=async()=>{if(!requireUser())return;const USD=Number($('rateUSD').value),EUR=Number($('rateEUR').value),VND=Number($('rateVND').value);
  if(![USD,EUR,VND].every(n=>Number.isFinite(n)&&n>0))return alert('נא להזין שערים תקינים וחיוביים');
  await SS.set(FX_KEY,JSON.stringify({USD,EUR,VND}));fxState={result:null};$('fxRatesInfo').textContent='✅ השערים נשמרו ומשותפים לכל בני המשפחה'};
-$('fxCalculate').onclick=async()=>{if(!requireUser())return;const a=Number($('fxAmount').value),f=$('fxFrom').value,t=$('fxTo').value;if(!Number.isFinite(a)||a<0)return $('fxResult').textContent='⚠️ סכום לא תקין';
+/* CHANGE 2026-09-17 FX-BUDGET-01: same sequential 2-click chip selection as the quick
+   converter (FX-QUICK-01, v2.4.1), scoped to the budget screen's full FX calculator.
+   Kept as separate state (budgetFxFromCur/budgetFxToCur) from the quick converter's
+   quickFxFromCur/quickFxToCur -- two independent tools, not shared state. */
+let budgetFxFromCur='VND',budgetFxToCur='ILS';
+function applyBudgetFxUI(){
+ document.querySelectorAll('#budgetFxRow .curchip').forEach(c=>{
+  c.classList.toggle('src',c.dataset.cur===budgetFxFromCur);
+  c.classList.toggle('dst',c.dataset.cur===budgetFxToCur&&c.dataset.cur!==budgetFxFromCur);
+ });
+}
+document.querySelectorAll('#budgetFxRow .curchip').forEach(chip=>{
+ chip.onclick=()=>{
+  const picked=chip.dataset.cur;
+  if(picked===budgetFxFromCur){budgetFxFromCur=null;budgetFxToCur=null}
+  else if(picked===budgetFxToCur){budgetFxToCur=null}
+  else if(budgetFxFromCur===null){budgetFxFromCur=picked}
+  else if(budgetFxToCur===null){budgetFxToCur=picked}
+  else{budgetFxFromCur=picked;budgetFxToCur=null}
+  applyBudgetFxUI();
+  $('fxResult').textContent='';
+ };
+});
+applyBudgetFxUI();
+
+$('fxCalculate').onclick=async()=>{if(!requireUser())return;if(!budgetFxFromCur||!budgetFxToCur)return $('fxResult').textContent='⚠️ בחרו מטבע מקור ומטבע יעד';const a=Number($('fxAmount').value),f=budgetFxFromCur,t=budgetFxToCur;if(!Number.isFinite(a)||a<0)return $('fxResult').textContent='⚠️ סכום לא תקין';
  const rates=await getFxRates();const v=f===t?a:a*ilsPerUnit(rates,f)/ilsPerUnit(rates,t);
  fxState.result={amount:a,from:f,to:t,converted:v};$('fxResult').textContent=`${a.toLocaleString()} ${f} = ${v.toLocaleString(undefined,{maximumFractionDigits:2})} ${t}`};
 $('fxSave').onclick=async()=>{if(!requireUser()||!fxState.result)return alert('בצע המרה תחילה');if(fxState.result.to!=='ILS')return alert('בחר ILS כמטבע יעד');const items=await getExpenses();items.push({description:`המרה ${fxState.result.amount} ${fxState.result.from}`,amount:fxState.result.converted,category:'other',by:activeUser,createdAt:Date.now()});await saveExpenses(items);renderBudget()};
@@ -2046,7 +2258,7 @@ function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',budget:'budget',more:'more',album:'more',management:'more',backup:'more'};
 function switchPanel(id){const activeId=(id==='home'&&HOME_LAYOUT==='v2')?'homeV2':id;document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===activeId));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more'){updateDocumentsSummary();updateReservationsSummary()}window.scrollTo(0,0)}
 function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent=''};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser,...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const shareBtn=e.target.closest('[data-doc-share]');if(shareBtn){await shareDocument(shareBtn.dataset.docShare);return}const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};
+$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent='';$('quickFxAddExpenseBtn').style.display='none';$('quickFxAddExpenseHint').style.display='none';quickFxLastResult=null};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{openModal('documentsModal');await renderDocuments()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:activeUser,...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const shareBtn=e.target.closest('[data-doc-share]');if(shareBtn){await shareDocument(shareBtn.dataset.docShare);return}const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);await renderDocuments();await updateDocumentsSummary()};
 /* CHANGE 2026-08-30 RES-01: Reservations Center event wiring — additive, inserted between two pre-existing handlers without altering either. See CHANGELOG_v1.8.0.txt. */
 $('reservationsBtn').onclick=async()=>{openModal('reservationsModal');currentResFilter='all';document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c.dataset.resFilter==='all'));await renderReservationsList()};
 $('resFilters').onclick=async e=>{const chip=e.target.closest('[data-res-filter]');if(!chip)return;currentResFilter=chip.dataset.resFilter;document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c===chip));await renderReservationsList()};
