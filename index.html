@@ -653,7 +653,56 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 @media(min-width:701px){
   #home .homebody{max-width:720px;margin:auto}
 }
+// --- לוגיקת ניווט וחישוב מרחקים (גרסה 2.5) ---
+let activeNavRoute = null;
 
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!valid(lat1, lon1) || !valid(lat2, lon2)) return 1.5;
+  const R = 6371; 
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.max(0.5, R * c);
+}
+
+function formatTravelTimes(km) {
+  const walkMins = Math.max(5, Math.round((km / 4.5) * 60));
+  const driveMins = Math.max(2, Math.round((km / 25) * 60));
+  return {
+    walkingText: `${walkMins} דק' הליכה`,
+    drivingText: `${driveMins} דק' נסיעה`,
+    kmText: `${km.toFixed(1)} ק״מ`
+  };
+}
+
+function openNavChoiceModal(fromTitle, toTitle, fromLat, fromLng, toLat, toLng) {
+  activeNavRoute = { fromTitle, toTitle, fromLat, fromLng, toLat, toLng };
+  const km = calculateDistanceKm(fromLat, fromLng, toLat, toLng);
+  const times = formatTravelTimes(km);
+
+  if ($('navRouteSummary')) $('navRouteSummary').innerHTML = `<b>${esc(fromTitle)}</b> ⇄ <b>${esc(toTitle)}</b> (${times.kmText})`;
+  if ($('navWalkMeta')) $('navWalkMeta').textContent = `${times.walkingText} / ${times.kmText}`;
+  if ($('navDriveMeta')) $('navDriveMeta').textContent = `${times.drivingText} / ${times.kmText}`;
+
+  openModal('navChoiceModal');
+}
+
+// חיבור כפתורי הבחירה במודל לפתיחת Google Maps
+document.querySelectorAll('[data-nav-mode]').forEach(card => {
+  card.onclick = () => {
+    if (!activeNavRoute) return;
+    const mode = card.dataset.navMode === 'walking' ? 'w' : 'd';
+    const { toLat, toLng, fromLat, fromLng } = activeNavRoute;
+    const url = valid(fromLat, fromLng) 
+      ? `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=${mode === 'w' ? 'walking' : 'driving'}`
+      : `https://www.google.com/maps/search/?api=1&query=${toLat},${toLng}`;
+    window.open(url, '_blank');
+    closeModal('navChoiceModal');
+  };
+});
 </style>
 </head>
 <body>
@@ -789,6 +838,15 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      destination (VND -> ILS) matches the old selects' default selected options. See
      budgetFxFromCur/budgetFxToCur and the rewritten fxCalculate below; fxSave's existing
      ILS-destination-only rule is untouched. -->
+          <!-- אזור תקציב אישי למשתמש המחובר -->
+ <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:16px;">
+   <h3>👤 תקציב אישי עבור: <span id="currentUserNameLabel"></span></h3>
+   <div class="row" style="margin:8px 0">
+     <input id="personalBudgetTarget" type="number" min="0" placeholder="תקציב אישי שלך (₪)" style="flex:1">
+     <button class="btn green" id="savePersonalBudgetTarget" type="button">שמור תקציב אישי</button>
+   </div>
+   <div class="muted" id="personalSpentSummary">הוצאות אישיות שלך עד כה: 0 ₪ מתוך 0 ₪</div>
+ </div>
 <input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="budgetFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
@@ -837,7 +895,30 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div id="reservationsList"></div>
 <button class="btn green" id="resAddNewBtn" type="button" style="width:100%;margin-top:14px">➕ הוספת הזמנה</button>
 </div></div>
-
+<!-- מודל בחירת דרך הגעה בין נקודות -->
+<div id="navChoiceModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>בחירת דרך הגעה</h2>
+      <button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button>
+    </div>
+    <div id="navRouteSummary" class="muted" style="font-size: 0.85rem; margin-bottom: 4px;"></div>
+    <div class="nav-options-grid">
+      <div class="nav-option-card" data-nav-mode="walking">
+        <div class="nav-ic">🚶‍♂️</div>
+        <div class="nav-title">הליכה</div>
+        <div id="navWalkMeta" class="nav-meta">—</div>
+        <button class="btn outline pillbtn" style="width: 100%">בחר</button>
+      </div>
+      <div class="nav-option-card active" data-nav-mode="driving">
+        <div class="nav-ic">🚗</div>
+        <div class="nav-title">נסיעה</div>
+        <div id="navDriveMeta" class="nav-meta">—</div>
+        <button class="btn red pillbtn" style="width: 100%">בחר</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="reservationDetailModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="resDetailTitle">הזמנה חדשה</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div>
 <input type="hidden" id="resId">
 <label class="muted">סוג</label>
@@ -943,6 +1024,56 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <!-- CHANGE 2026-08-22 GM-03: moved here from after </script> -- it was previously placed after the closing </script> tag, so it did not exist in the DOM yet when the top-level script below ran and tried to wire its onclick handler. That threw an uncaught TypeError which silently aborted the rest of the script, including the boot() call at the very end -- so the app never loaded trip data or opened the user picker. Confirmed with a headless-browser test; see CHANGELOG_v1.5.0.txt. -->
 <script>
 'use strict';
+     // --- לוגיקת ניווט וחישוב מרחקים (גרסה 2.5) ---
+let activeNavRoute = null;
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!valid(lat1, lon1) || !valid(lat2, lon2)) return 1.5;
+  const R = 6371; 
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Math.max(0.5, R * c);
+}
+
+function formatTravelTimes(km) {
+  const walkMins = Math.max(5, Math.round((km / 4.5) * 60));
+  const driveMins = Math.max(2, Math.round((km / 25) * 60));
+  return {
+    walkingText: `${walkMins} דק' הליכה`,
+    drivingText: `${driveMins} דק' נסיעה`,
+    kmText: `${km.toFixed(1)} ק״מ`
+  };
+}
+
+function openNavChoiceModal(fromTitle, toTitle, fromLat, fromLng, toLat, toLng) {
+  activeNavRoute = { fromTitle, toTitle, fromLat, fromLng, toLat, toLng };
+  const km = calculateDistanceKm(fromLat, fromLng, toLat, toLng);
+  const times = formatTravelTimes(km);
+
+  if ($('navRouteSummary')) $('navRouteSummary').innerHTML = `<b>${esc(fromTitle)}</b> ⇄ <b>${esc(toTitle)}</b> (${times.kmText})`;
+  if ($('navWalkMeta')) $('navWalkMeta').textContent = `${times.walkingText} / ${times.kmText}`;
+  if ($('navDriveMeta')) $('navDriveMeta').textContent = `${times.drivingText} / ${times.kmText}`;
+
+  openModal('navChoiceModal');
+}
+
+// חיבור כפתורי הבחירה במודל לפתיחת Google Maps
+document.querySelectorAll('[data-nav-mode]').forEach(card => {
+  card.onclick = () => {
+    if (!activeNavRoute) return;
+    const mode = card.dataset.navMode === 'walking' ? 'w' : 'd';
+    const { toLat, toLng, fromLat, fromLng } = activeNavRoute;
+    const url = valid(fromLat, fromLng) 
+      ? `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=${mode === 'w' ? 'walking' : 'driving'}`
+      : `https://www.google.com/maps/search/?api=1&query=${toLat},${toLng}`;
+    window.open(url, '_blank');
+    closeModal($('navChoiceModal'));
+  };
+});
 /* CHANGE 2026-08-27 GM-18: home-screen dual clock. Local time is NOT hardcoded to Vietnam --
    it reads the device's actual current IANA time zone (Intl.DateTimeFormat().resolvedOptions().
    timeZone), so it automatically shows Abu Dhabi time during a layover there, Athens/Greece time
