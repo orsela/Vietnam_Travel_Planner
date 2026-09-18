@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.4 (Quick converter: add expense hand-off)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.5 (Fast local ETA + personal budget per user)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -653,56 +653,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 @media(min-width:701px){
   #home .homebody{max-width:720px;margin:auto}
 }
-// --- לוגיקת ניווט וחישוב מרחקים (גרסה 2.5) ---
-let activeNavRoute = null;
 
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  if (!valid(lat1, lon1) || !valid(lat2, lon2)) return 1.5;
-  const R = 6371; 
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return Math.max(0.5, R * c);
-}
-
-function formatTravelTimes(km) {
-  const walkMins = Math.max(5, Math.round((km / 4.5) * 60));
-  const driveMins = Math.max(2, Math.round((km / 25) * 60));
-  return {
-    walkingText: `${walkMins} דק' הליכה`,
-    drivingText: `${driveMins} דק' נסיעה`,
-    kmText: `${km.toFixed(1)} ק״מ`
-  };
-}
-
-function openNavChoiceModal(fromTitle, toTitle, fromLat, fromLng, toLat, toLng) {
-  activeNavRoute = { fromTitle, toTitle, fromLat, fromLng, toLat, toLng };
-  const km = calculateDistanceKm(fromLat, fromLng, toLat, toLng);
-  const times = formatTravelTimes(km);
-
-  if ($('navRouteSummary')) $('navRouteSummary').innerHTML = `<b>${esc(fromTitle)}</b> ⇄ <b>${esc(toTitle)}</b> (${times.kmText})`;
-  if ($('navWalkMeta')) $('navWalkMeta').textContent = `${times.walkingText} / ${times.kmText}`;
-  if ($('navDriveMeta')) $('navDriveMeta').textContent = `${times.drivingText} / ${times.kmText}`;
-
-  openModal('navChoiceModal');
-}
-
-// חיבור כפתורי הבחירה במודל לפתיחת Google Maps
-document.querySelectorAll('[data-nav-mode]').forEach(card => {
-  card.onclick = () => {
-    if (!activeNavRoute) return;
-    const mode = card.dataset.navMode === 'walking' ? 'w' : 'd';
-    const { toLat, toLng, fromLat, fromLng } = activeNavRoute;
-    const url = valid(fromLat, fromLng) 
-      ? `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=${mode === 'w' ? 'walking' : 'driving'}`
-      : `https://www.google.com/maps/search/?api=1&query=${toLat},${toLng}`;
-    window.open(url, '_blank');
-    closeModal('navChoiceModal');
-  };
-});
 </style>
 </head>
 <body>
@@ -823,7 +774,14 @@ document.querySelectorAll('[data-nav-mode]').forEach(card => {
 <div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button></div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><div id="journalFeed" class="journal-feed"></div><label class="muted journal-compose-label">הוספת רשומה חדשה (לא מוחקת שום דבר שכבר נכתב)</label><textarea id="journalText" rows="3" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">+ הוסף רשומה</button><hr><button class="btn blue" type="button" id="photosBtn">🖼️ תמונות</button><input id="photos" type="file" accept="image/*" multiple class="file-input-vh"><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
-<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><!-- CHANGE 2026-09-17 BUD-CUR-01 + BUD-DAY-01: the add-expense form gained (1) a day-strip
+<section id="budget" class="panel"><div class="topbar"><h1>תקציב והוצאות</h1></div><div id="budgetBurn" class="daily-burn" style="display:none"></div><div class="sumcard"><div class="amt" id="budgetTotals2"></div><div class="lbl" id="budgetSubline"></div><div class="pbar2"><div id="budgetBar"></div></div></div><div class="row" style="margin-bottom:var(--sp-3)"><input id="budgetTarget" type="number" min="0" placeholder="תקציב יעד (₪)" style="flex:1"><button class="btn blue" id="saveBudgetTarget">שמור יעד</button></div><div class="catrow" id="catChips"></div><!-- CHANGE 2026-09-17 PERSONAL-BUDGET-01: per-user personal budget target + personal spend
+     summary. Target is stored SHARED across devices via the existing SS.get/set layer (same
+     one trip/expenses/budget already use), keyed per user name, per Or's explicit decision.
+     Spend total is computed from the EXISTING expenses array, filtered to entries this user
+     logged (e.by===activeUser) -- no new expense field needed. See
+     getPersonalBudgetTarget/savePersonalBudgetTargetFn/renderPersonalBudget below, called
+     from the end of renderBudget() so it refreshes whenever the budget screen does. -->
+<div class="card" id="personalBudgetCard"><h3>👤 תקציב אישי — <span id="currentUserNameLabel"></span></h3><div class="row"><input id="personalBudgetTarget" type="number" min="0" placeholder="תקציב אישי (₪)" style="flex:1"><button class="btn blue" id="savePersonalBudgetTarget" type="button">שמור</button></div><div class="muted" id="personalSpentSummary" style="margin-top:6px"></div></div><!-- CHANGE 2026-09-17 BUD-CUR-01 + BUD-DAY-01: the add-expense form gained (1) a day-strip
      (replacing the old expenseDay <select>, which always reset to "not linked" on every
      renderBudget() rebuild) defaulting to whichever trip day matches today's real calendar
      date, and (2) a currency chip row + explicit "חשב לשקלים" step so amounts can be entered
@@ -838,15 +796,6 @@ document.querySelectorAll('[data-nav-mode]').forEach(card => {
      destination (VND -> ILS) matches the old selects' default selected options. See
      budgetFxFromCur/budgetFxToCur and the rewritten fxCalculate below; fxSave's existing
      ILS-destination-only rule is untouched. -->
-          <!-- אזור תקציב אישי למשתמש המחובר -->
- <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:16px;">
-   <h3>👤 תקציב אישי עבור: <span id="currentUserNameLabel"></span></h3>
-   <div class="row" style="margin:8px 0">
-     <input id="personalBudgetTarget" type="number" min="0" placeholder="תקציב אישי שלך (₪)" style="flex:1">
-     <button class="btn green" id="savePersonalBudgetTarget" type="button">שמור תקציב אישי</button>
-   </div>
-   <div class="muted" id="personalSpentSummary">הוצאות אישיות שלך עד כה: 0 ₪ מתוך 0 ₪</div>
- </div>
 <input id="fxAmount" type="number" min="0" step="any" placeholder="סכום להמרה"><div><div class="muted" style="margin-bottom:2px;font-weight:700;font-size:.78rem">בחרו מטבעות: לחיצה ראשונה = מקור, לחיצה שנייה = יעד</div><div class="currow" id="budgetFxRow"><button type="button" class="curchip" data-cur="ILS">₪<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">ILS</span></button><button type="button" class="curchip" data-cur="USD">$<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">USD</span></button><button type="button" class="curchip" data-cur="EUR">€<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">EUR</span></button><button type="button" class="curchip" data-cur="VND">₫<span class="tag tag-src">מקור</span><span class="tag tag-dst">יעד</span><span class="code">VND</span></button></div><div class="currow-legend"><span><i class="legend-dot g"></i>ירוק = מקור</span><span><i class="legend-dot a"></i>אפור = יעד</span></div></div></div><button class="btn green" id="fxCalculate">חשב</button><p id="fxResult"></p><button class="btn outline" id="fxSave">הוסף לתקציב</button></div></details></section>
 <section id="more" class="panel"><div class="topbar"><h1>עוד</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="documentsBtn"><div class="ic" style="background:#f2eefe">🔐</div><div class="lbl">כספת מסמכים<span class="val" id="documentsSummary" style="display:block;font-weight:400;font-size:.72rem">זמין ללא אינטרנט</span></div><div class="chev">‹</div></div><div class="listitem" id="reservationsBtn"><div class="ic" style="background:#eef6f1">🎫</div><div class="lbl">הזמנות וארנק נסיעה<span class="val" id="reservationsSummary" style="display:block;font-weight:400;font-size:.72rem">טיסות, לינה, הסעות ופעילויות</span></div><div class="chev">‹</div></div><a class="listitem" href="https://www.grab.com/vn/en/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><div class="ic" style="background:#eaf7ea">🚕</div><div class="lbl">Grab<span class="val" style="display:block;font-weight:400;font-size:.72rem">הזמנת נסיעות</span></div><div class="chev">‹</div></a><div class="listitem" data-go="album"><div class="ic" style="background:#fdf1e7">🖼️</div><div class="lbl">אלבום<span class="val" style="display:block;font-weight:400;font-size:.72rem">כל התמונות מהטיול</span></div><div class="chev">‹</div></div><div class="listitem" data-go="management"><div class="ic" style="background:#fff4f2">⚙️</div><div class="lbl">ניהול<span class="val" style="display:block;font-weight:400;font-size:.72rem">משתמשים, הגדרות מסע, גיבוי</span></div><div class="chev">‹</div></div><div class="statuscard ok" id="moreSyncCard" data-go="backup" style="cursor:pointer"><span style="font-size:1.2rem">☁️</span><div><b id="moreSyncTitle">סנכרון בענן פעיל</b><span id="moreSyncSub"></span></div></div></div></section>
 <section id="management" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>ניהול</h1></div><div style="padding:0 var(--sp-3);max-width:1100px;margin:auto"><div class="listitem" id="mgmtUsers"><div class="ic">👤</div><div class="lbl">משתמשים</div><span class="val" id="mgmtUsersVal"></span><div class="chev">‹</div></div><div class="listitem" id="mgmtTrip"><div class="ic">🧭</div><div class="lbl">הגדרות מסע</div><span class="val" id="mgmtTripVal"></span><div class="chev">‹</div></div><div class="listitem" data-go="budget"><div class="ic">💱</div><div class="lbl">מטבעות</div><span class="val">שערי המרה</span><div class="chev">‹</div></div><div class="listitem" data-go="backup"><div class="ic">☁️</div><div class="lbl">גיבוי וטעינה</div><span class="val" id="mgmtBackupVal"></span><div class="chev">‹</div></div></div></section>
@@ -860,15 +809,15 @@ document.querySelectorAll('[data-nav-mode]').forEach(card => {
      is ILS -- same rule the budget FX calculator's existing fxSave already enforces. See
      the quickFxCalculate rewrite and $('quickFxAddExpenseBtn').onclick below. -->
 <button class="btn gold" id="quickFxAddExpenseBtn" type="button" style="display:none">➕ הוסף כהוצאה</button><p class="muted" id="quickFxAddExpenseHint" style="display:none;text-align:center;font-size:.72rem">מופיע רק כשהיעד הוא ₪</p></div></div>
-<!-- CHANGE 2026-09-17 TRAVEL-TIME-01: travel-time-between-two-points modal, per the mockup
-     approved by Or. Point A/B accept free text (resolved via google.maps.Geocoder), a pasted
-     Google Maps link/coordinates (resolved via the EXISTING parseMaps() -- not duplicated),
-     or a quick-pick chip for today's hotel/waypoints (already-known lat/lng, no lookup
-     needed). Times come from google.maps.DistanceMatrixService (driving + walking) -- the
-     already-loaded Maps JS library, not a separate fetch to the web-service endpoints (avoids
-     CORS issues the raw REST APIs have from a browser). Clicking a result card opens real
+<!-- CHANGE 2026-09-17 TRAVEL-TIME-01 (superseded by TRAVEL-TIME-02 below): travel-time-between-
+     two-points modal, per the mockup approved by Or. Point A/B accept free text (resolved via
+     google.maps.Geocoder), a pasted Google Maps link/coordinates (resolved via the EXISTING
+     parseMaps() -- not duplicated), or a quick-pick chip for today's hotel/waypoints (already-
+     known lat/lng, no lookup needed). TRAVEL-TIME-02 (v2.4.5) replaced the original Distance
+     Matrix-based time estimate with a fast local straight-line calculation, per Or's explicit
+     request -- point resolution (Geocoder) is unaffected. Clicking a result card opens real
      Google Maps navigation in that mode immediately -- no separate confirm step, per Or's
-     explicit decision. See travelTimePoints/resolveTravelPoint/geocodePlace/getDistanceMatrix
+     explicit decision. See travelTimePoints/resolveTravelPoint/geocodePlace/calculateDistanceKm
      and the $('openTravelTimeBtn') wiring further down. -->
 <div id="travelTimeModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>⏱️ זמן נסיעה בין נקודות</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted" style="margin:0">אפשר להקליד כתובת/שם מקום, להדביק קישור Google Maps, או לבחור מנקודה שמורה.</p><div class="point-block"><div class="point-label">📍 נקודה א׳</div><input id="travelPointA" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsA"></div><div class="point-status" id="travelStatusA"></div></div><div class="point-block"><div class="point-label">📍 נקודה ב׳</div><input id="travelPointB" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsB"></div><div class="point-status" id="travelStatusB"></div></div><button class="btn green" id="travelCalcBtn" type="button">חשב זמני נסיעה</button><div class="nav-options-grid" id="travelNavGrid" style="display:none"><button type="button" class="nav-option-card" id="travelNavDrive" data-mode="DRIVING"><div class="nav-ic">🚗</div><div class="nav-title">נסיעה</div><div class="nav-meta" id="travelDriveMeta">—</div></button><button type="button" class="nav-option-card" id="travelNavWalk" data-mode="WALKING"><div class="nav-ic">🚶</div><div class="nav-title">הליכה</div><div class="nav-meta" id="travelWalkMeta">—</div></button></div><p class="muted" id="travelNavHint" style="display:none;text-align:center;margin:0">לחיצה על אחת האפשרויות פותחת ניווט ב-Google Maps באותו מצב</p></div></div>
 <div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
@@ -895,30 +844,7 @@ document.querySelectorAll('[data-nav-mode]').forEach(card => {
 <div id="reservationsList"></div>
 <button class="btn green" id="resAddNewBtn" type="button" style="width:100%;margin-top:14px">➕ הוספת הזמנה</button>
 </div></div>
-<!-- מודל בחירת דרך הגעה בין נקודות -->
-<div id="navChoiceModal" class="modal">
-  <div class="modal-box">
-    <div class="modal-head">
-      <h2>בחירת דרך הגעה</h2>
-      <button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button>
-    </div>
-    <div id="navRouteSummary" class="muted" style="font-size: 0.85rem; margin-bottom: 4px;"></div>
-    <div class="nav-options-grid">
-      <div class="nav-option-card" data-nav-mode="walking">
-        <div class="nav-ic">🚶‍♂️</div>
-        <div class="nav-title">הליכה</div>
-        <div id="navWalkMeta" class="nav-meta">—</div>
-        <button class="btn outline pillbtn" style="width: 100%">בחר</button>
-      </div>
-      <div class="nav-option-card active" data-nav-mode="driving">
-        <div class="nav-ic">🚗</div>
-        <div class="nav-title">נסיעה</div>
-        <div id="navDriveMeta" class="nav-meta">—</div>
-        <button class="btn red pillbtn" style="width: 100%">בחר</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 <div id="reservationDetailModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="resDetailTitle">הזמנה חדשה</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div>
 <input type="hidden" id="resId">
 <label class="muted">סוג</label>
@@ -1024,56 +950,6 @@ document.querySelectorAll('[data-nav-mode]').forEach(card => {
 <!-- CHANGE 2026-08-22 GM-03: moved here from after </script> -- it was previously placed after the closing </script> tag, so it did not exist in the DOM yet when the top-level script below ran and tried to wire its onclick handler. That threw an uncaught TypeError which silently aborted the rest of the script, including the boot() call at the very end -- so the app never loaded trip data or opened the user picker. Confirmed with a headless-browser test; see CHANGELOG_v1.5.0.txt. -->
 <script>
 'use strict';
-     // --- לוגיקת ניווט וחישוב מרחקים (גרסה 2.5) ---
-let activeNavRoute = null;
-
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  if (!valid(lat1, lon1) || !valid(lat2, lon2)) return 1.5;
-  const R = 6371; 
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return Math.max(0.5, R * c);
-}
-
-function formatTravelTimes(km) {
-  const walkMins = Math.max(5, Math.round((km / 4.5) * 60));
-  const driveMins = Math.max(2, Math.round((km / 25) * 60));
-  return {
-    walkingText: `${walkMins} דק' הליכה`,
-    drivingText: `${driveMins} דק' נסיעה`,
-    kmText: `${km.toFixed(1)} ק״מ`
-  };
-}
-
-function openNavChoiceModal(fromTitle, toTitle, fromLat, fromLng, toLat, toLng) {
-  activeNavRoute = { fromTitle, toTitle, fromLat, fromLng, toLat, toLng };
-  const km = calculateDistanceKm(fromLat, fromLng, toLat, toLng);
-  const times = formatTravelTimes(km);
-
-  if ($('navRouteSummary')) $('navRouteSummary').innerHTML = `<b>${esc(fromTitle)}</b> ⇄ <b>${esc(toTitle)}</b> (${times.kmText})`;
-  if ($('navWalkMeta')) $('navWalkMeta').textContent = `${times.walkingText} / ${times.kmText}`;
-  if ($('navDriveMeta')) $('navDriveMeta').textContent = `${times.drivingText} / ${times.kmText}`;
-
-  openModal('navChoiceModal');
-}
-
-// חיבור כפתורי הבחירה במודל לפתיחת Google Maps
-document.querySelectorAll('[data-nav-mode]').forEach(card => {
-  card.onclick = () => {
-    if (!activeNavRoute) return;
-    const mode = card.dataset.navMode === 'walking' ? 'w' : 'd';
-    const { toLat, toLng, fromLat, fromLng } = activeNavRoute;
-    const url = valid(fromLat, fromLng) 
-      ? `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=${mode === 'w' ? 'walking' : 'driving'}`
-      : `https://www.google.com/maps/search/?api=1&query=${toLat},${toLng}`;
-    window.open(url, '_blank');
-    closeModal($('navChoiceModal'));
-  };
-});
 /* CHANGE 2026-08-27 GM-18: home-screen dual clock. Local time is NOT hardcoded to Vietnam --
    it reads the device's actual current IANA time zone (Intl.DateTimeFormat().resolvedOptions().
    timeZone), so it automatically shows Abu Dhabi time during a layover there, Athens/Greece time
@@ -1707,22 +1583,22 @@ function geocodePlace(query){
   }catch{resolve(null)}
  });
 }
-function getDistanceMatrix(origin,destination,mode){
- return new Promise(resolve=>{
-  if(typeof google==='undefined'||!google.maps||!google.maps.DistanceMatrixService){resolve(null);return}
-  try{
-   new google.maps.DistanceMatrixService().getDistanceMatrix({
-    origins:[{lat:origin.lat,lng:origin.lng}],
-    destinations:[{lat:destination.lat,lng:destination.lng}],
-    travelMode:mode
-   },(res,status)=>{
-    const el=res&&res.rows&&res.rows[0]&&res.rows[0].elements&&res.rows[0].elements[0];
-    if(status==='OK'&&el&&el.status==='OK'){
-     resolve({durationText:el.duration.text,distanceText:el.distance.text});
-    }else resolve(null);
-   });
-  }catch{resolve(null)}
- });
+/* CHANGE 2026-09-17 TRAVEL-TIME-02: replaced the Google Distance Matrix call with a fast,
+   local straight-line estimate, per Or's explicit request (no API round-trip, works even if
+   Google Maps hasn't loaded). Point resolution (typed address -> coordinates) still uses
+   google.maps.Geocoder via geocodePlace() below -- only the TIME estimate changed, not how
+   the two points themselves are found. */
+function calculateDistanceKm(lat1,lon1,lat2,lon2){
+ if(!valid(lat1,lon1)||!valid(lat2,lon2))return 1.5;
+ const R=6371,toRad=x=>x*Math.PI/180;
+ const dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);
+ const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+ return Math.max(0.5,R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+function formatTravelTimes(km){
+ const walkMin=Math.max(5,Math.round(km/4.5*60));
+ const driveMin=Math.max(2,Math.round(km/25*60));
+ return{driveText:`${driveMin} דק׳`,walkText:`${walkMin} דק׳`,kmText:`${km.toFixed(1)} ק״מ`};
 }
 async function resolveTravelPoint(query){
  const q=String(query||'').trim();
@@ -1773,19 +1649,14 @@ async function resolveTravelField(which){
 }
 $('travelPointA').addEventListener('change',()=>resolveTravelField('A'));
 $('travelPointB').addEventListener('change',()=>resolveTravelField('B'));
-$('travelCalcBtn').onclick=async()=>{
+$('travelCalcBtn').onclick=()=>{
  if(!travelResolvedA||!travelResolvedB){alert('יש לזהות את שתי הנקודות קודם (הקלידו כתובת/בחרו צ׳יפ)');return}
- if(typeof google==='undefined'||!google.maps||!google.maps.DistanceMatrixService){alert('Google Maps לא זמין כרגע — לא ניתן לחשב זמני נסיעה');return}
- const btn=$('travelCalcBtn'),orig=btn.textContent;btn.disabled=true;btn.textContent='מחשב…';
- const[drive,walk]=await Promise.all([
-  getDistanceMatrix(travelResolvedA,travelResolvedB,google.maps.TravelMode.DRIVING),
-  getDistanceMatrix(travelResolvedA,travelResolvedB,google.maps.TravelMode.WALKING)
- ]);
- btn.disabled=false;btn.textContent=orig;
- $('travelDriveMeta').textContent=drive?`${drive.durationText} · ${drive.distanceText}`:'לא זמין';
- $('travelWalkMeta').textContent=walk?`${walk.durationText} · ${walk.distanceText}`:'לא זמין';
- $('travelNavDrive').classList.toggle('disabled',!drive);
- $('travelNavWalk').classList.toggle('disabled',!walk);
+ const km=calculateDistanceKm(travelResolvedA.lat,travelResolvedA.lng,travelResolvedB.lat,travelResolvedB.lng);
+ const times=formatTravelTimes(km);
+ $('travelDriveMeta').textContent=`${times.driveText} · ${times.kmText}`;
+ $('travelWalkMeta').textContent=`${times.walkText} · ${times.kmText}`;
+ $('travelNavDrive').classList.remove('disabled');
+ $('travelNavWalk').classList.remove('disabled');
  document.querySelectorAll('#travelNavGrid .nav-option-card').forEach(c=>c.classList.remove('active'));
  $('travelNavGrid').style.display='grid';
  $('travelNavHint').style.display='block';
@@ -2039,6 +1910,35 @@ async function getCatBudgets(){try{const raw=await SS.get(CAT_BUDGET_KEY);return
 async function saveCatBudget(cat,value){const cur=await getCatBudgets();cur[cat]=value;await SS.set(CAT_BUDGET_KEY,JSON.stringify(cur))}
 async function ensureDefaultLodgingBudget(){const cur=await getCatBudgets();if(cur.lodging!=null)return;
  const total=tripData.reduce((s,d)=>s+Number(d.cost||0),0);if(total>0)await saveCatBudget('lodging',total)}
+/* CHANGE 2026-09-17 PERSONAL-BUDGET-01: see the HTML comment above #personalBudgetCard for
+   the full design. */
+const PERSONAL_BUDGET_PREFIX='planner:personalbudget:';
+async function getPersonalBudgetTarget(user){
+ if(!user)return 0;
+ const raw=await SS.get(PERSONAL_BUDGET_PREFIX+user);
+ const n=Number(raw);
+ return Number.isFinite(n)&&n>0?n:0;
+}
+async function savePersonalBudgetTargetFn(user,value){
+ if(!user)return;
+ await SS.set(PERSONAL_BUDGET_PREFIX+user,String(Math.max(0,Number(value)||0)));
+}
+async function renderPersonalBudget(){
+ if(!$('personalBudgetCard'))return;
+ $('currentUserNameLabel').textContent=activeUser||'—';
+ const target=await getPersonalBudgetTarget(activeUser);
+ $('personalBudgetTarget').value=target||'';
+ const items=await getExpenses();
+ const mySpent=items.filter(e=>e.by===activeUser).reduce((s,e)=>s+Number(e.amount||0),0);
+ $('personalSpentSummary').textContent=target>0
+  ?`הוצאות אישיות שלך עד כה: ${mySpent.toLocaleString('he-IL')} ₪ מתוך ${target.toLocaleString('he-IL')} ₪`
+  :`הוצאות אישיות שלך עד כה: ${mySpent.toLocaleString('he-IL')} ₪ (לא הוגדר יעד אישי)`;
+}
+$('savePersonalBudgetTarget').onclick=async()=>{
+ if(!requireUser())return;
+ await savePersonalBudgetTargetFn(activeUser,$('personalBudgetTarget').value);
+ renderPersonalBudget();
+};
 async function renderBudget(){const target=await getBudgetTarget(),items=await getExpenses(),by=Object.fromEntries(Object.keys(CATEGORIES).map(k=>[k,0]));items.forEach(e=>{const c=normalizeCategory(e.category);by[c]=(by[c]||0)+Number(e.amount||0)});tripData.forEach(d=>{if(d.isBooked)by.lodging+=Number(d.actualCost||0)});const total=Object.values(by).reduce((a,b)=>a+b,0);$('budgetTarget').value=target;const pct=Math.min(100,total/target*100);$('budgetBar').style.width=pct+'%';$('budgetTotals2').textContent=`${Math.max(0,target-total).toLocaleString('he-IL')} ₪`;$('budgetSubline').textContent=`נותרו · ${Math.round(pct)}% מהתקציב נוצל`;
  const catBudgets=await getCatBudgets();
  $('catChips').innerHTML=Object.entries(CATEGORIES).map(([k,v])=>{
@@ -2058,6 +1958,7 @@ async function renderBudget(){const target=await getBudgetTarget(),items=await g
  $('expenseList').innerHTML=`<table class="budget-detail-table"><thead><tr><th>תאריך</th><th>סעיף</th><th>פרוט</th><th>עלות</th><th></th></tr></thead><tbody>${
   detailRows.map(r=>`<tr class="${r.source==='lodging'?'lodging-row':''}"><td class="bd-date">${esc(r.dateStr||'—')}</td><td class="bd-cat">${esc(CATEGORIES[r.category]||r.category)}</td><td class="bd-detail" title="${esc(r.detail)}">${esc(r.detail)}${r.source==='lodging'?' <span class="muted">🏨</span>':''}</td><td class="bd-amount">${r.amount.toLocaleString('he-IL')} ₪</td><td class="bd-actions">${r.source==='expense'?`<button class="btn outline" data-edit-expense="${r.expenseIdx}">✎</button><button class="btn outline" data-delete-expense="${r.expenseIdx}">🗑️</button>`:''}</td></tr>`).join('')||`<tr><td colspan="5" class="muted" style="text-align:center;padding:14px">אין עדיין הוצאות רשומות</td></tr>`
  }</tbody>${detailRows.length?`<tfoot><tr><td colspan="3">סה״כ</td><td class="bd-amount">${detailTotal.toLocaleString('he-IL')} ₪</td><td></td></tr></tfoot>`:''}</table>`;
+ renderPersonalBudget();
 }
 /* CHANGE 2026-09-17 BUD-DAY-01: day-strip for the add-expense form, replacing the old
    expenseDay <select> (see the HTML change above). Defaults to whichever trip day's real
