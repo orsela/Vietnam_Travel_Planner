@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.5 (Fast local ETA + personal budget per user)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.6 (Point search: all-trip + Places Autocomplete)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -113,7 +113,12 @@ if('serviceWorker' in navigator){
      drains it once it has booted, and also starts its own timeout for the "never calls
      back at all" case that neither of these two hooks covers. See CHANGELOG_v1.5.0.txt. -->
 <script>window.__gmapsFailure=null;window.gm_authFailure=function(){window.__gmapsFailure='auth';if(window.__onGmapsFailure)window.__onGmapsFailure('auth')};</script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwIrXr4gtBjYw9zDhfR8t0TNDluHDH_l8&callback=initMap" onerror="window.__gmapsFailure='network';if(window.__onGmapsFailure)window.__onGmapsFailure('network')"></script>
+<!-- CHANGE 2026-09-17 TRAVEL-SEARCH-01: added &libraries=places (approved by Or) so the
+     travel-time search can offer live google.maps.places address predictions alongside
+     search across the trip's own saved points. Places API needs enabling separately in
+     Google Cloud Console, same situation as Static Maps/Geocoding previously; Places
+     Autocomplete billing is session-based (see travelSessionToken usage further down). -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwIrXr4gtBjYw9zDhfR8t0TNDluHDH_l8&libraries=places&callback=initMap" onerror="window.__gmapsFailure='network';if(window.__onGmapsFailure)window.__onGmapsFailure('network')"></script>
 <style>
 :root{
  --primary:#b42318;--primary-hover:#8f1d14;--primary-dark:#7a160e;--primary-light:#fff4f2;
@@ -356,6 +361,19 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .point-status.ok{color:var(--success);font-weight:600}
 .point-status.err{color:var(--primary);font-weight:600}
 .quickchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:#fff;border-radius:99px;padding:5px 11px;font-size:.72rem;font-weight:700;color:var(--text);cursor:pointer;margin-inline-end:6px;margin-top:6px}
+/* CHANGE 2026-09-17 TRAVEL-SEARCH-01: live search dropdown (saved trip points + Google
+   Places predictions) for the travel-time point inputs. Additive only. */
+.search-results{margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:none}
+.search-results.show{display:block}
+.search-group-label{background:var(--bg);color:var(--muted);font-size:.68rem;font-weight:800;padding:6px 10px}
+.search-item{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;border-top:1px solid var(--border);font-size:.85rem}
+.search-item:first-child{border-top:0}
+.search-item:hover{background:var(--primary-light)}
+.search-item .ic{flex-shrink:0}
+.search-item .main{flex:1;min-width:0}
+.search-item .main b{display:block;font-size:.85rem}
+.search-item .main span{display:block;font-size:.7rem;color:var(--muted)}
+.search-empty{padding:12px;text-align:center;color:var(--muted);font-size:.8rem}
 .nav-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0}
 .nav-option-card{border:2px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;background:#fff;cursor:pointer;transition:all .2s ease}
 .nav-option-card.active,.nav-option-card:hover{border-color:var(--primary);background:var(--primary-light)}
@@ -819,7 +837,7 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      Google Maps navigation in that mode immediately -- no separate confirm step, per Or's
      explicit decision. See travelTimePoints/resolveTravelPoint/geocodePlace/calculateDistanceKm
      and the $('openTravelTimeBtn') wiring further down. -->
-<div id="travelTimeModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>⏱️ זמן נסיעה בין נקודות</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted" style="margin:0">אפשר להקליד כתובת/שם מקום, להדביק קישור Google Maps, או לבחור מנקודה שמורה.</p><div class="point-block"><div class="point-label">📍 נקודה א׳</div><input id="travelPointA" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsA"></div><div class="point-status" id="travelStatusA"></div></div><div class="point-block"><div class="point-label">📍 נקודה ב׳</div><input id="travelPointB" placeholder="כתובת, שם מקום, או קישור Google Maps"><div id="travelChipsB"></div><div class="point-status" id="travelStatusB"></div></div><button class="btn green" id="travelCalcBtn" type="button">חשב זמני נסיעה</button><div class="nav-options-grid" id="travelNavGrid" style="display:none"><button type="button" class="nav-option-card" id="travelNavDrive" data-mode="DRIVING"><div class="nav-ic">🚗</div><div class="nav-title">נסיעה</div><div class="nav-meta" id="travelDriveMeta">—</div></button><button type="button" class="nav-option-card" id="travelNavWalk" data-mode="WALKING"><div class="nav-ic">🚶</div><div class="nav-title">הליכה</div><div class="nav-meta" id="travelWalkMeta">—</div></button></div><p class="muted" id="travelNavHint" style="display:none;text-align:center;margin:0">לחיצה על אחת האפשרויות פותחת ניווט ב-Google Maps באותו מצב</p></div></div>
+<div id="travelTimeModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>⏱️ זמן נסיעה בין נקודות</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted" style="margin:0">אפשר לחפש (גם מבין נקודות שכבר שמורות בטיול, וגם הצעות כתובת), או להדביק קישור Google Maps.</p><div class="point-block"><div class="point-label">📍 נקודה א׳</div><input id="travelPointA" placeholder="חפשו נקודה שמורה או כתובת..."><div class="search-results" id="travelResultsA"></div><div class="point-status" id="travelStatusA"></div></div><div class="point-block"><div class="point-label">📍 נקודה ב׳</div><input id="travelPointB" placeholder="חפשו נקודה שמורה או כתובת..."><div class="search-results" id="travelResultsB"></div><div class="point-status" id="travelStatusB"></div></div><button class="btn green" id="travelCalcBtn" type="button">חשב זמני נסיעה</button><div class="nav-options-grid" id="travelNavGrid" style="display:none"><button type="button" class="nav-option-card" id="travelNavDrive" data-mode="DRIVING"><div class="nav-ic">🚗</div><div class="nav-title">נסיעה</div><div class="nav-meta" id="travelDriveMeta">—</div></button><button type="button" class="nav-option-card" id="travelNavWalk" data-mode="WALKING"><div class="nav-ic">🚶</div><div class="nav-title">הליכה</div><div class="nav-meta" id="travelWalkMeta">—</div></button></div><p class="muted" id="travelNavHint" style="display:none;text-align:center;margin:0">לחיצה על אחת האפשרויות פותחת ניווט ב-Google Maps באותו מצב</p></div></div>
 <div id="weatherModal" class="modal"><div class="modal-box"><h2 id="weatherModalTitle">🌦️ מזג אוויר למחר</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="weatherDetails" class="card" style="margin:0"></div></div></div>
 <div id="documentsModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔐 כספת מסמכים</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">המסמכים נשמרים מקומית במכשיר וזמינים גם ללא אינטרנט. תמונות נדחסות אוטומטית; קובצי PDF נתמכים עד 3MB (מגבלת אחסון המכשיר).</p><div class="row"><select id="docCategory" style="flex:1"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><input id="docName" style="flex:1" maxlength="50" placeholder="שם המסמך"></div><button class="btn blue" id="docAddBtn" type="button">➕ הוסף מסמך</button><input id="docInput" type="file" accept="image/*,application/pdf,.pdf" multiple class="file-input-vh"><div id="documentsGrid" class="doc-grid" style="margin-top:12px"></div></div></div>
 <!-- CHANGE 2026-09-14 SHARE-02: In-app share sheet. It is only a safe fallback/preparation surface; existing vault remains unchanged. -->
@@ -1619,20 +1637,98 @@ function setTravelResolved(which,val){
  else{statusEl.textContent='';statusEl.className='point-status'}
  hideTravelResults();
 }
-function renderTravelChips(){
- const pts=travelTimePoints();
- const chipHtml=pts.map(p=>`<span class="quickchip" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${esc(p.name)}">${p.isHotel?'🏨':'📍'} ${esc(p.name)}</span>`).join('');
- $('travelChipsA').innerHTML=chipHtml;
- $('travelChipsB').innerHTML=chipHtml;
- ['A','B'].forEach(which=>{
-  $('travelChips'+which).querySelectorAll('[data-lat]').forEach(chip=>{
-   chip.onclick=()=>{
-    const name=chip.dataset.name,lat=Number(chip.dataset.lat),lng=Number(chip.dataset.lng);
-    $('travelPoint'+which).value=name;
-    setTravelResolved(which,{lat,lng,label:name});
+/* CHANGE 2026-09-17 TRAVEL-SEARCH-01: replaces the day-limited quick-pick chips with a live
+   search dropdown, per Or's explicit request: (1) search across ALL the trip's saved points
+   (every day, not just the one currently open), and (2) live Google Places address
+   predictions for anything not already saved. Selecting a saved point resolves instantly
+   (lat/lng already known); selecting a Places prediction needs one follow-up
+   PlacesService.getDetails() call to get coordinates from its place_id. Typing a full address
+   and clicking away without picking a suggestion still falls back to resolveTravelField()
+   (parseMaps()/geocodePlace(), unchanged) via the blur handler below. */
+function allTripPoints(){
+ const pts=[];
+ tripData.forEach(d=>{
+  if(valid(d.lat,d.lng)&&!isFlightDay(d))pts.push({name:d.bookedHotel||d.hotel||d.region,lat:d.lat,lng:d.lng,day:d.day,isHotel:true});
+  (d.waypoints||[]).forEach(w=>{if(valid(w.lat,w.lng))pts.push({name:w.name,lat:w.lat,lng:w.lng,day:d.day})});
+ });
+ return pts;
+}
+let travelSearchTimers={},travelAutocompleteService=null,travelPlacesService=null,travelSessionToken=null;
+function getAutocompleteService(){
+ if(typeof google==='undefined'||!google.maps||!google.maps.places)return null;
+ if(!travelAutocompleteService)travelAutocompleteService=new google.maps.places.AutocompleteService();
+ return travelAutocompleteService;
+}
+function getPlacesDetailsService(){
+ if(typeof google==='undefined'||!google.maps||!google.maps.places)return null;
+ if(!travelPlacesService)travelPlacesService=new google.maps.places.PlacesService(document.createElement('div'));
+ return travelPlacesService;
+}
+function renderTravelSearch(which){
+ const q=$('travelPoint'+which).value.trim();
+ const resultsEl=$('travelResults'+which);
+ if(q.length<2){resultsEl.classList.remove('show');resultsEl.innerHTML='';return}
+ const savedMatches=allTripPoints().filter(p=>p.name.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+ let savedHtml='';
+ if(savedMatches.length){
+  savedHtml='<div class="search-group-label">📍 נקודות שמורות בטיול</div>'+savedMatches.map((p,idx)=>`<div class="search-item" data-saved-idx="${idx}"><span class="ic">${p.isHotel?'🏨':'📍'}</span><div class="main"><b>${esc(p.name)}</b><span>יום ${p.day}</span></div></div>`).join('');
+ }
+ resultsEl.innerHTML=savedHtml||'<div class="search-empty">מחפש…</div>';
+ resultsEl.classList.add('show');
+ resultsEl.querySelectorAll('[data-saved-idx]').forEach(item=>{
+  item.onmousedown=e=>{
+   e.preventDefault();
+   const p=savedMatches[Number(item.dataset.savedIdx)];
+   $('travelPoint'+which).value=p.name;
+   resultsEl.classList.remove('show');
+   setTravelResolved(which,{lat:p.lat,lng:p.lng,label:p.name});
+  };
+ });
+ clearTimeout(travelSearchTimers[which]);
+ travelSearchTimers[which]=setTimeout(()=>fetchPlacePredictions(which,q,savedHtml),300);
+}
+function fetchPlacePredictions(which,q,savedHtml){
+ const svc=getAutocompleteService();
+ const resultsEl=$('travelResults'+which);
+ if(!svc){if(!savedHtml)resultsEl.innerHTML='<div class="search-empty">אין תוצאות</div>';return}
+ if(!travelSessionToken)travelSessionToken=new google.maps.places.AutocompleteSessionToken();
+ svc.getPlacePredictions({input:q,sessionToken:travelSessionToken,componentRestrictions:{country:'vn'}},(predictions,status)=>{
+  let addrHtml='';
+  if(status==='OK'&&predictions&&predictions.length){
+   addrHtml='<div class="search-group-label">🔍 הצעות כתובת</div>'+predictions.slice(0,5).map((p,idx)=>`<div class="search-item" data-place-idx="${idx}"><span class="ic">🌍</span><div class="main"><b>${esc(p.description)}</b></div></div>`).join('');
+  }
+  const combined=savedHtml+addrHtml;
+  resultsEl.innerHTML=combined||'<div class="search-empty">אין תוצאות</div>';
+  resultsEl.querySelectorAll('[data-place-idx]').forEach(item=>{
+   item.onmousedown=e=>{
+    e.preventDefault();
+    resolvePlacePrediction(which,predictions[Number(item.dataset.placeIdx)]);
    };
   });
  });
+}
+function resolvePlacePrediction(which,pred){
+ $('travelPoint'+which).value=pred.description;
+ $('travelResults'+which).classList.remove('show');
+ const svc=getPlacesDetailsService();
+ const statusEl=$('travelStatus'+which);
+ if(!svc){setTravelResolved(which,null);return}
+ statusEl.textContent='🔍 מאתר מיקום מדויק…';statusEl.className='point-status';
+ svc.getDetails({placeId:pred.place_id,fields:['geometry','formatted_address']},(place,status)=>{
+  if(status==='OK'&&place&&place.geometry&&place.geometry.location){
+   setTravelResolved(which,{lat:place.geometry.location.lat(),lng:place.geometry.location.lng(),label:place.formatted_address||pred.description});
+  }else{
+   if(which==='A')travelResolvedA=null;else travelResolvedB=null;
+   statusEl.textContent='⚠️ לא הצלחנו לאתר את המיקום המדויק';statusEl.className='point-status err';
+   hideTravelResults();
+  }
+  travelSessionToken=null;
+ });
+}
+function finalizeTravelField(which){
+ $('travelResults'+which).classList.remove('show');
+ const already=which==='A'?travelResolvedA:travelResolvedB;
+ if(!already)resolveTravelField(which);
 }
 async function resolveTravelField(which){
  const val=$('travelPoint'+which).value;
@@ -1647,8 +1743,10 @@ async function resolveTravelField(which){
   hideTravelResults();
  }
 }
-$('travelPointA').addEventListener('change',()=>resolveTravelField('A'));
-$('travelPointB').addEventListener('change',()=>resolveTravelField('B'));
+$('travelPointA').addEventListener('input',()=>renderTravelSearch('A'));
+$('travelPointB').addEventListener('input',()=>renderTravelSearch('B'));
+$('travelPointA').addEventListener('blur',()=>finalizeTravelField('A'));
+$('travelPointB').addEventListener('blur',()=>finalizeTravelField('B'));
 $('travelCalcBtn').onclick=()=>{
  if(!travelResolvedA||!travelResolvedB){alert('יש לזהות את שתי הנקודות קודם (הקלידו כתובת/בחרו צ׳יפ)');return}
  const km=calculateDistanceKm(travelResolvedA.lat,travelResolvedA.lng,travelResolvedB.lat,travelResolvedB.lng);
@@ -1674,7 +1772,8 @@ document.querySelectorAll('#travelNavGrid .nav-option-card').forEach(card=>{
  };
 });
 $('openTravelTimeBtn').onclick=()=>{
- renderTravelChips();
+ $('travelResultsA').innerHTML='';$('travelResultsA').classList.remove('show');
+ $('travelResultsB').innerHTML='';$('travelResultsB').classList.remove('show');
  const hotel=travelTimePoints().find(p=>p.isHotel);
  $('travelPointA').value=hotel?hotel.name:'';
  setTravelResolved('A',hotel?{lat:hotel.lat,lng:hotel.lng,label:hotel.name}:null);
