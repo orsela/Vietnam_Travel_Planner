@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.7 (Fix: search results unselectable on touch)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.8 (Fix: saved-point results unclickable after Places rebind)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -1670,6 +1670,25 @@ function getPlacesDetailsService(){
    the app's primary platform. Switched item handlers from mousedown+preventDefault (a
    desktop-only fix) to plain click (reliable for both mouse and touch), and the blur handler
    below is now delayed so a real tap has time to complete first. */
+/* CHANGE 2026-09-18 TRAVEL-SEARCH-03: fixed a second, separate bug -- fetchPlacePredictions
+   rewrites resultsEl.innerHTML with BOTH sections (saved + address) once Places predictions
+   come back (~300ms after almost every keystroke), which recreates the saved-match DOM nodes
+   from scratch. Only the [data-place-idx] (address) items had their click handler rebound
+   after that rewrite -- the recreated [data-saved-idx] (saved-point) items were left with NO
+   handler at all, so they became permanently unclickable in practice (matching Or's report:
+   saved-point selection never worked, but Places predictions did). Fix: bindSavedItemClicks()
+   is now a single shared helper, called after EVERY innerHTML write that can contain
+   [data-saved-idx] items -- both the initial synchronous render and the later Places rebind. */
+function bindSavedItemClicks(resultsEl,which,savedMatches){
+ resultsEl.querySelectorAll('[data-saved-idx]').forEach(item=>{
+  item.onclick=()=>{
+   const p=savedMatches[Number(item.dataset.savedIdx)];
+   $('travelPoint'+which).value=p.name;
+   resultsEl.classList.remove('show');
+   setTravelResolved(which,{lat:p.lat,lng:p.lng,label:p.name});
+  };
+ });
+}
 function renderTravelSearch(which){
  const q=$('travelPoint'+which).value.trim();
  const resultsEl=$('travelResults'+which);
@@ -1681,18 +1700,11 @@ function renderTravelSearch(which){
  }
  resultsEl.innerHTML=savedHtml||'<div class="search-empty">מחפש…</div>';
  resultsEl.classList.add('show');
- resultsEl.querySelectorAll('[data-saved-idx]').forEach(item=>{
-  item.onclick=()=>{
-   const p=savedMatches[Number(item.dataset.savedIdx)];
-   $('travelPoint'+which).value=p.name;
-   resultsEl.classList.remove('show');
-   setTravelResolved(which,{lat:p.lat,lng:p.lng,label:p.name});
-  };
- });
+ bindSavedItemClicks(resultsEl,which,savedMatches);
  clearTimeout(travelSearchTimers[which]);
- travelSearchTimers[which]=setTimeout(()=>fetchPlacePredictions(which,q,savedHtml),300);
+ travelSearchTimers[which]=setTimeout(()=>fetchPlacePredictions(which,q,savedHtml,savedMatches),300);
 }
-function fetchPlacePredictions(which,q,savedHtml){
+function fetchPlacePredictions(which,q,savedHtml,savedMatches){
  const svc=getAutocompleteService();
  const resultsEl=$('travelResults'+which);
  if(!svc){if(!savedHtml)resultsEl.innerHTML='<div class="search-empty">אין תוצאות</div>';return}
@@ -1704,8 +1716,9 @@ function fetchPlacePredictions(which,q,savedHtml){
   }
   const combined=savedHtml+addrHtml;
   resultsEl.innerHTML=combined||'<div class="search-empty">אין תוצאות</div>';
+  bindSavedItemClicks(resultsEl,which,savedMatches);
   resultsEl.querySelectorAll('[data-place-idx]').forEach(item=>{
-    item.onclick=()=>{
+   item.onclick=()=>{
     resolvePlacePrediction(which,predictions[Number(item.dataset.placeIdx)]);
    };
   });
