@@ -18,7 +18,7 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.6 (Point search: all-trip + Places Autocomplete)</title>
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.7 (Fix: search results unselectable on touch)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -1664,6 +1664,12 @@ function getPlacesDetailsService(){
  if(!travelPlacesService)travelPlacesService=new google.maps.places.PlacesService(document.createElement('div'));
  return travelPlacesService;
 }
+/* CHANGE 2026-09-18 TRAVEL-SEARCH-02: fixed a mobile-only bug -- on a touch tap, the point
+   input's blur fired (hiding the dropdown via display:none, and running the geocode fallback)
+   BEFORE the tap's click ever reached the dropdown item, so nothing was ever selectable on
+   the app's primary platform. Switched item handlers from mousedown+preventDefault (a
+   desktop-only fix) to plain click (reliable for both mouse and touch), and the blur handler
+   below is now delayed so a real tap has time to complete first. */
 function renderTravelSearch(which){
  const q=$('travelPoint'+which).value.trim();
  const resultsEl=$('travelResults'+which);
@@ -1676,8 +1682,7 @@ function renderTravelSearch(which){
  resultsEl.innerHTML=savedHtml||'<div class="search-empty">מחפש…</div>';
  resultsEl.classList.add('show');
  resultsEl.querySelectorAll('[data-saved-idx]').forEach(item=>{
-  item.onmousedown=e=>{
-   e.preventDefault();
+  item.onclick=()=>{
    const p=savedMatches[Number(item.dataset.savedIdx)];
    $('travelPoint'+which).value=p.name;
    resultsEl.classList.remove('show');
@@ -1700,8 +1705,7 @@ function fetchPlacePredictions(which,q,savedHtml){
   const combined=savedHtml+addrHtml;
   resultsEl.innerHTML=combined||'<div class="search-empty">אין תוצאות</div>';
   resultsEl.querySelectorAll('[data-place-idx]').forEach(item=>{
-   item.onmousedown=e=>{
-    e.preventDefault();
+    item.onclick=()=>{
     resolvePlacePrediction(which,predictions[Number(item.dataset.placeIdx)]);
    };
   });
@@ -1745,8 +1749,8 @@ async function resolveTravelField(which){
 }
 $('travelPointA').addEventListener('input',()=>renderTravelSearch('A'));
 $('travelPointB').addEventListener('input',()=>renderTravelSearch('B'));
-$('travelPointA').addEventListener('blur',()=>finalizeTravelField('A'));
-$('travelPointB').addEventListener('blur',()=>finalizeTravelField('B'));
+$('travelPointA').addEventListener('blur',()=>setTimeout(()=>finalizeTravelField('A'),200));
+$('travelPointB').addEventListener('blur',()=>setTimeout(()=>finalizeTravelField('B'),200));
 $('travelCalcBtn').onclick=()=>{
  if(!travelResolvedA||!travelResolvedB){alert('יש לזהות את שתי הנקודות קודם (הקלידו כתובת/בחרו צ׳יפ)');return}
  const km=calculateDistanceKm(travelResolvedA.lat,travelResolvedA.lng,travelResolvedB.lat,travelResolvedB.lng);
