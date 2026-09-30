@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.12.0 (כספת אופליין · קישורי Drive)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.13.0 (בית מינימלי · הוצאה מהירה)</title>
 <!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -4380,7 +4380,7 @@ if($('importExcelInput')){
       documents are marked as unavailable offline. A "גרסה חדשה זמינה · רענון" card appears when a newer version is
       published while the app is open (checked every 10 minutes and when the app comes back to the foreground).
    Revert: VAULT_IDB='off' (localStorage again), APP_UPDATE_CHECK='off'. */
-const APP_VERSION='2.12.0';
+const APP_VERSION='2.13.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card) */
 const VAULT_IDB='on';
 const APP_UPDATE_CHECK='on';
 const _vxOrigGetDocuments=getDocuments,_vxOrigSaveDocuments=saveDocuments;
@@ -4544,6 +4544,237 @@ if(APP_UPDATE_CHECK==='on'){
  setInterval(vxCheckForUpdate,10*60*1000);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')vxCheckForUpdate()});
 }
+
+/* CHANGE 2026-09-30 QUICK-EXP-01 + HOME-MIN-01 (v2.13.0) — PRD TASK-106 + TASK-101, per the Phase-A mockup
+   approved by Or ("מאושר ניתן להתקדם", https://claude.ai/artifact/WpjSauNymyFkNjDQfXxtbT). What changed from v2.12.0:
+   1) QUICK-EXP-01: "＋ הוצאה מהירה" card at the top of the budget tab: amount, VND/₪/$ chips with an instant
+      "≈ X ₪" conversion (the family's shared fx rates), category chips, optional description, one "שמור הוצאה"
+      tap. Saved into the same shared expenses list as the full form ({description, amount in ₪, category,
+      dayIndex=today, by, createdAt, originalAmount/originalCurrency}), so totals, the list and sync are unchanged.
+      Under it: the 3 latest expenses. The full "➕ הוספת הוצאה" form stays below for edits / other days.
+   2) HOME-MIN-01: minimal home. Removed from home (still available in their tabs): the map, weather, the stats row,
+      the reservations card and the wallet card. New, top to bottom: green header with the two clocks in one
+      compact row · "📅 יום X מתוך 22" + date · location pill (opens today on the route tab) · 4 tiles
+      (🛂 דרכונים וטיסות → vault · 🏨 המלון להיום → hotel sheet with navigation · 🧭 ניווט לנקודה הבאה → Google Maps
+      navigation to the first point of today not yet visited (by check-in or Timeline, within 200 m) ·
+      💸 הוצאה מהירה → the quick card) · the check-in button · "🎯 הלו"ז להיום" collapsed · links row
+      (📷 Google Photos · 🔐 כספת מסמכים · 👣 ביקרנו · N) · sync status line.
+      Existing elements are re-parented / hidden with a class, never rewritten; renderHomeV2 and updateSyncBadge are WRAPPED.
+   Revert: HOME_MIN='off' (old home back, untouched), QUICK_EXPENSE='off'. */
+const HOME_MIN='on';
+const QUICK_EXPENSE='on';
+const QE_CATS=[['food','🍜','אוכל'],['lodging','🛏️','לינה'],['transport','🚕','נסיעות'],['shopping','🛍️','קניות'],['attractions','🎟️','אטרקציות'],['other','📦','אחר']];
+const QE_CUR=[['VND','VND'],['ILS','₪'],['USD','$']];
+let qeCur=(()=>{try{return localStorage.getItem('planner:qe:cur')||'VND'}catch{return'VND'}})(),qeCat='food';
+function qeParse(v){const n=Number(String(v||'').replace(/[,\s]/g,''));return Number.isFinite(n)&&n>0?n:null}
+function qeFmt(n,cur){if(cur==='ILS')return`${Math.round(n).toLocaleString('he-IL')} ₪`;if(cur==='USD')return`$${n.toLocaleString('en-US',{maximumFractionDigits:2})}`;return`${Math.round(n).toLocaleString('en-US')} ₫`}
+async function qeToILS(amount,cur){const rates=await getFxRates();return Math.round(amount*ilsPerUnit(rates,cur)*100)/100}
+function qeCatMeta(c){return QE_CATS.find(x=>x[0]===normalizeCategory(c))||QE_CATS[5]}
+(function qeBuild(){
+ if(QUICK_EXPENSE!=='on'||!$('budget'))return;
+ const card=document.createElement('div');card.className='card qe-card';card.id='quickExpenseCard';
+ card.innerHTML=`<b class="qe-title">＋ הוצאה מהירה</b>
+  <div class="qe-row"><label for="qeAmount" class="vh">סכום</label><input id="qeAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="סכום">
+   <div class="qe-chips" id="qeCurRow" role="group" aria-label="מטבע">${QE_CUR.map(([k,l])=>`<button type="button" class="qe-chip" data-qe-cur="${k}" aria-pressed="false">${l}</button>`).join('')}</div></div>
+  <span class="qe-conv" id="qeConv" aria-live="polite"></span>
+  <div class="qe-chips wrap" id="qeCatRow" role="group" aria-label="קטגוריה">${QE_CATS.map(([k,i,l])=>`<button type="button" class="qe-chip" data-qe-cat="${k}" aria-pressed="false">${i} ${l}</button>`).join('')}</div>
+  <label for="qeDesc" class="vh">תיאור</label><input id="qeDesc" type="text" maxlength="60" placeholder="תיאור קצר (לא חובה)">
+  <button type="button" class="btn green qe-save" id="qeSave">שמור הוצאה</button>
+  <small class="err" id="qeErr">⚠️ הזינו סכום</small>
+  <div class="qe-recent-h">🧾 הוצאות אחרונות</div><div class="qe-recent" id="qeRecent"></div>`;
+ const bar=$('budget').querySelector('.pbar2');
+ (bar||$('budget').querySelector('.topbar')).insertAdjacentElement('afterend',card);
+ const paint=()=>{card.querySelectorAll('[data-qe-cur]').forEach(b=>{const on=b.dataset.qeCur===qeCur;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});card.querySelectorAll('[data-qe-cat]').forEach(b=>{const on=b.dataset.qeCat===qeCat;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})};
+ const conv=async()=>{const a=qeParse($('qeAmount').value);if(!a){$('qeConv').textContent=qeCur==='ILS'?'':'≈ 0 ₪';return}$('qeConv').textContent=qeCur==='ILS'?'':`≈ ${Math.round(await qeToILS(a,qeCur)).toLocaleString('he-IL')} ₪`};
+ card.addEventListener('click',e=>{const c=e.target.closest('[data-qe-cur]'),k=e.target.closest('[data-qe-cat]');if(c){qeCur=c.dataset.qeCur;try{localStorage.setItem('planner:qe:cur',qeCur)}catch{}paint();conv()}if(k){qeCat=k.dataset.qeCat;paint()}});
+ $('qeAmount').addEventListener('input',()=>{$('qeErr').classList.remove('show');conv()});
+ $('qeSave').onclick=async()=>{
+  if(!requireUser())return;
+  const a=qeParse($('qeAmount').value);if(!a){$('qeErr').classList.add('show');$('qeAmount').focus();return}
+  const ils=qeCur==='ILS'?Math.round(a*100)/100:await qeToILS(a,qeCur);
+  const m=qeCatMeta(qeCat);
+  const item={description:$('qeDesc').value.trim()||m[2],amount:ils,category:qeCat,dayIndex:expenseDefaultDayIndex(),by:activeUser,createdAt:Date.now()};
+  if(qeCur!=='ILS'){item.originalAmount=a;item.originalCurrency=qeCur}
+  $('qeSave').disabled=true;
+  try{const items=await getExpenses();items.push(item);await saveExpenses(items)}finally{$('qeSave').disabled=false}
+  $('qeAmount').value='';$('qeDesc').value='';$('qeConv').textContent='';
+  ciToast(`✅ נשמרה הוצאה · ${qeFmt(a,qeCur)}${qeCur==='ILS'?'':' ≈ '+Math.round(ils).toLocaleString('he-IL')+' ₪'}`);
+  renderBudget();renderDailyBurn();qeRenderRecent();
+ };
+ paint();conv();
+})();
+async function qeRenderRecent(){
+ const el=$('qeRecent');if(!el)return;
+ const items=(await getExpenses()).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+ const today=new Date();today.setHours(0,0,0,0);
+ const when=t=>{if(!t)return'';const d=new Date(t);d.setHours(0,0,0,0);const diff=Math.round((today-d)/864e5);return diff===0?'היום':diff===1?'אתמול':new Date(t).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})};
+ el.innerHTML=items.length?items.map(e=>{const m=qeCatMeta(e.category);const amt=e.originalCurrency&&e.originalAmount?qeFmt(Number(e.originalAmount),e.originalCurrency):qeFmt(Number(e.amount||0),'ILS');return`<div class="qe-item"><span>${m[1]} ${esc(e.description||m[2])} · ${when(e.createdAt)}</span><b>${esc(amt)}</b></div>`}).join(''):'<div class="qe-item muted">עוד אין הוצאות</div>';
+}
+if(QUICK_EXPENSE==='on'){const _qeOrigRenderBudget=renderBudget;renderBudget=async function(){const r=await _qeOrigRenderBudget.apply(this,arguments);qeRenderRecent();return r};qeRenderRecent()}
+function qeOpen(){switchPanel('budget');const c=$('quickExpenseCard');if(!c)return;c.scrollIntoView({block:'start',behavior:'smooth'});setTimeout(()=>{try{$('qeAmount').focus({preventScroll:true})}catch{}},250)}
+
+/* ---- minimal home ---- */
+function hminTodayIdx(){const i=expenseDefaultDayIndex();if(i!==null)return{i,state:'during'};if(!tripData.length)return{i:0,state:'none'};const now=new Date();now.setHours(0,0,0,0);const first=parseDate(tripData[0].date);return first&&now<first?{i:0,state:'before'}:{i:tripData.length-1,state:'after'}}
+function hminDayKey(d){return iso(d.date)}
+function hminNavUrl(lat,lng,pid){return`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`+(pid?`&destination_place_id=${encodeURIComponent(pid)}`:'')}
+function hminOpen(url){const w=window.open(url,'_blank','noopener');if(!w)location.href=url}
+async function hminVisitedSet(d){
+ const key=hminDayKey(d),seen=[];
+ try{(await getCheckins()).filter(c=>c.d===key).forEach(c=>seen.push(c))}catch{}
+ try{if(typeof visForDay==='function')visForDay(key).forEach(v=>seen.push(v))}catch{}
+ const wps=(d.waypoints||[]).filter(w=>valid(w.lat,w.lng));
+ return wps.map(w=>({w,done:seen.some(s=>valid(s.lat,s.lng)&&visHaversineM({lat:+w.lat,lng:+w.lng},{lat:+s.lat,lng:+s.lng})<=200)}));
+}
+async function hminOpenVault(folder){await $('documentsBtn').onclick();if(folder)await openDocFolder(folder)}
+function hminHotelInfo(i){const d=tripData[i];if(!d)return null;const name=d.bookedHotel||d.hotel||'';const flight=['בטיסה','טיסה חזרה'].includes(d.hotel)&&!d.bookedHotel;return{d,name,flight,block:flight?null:stayBlock(i)}}
+(function hminBuild(){
+ if(HOME_MIN!=='on'||!$('homeV2'))return;
+ const home=$('homeV2');home.classList.add('home-min');
+ const hero=document.createElement('div');hero.className='hmin-hero';
+ const head=home.querySelector('.hv2-head'),clocks=$('hv2ClocksPanel');
+ head.insertAdjacentElement('beforebegin',hero);hero.appendChild(head);if(clocks)hero.appendChild(clocks);
+ const top=document.createElement('div');top.className='hmin-top';
+ top.innerHTML=`<div class="hmin-day card"><div class="hmin-day-h"><b id="hminDayTitle">📅</b><span id="hminDayDate"></span></div>
+   <button type="button" class="hmin-pill" id="hminPill"><b id="hminPillRegion"></b><span id="hminPillTitle"></span></button></div>
+  <div class="hmin-tiles">
+   <button type="button" class="hmin-tile t-docs" id="hminDocs"><span>🛂</span>דרכונים וטיסות</button>
+   <button type="button" class="hmin-tile t-hotel" id="hminHotel"><span>🏨</span>המלון להיום</button>
+   <button type="button" class="hmin-tile t-nav" id="hminNav"><span>🧭</span>ניווט לנקודה הבאה</button>
+   <button type="button" class="hmin-tile t-exp" id="hminExp"><span>💸</span>הוצאה מהירה</button>
+  </div>`;
+ const below=home.querySelector('.hv2-below');below.insertAdjacentElement('afterbegin',top);
+ const ci=$('hv2CheckinBtn');if(ci)top.insertAdjacentElement('afterend',ci);
+ const after=document.createElement('div');after.className='hmin-after';
+ after.innerHTML=`<details class="hmin-sched" id="hminSched"><summary><span id="hminSchedTitle">🎯 הלו"ז להיום</span><span class="hmin-chev" aria-hidden="true">⌄</span></summary><div class="hmin-sched-body" id="hminSchedBody"></div></details>
+  <div class="hmin-links"><button type="button" class="hmin-link" id="hminPhotos">📷 Google Photos</button><button type="button" class="hmin-link" id="hminVault">🔐 כספת מסמכים</button><button type="button" class="hmin-link" id="hminVisited">👣 ביקרנו · <b id="hminVisitedN">—</b></button></div>
+  <div class="hmin-sync" id="hminSync" role="button" tabindex="0"><span>☁️</span><div><b id="hminSyncTitle">סנכרון</b><span id="hminSyncSub"></span></div></div>`;
+ (ci||top).insertAdjacentElement('afterend',after);
+ const openVault=folder=>hminOpenVault(folder);
+ $('hminDocs').onclick=()=>openVault(null);
+ $('hminVault').onclick=()=>openVault(null);
+ $('hminPhotos').onclick=()=>$('googlePhotosBtn').click();
+ $('hminVisited').onclick=()=>{const b=$('hv2VisitedStat');if(b)b.click()};
+ $('hminExp').onclick=qeOpen;
+ $('hminSync').onclick=()=>switchPanel('more');
+ $('hminPill').onclick=()=>{const t=hminTodayIdx();globalDayIndex=t.i;fillSelects();render();switchPanel('route')};
+ $('hminHotel').onclick=hminShowHotel;
+ $('hminNav').onclick=hminNavigateNext;
+ // hotel sheet
+ const m=document.createElement('div');m.id='hminHotelModal';m.className='modal';
+ m.innerHTML=`<div class="modal-box"><div class="modal-head"><h2>🏨 המלון להיום</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="hminHotelBody"></div></div>`;
+ document.body.appendChild(m);
+ m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-modal-x]'))closeModal(m)});
+})();
+function hminShowHotel(){
+ const t=hminTodayIdx(),h=hminHotelInfo(t.i);if(!h)return;
+ const d=h.d,body=$('hminHotelBody');
+ if(h.flight){body.innerHTML=`<p class="hmin-hotel-name">✈️ הלילה בטיסה</p><button type="button" class="btn outline" id="hminHotelDocs" style="width:100%">🛂 כרטיסי טיסה בכספת</button>`}
+ else{
+  const b=h.block,night=b?`לילה ${t.i-b.start+1} מתוך ${b.nights}`:'';
+  const q=encodeURIComponent(`${h.name}, ${d.region}, Vietnam`);
+  const nav=valid(d.lat,d.lng)?hminNavUrl(d.lat,d.lng):`https://www.google.com/maps/dir/?api=1&destination=${q}`;
+  body.innerHTML=`<p class="hmin-hotel-name">${esc(h.name)}</p><p class="muted" style="margin:0 0 10px">${esc(d.region)}${night?' · '+night:''}${b&&b.checkout?' · צ׳ק-אאוט '+esc(b.checkout.split('-').reverse().slice(0,2).join('/')):''}</p>
+   ${d.bookingRef?`<div class="hmin-hotel-row">🔖 מספר אישור: <b dir="ltr">${esc(d.bookingRef)}</b></div>`:''}
+   ${d.isBooked||d.bookedHotel?'':'<div class="hmin-hotel-row muted">עוד לא סומנה הזמנה מאושרת ליום הזה</div>'}
+   <a class="btn green" id="hminHotelNav" href="${esc(nav)}" target="_blank" rel="noopener" style="width:100%;display:flex;justify-content:center">🧭 ניווט למלון</a>
+   ${d.bookingLink?`<a class="btn outline" href="${esc(d.bookingLink)}" target="_blank" rel="noopener" style="width:100%;display:flex;justify-content:center;margin-top:8px">🔗 פרטי ההזמנה</a>`:''}
+   <button type="button" class="btn outline" id="hminHotelDocs" style="width:100%;margin-top:8px">📄 מסמכי מלונות בכספת</button>`;
+ }
+ $('hminHotelDocs').onclick=()=>{closeModal($('hminHotelModal'));hminOpenVault(h.flight?'flights':'hotels')};
+ openModal('hminHotelModal');
+}
+async function hminNavigateNext(){
+ const t=hminTodayIdx(),d=tripData[t.i];if(!d)return;
+ const list=await hminVisitedSet(d);const next=list.find(x=>!x.done);
+ if(next){ciToast(`🧭 ניווט אל ${next.w.name||'הנקודה הבאה'}`);hminOpen(hminNavUrl(next.w.lat,next.w.lng,next.w.pid));return}
+ const h=hminHotelInfo(t.i);
+ const msg=list.length?'✅ ביקרתם בכל הנקודות של היום':'אין נקודות עניין להיום';
+ if(h&&!h.flight&&valid(d.lat,d.lng)){ciToast(msg+' — ניווט למלון');hminOpen(hminNavUrl(d.lat,d.lng))}
+ else ciToast(msg);
+}
+async function hminRender(){
+ if(HOME_MIN!=='on'||!$('hminDayTitle'))return;
+ const t=hminTodayIdx(),d=tripData[t.i];if(!d)return;
+ const n=tripData.length;
+ if(t.state==='during')$('hminDayTitle').textContent=`📅 יום ${t.i+1} מתוך ${n}`;
+ else if(t.state==='before'){const f=parseDate(tripData[0].date),now=new Date();now.setHours(0,0,0,0);$('hminDayTitle').textContent=`📅 עוד ${Math.round((f-now)/864e5)} ימים לטיול`}
+ else $('hminDayTitle').textContent='📅 הטיול הסתיים';
+ const pd=t.state==='during'?new Date():parseDate(d.date);
+ $('hminDayDate').textContent=pd?pd.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
+ $('hminPillRegion').textContent=`📍 ${d.region}`;
+ $('hminPillTitle').textContent=`${t.state==='during'?'':'יום '+d.day+' · '}${d.title} ‹`;
+ const list=await hminVisitedSet(d);
+ const cnt=(d.activities?1:0)+list.length;
+ $('hminSchedTitle').textContent=`🎯 הלו"ז להיום${cnt?` · ${cnt} פעילויות`:''}`;
+ const h=hminHotelInfo(t.i);
+ $('hminSchedBody').innerHTML=`<b>${esc(d.title)}</b>${d.activities?`<p>${esc(d.activities)}</p>`:''}
+  ${list.length?`<ul class="hmin-wps">${list.map(x=>`<li class="${x.done?'done':''}"><a href="${esc(hminNavUrl(x.w.lat,x.w.lng,x.w.pid))}" target="_blank" rel="noopener">${x.done?'✓':'📍'} ${esc(x.w.name||'נקודה')}</a></li>`).join('')}</ul>`:''}
+  ${h&&h.name?`<p class="muted">🏨 ${esc(h.flight?'לילה בטיסה':h.name)}</p>`:''}
+  <button type="button" class="hmin-more" id="hminSchedMore">לכל פרטי היום ‹</button>`;
+ $('hminSchedMore').onclick=()=>$('hminPill').click();
+ hminVisitedPaint();
+ hminSyncPaint();
+}
+function hminVisitedPaint(){const v=$('hv2Visited'),n=$('hminVisitedN');if(!n)return;n.textContent=v?v.textContent:'—';$('hminVisited').hidden=typeof visitsOn==='function'&&!visitsOn()}
+if(HOME_MIN==='on'&&$('hv2Visited')&&window.MutationObserver)new MutationObserver(()=>hminVisitedPaint()).observe($('hv2Visited'),{childList:true,characterData:true,subtree:true});
+function hminSyncPaint(){
+ if(!$('hminSyncTitle'))return;
+ const n=readQueue().length,cloud=hasCloud();
+ $('hminSync').classList.toggle('warn',!cloud||n>0);
+ $('hminSyncTitle').textContent=cloud?(n?`${n} שינויים ממתינים לסנכרון`:'סנכרון בענן פעיל'):'מצב מקומי בלבד';
+ $('hminSyncSub').textContent=cloud?`עודכן ${lastSyncText()}`:'הנתונים נשמרים במכשיר זה';
+}
+if(HOME_MIN==='on'){
+ const _hmOrigRenderHomeV2=renderHomeV2;
+ renderHomeV2=async function(){const r=await _hmOrigRenderHomeV2.apply(this,arguments);try{await hminRender()}catch{}return r};
+ const _hmOrigUpdateSyncBadge=updateSyncBadge;
+ updateSyncBadge=function(){const r=_hmOrigUpdateSyncBadge.apply(this,arguments);try{hminSyncPaint()}catch{}return r};
+ setInterval(()=>{if(currentPanel()==='homeV2')hminRender().catch(()=>{})},60000);
+ hminRender().catch(()=>{});
+}
+(function hminCss(){if(HOME_MIN!=='on'&&QUICK_EXPENSE!=='on')return;const st=document.createElement('style');st.id='hminCss';st.textContent=`
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.qe-card{border:1.5px solid var(--primary);display:flex;flex-direction:column;gap:8px}
+.qe-title{font-size:.95rem}
+.qe-row{display:flex;gap:8px;align-items:center}
+#qeAmount{flex:1;min-width:0;height:46px;font-size:1.15rem;font-weight:800;margin:0}
+.qe-chips{display:flex;gap:4px}.qe-chips.wrap{flex-wrap:wrap;gap:6px}
+.qe-chip{border:1px solid var(--border);background:#fff;border-radius:999px;padding:0 12px;min-height:40px;font-size:.8rem;font-weight:700;font-family:inherit;color:inherit;cursor:pointer}
+.qe-chip.on{border:1.5px solid var(--primary);background:#edf8f3;color:#0b5841}
+.qe-conv{font-size:.78rem;color:var(--muted);min-height:1em}
+#qeDesc{margin:0;height:42px}
+.qe-save{width:100%;min-height:46px;margin:0}
+#qeErr{display:none}#qeErr.show{display:block}
+.qe-recent-h{font-weight:800;font-size:.85rem;margin-top:4px}
+.qe-item{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #efeee8;font-size:.82rem}.qe-item:last-child{border-bottom:0}
+.home-min .hv2-map-hero,.home-min .hv2-quickstats,.home-min #hv2Weather,.home-min #hv2ResCard,.home-min #hv2WalletCard{display:none!important}
+.hmin-hero{background:linear-gradient(150deg,#1f7557 0%,#0f5c43 58%,#083f30 130%);color:#fff;padding-bottom:4px}
+.hmin-hero .hv2-title{color:#fff;font-size:1.05rem}.hmin-hero .hv2-sub{color:#d6ece2}.hmin-hero .menuic{filter:brightness(10)}
+.hmin-hero .hv2-clocks-panel{padding:0 16px 12px}
+.hmin-hero .hv2-clock-card{display:flex;justify-content:space-between;align-items:center;background:#ffffff26;border:0;padding:7px 10px;color:#fff}
+.hmin-hero .hv2-clock-label{color:#e6f3ec;margin:0;font-size:.74rem}.hmin-hero .hv2-clock-card b{font-size:1rem}.hmin-hero .hv2-clock-diff{display:none}
+.home-min .hv2-below{margin-top:12px}
+.hmin-day{padding:0;overflow:hidden;margin-bottom:10px}
+.hmin-day-h{padding:10px 14px;display:flex;flex-direction:column}.hmin-day-h b{font-size:.95rem}.hmin-day-h span{font-size:.75rem;color:var(--muted)}
+.hmin-pill{width:100%;border:0;background:#fdf1e1;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:inherit;color:inherit;cursor:pointer;text-align:right;min-height:44px}
+.hmin-pill b{font-size:.95rem;white-space:nowrap}.hmin-pill span{font-size:.75rem;color:#8a4a03;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hmin-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.hmin-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:96px;border:0;border-radius:16px;font-family:inherit;font-size:.78rem;font-weight:800;text-align:center;padding:8px 4px;cursor:pointer;line-height:1.25}
+.hmin-tile span{font-size:1.6rem}
+.t-docs{background:#dbe8fb;color:#1d3f7a}.t-hotel{background:#ebe3fb;color:#4b2a8a}.t-nav{background:#dcefe2;color:#0b5841}.t-exp{background:#fcefd2;color:#8a4a03}
+.hmin-sched{background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:10px}
+.hmin-sched summary{list-style:none;display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 14px;font-weight:800;font-size:.9rem;cursor:pointer}
+.hmin-sched summary::-webkit-details-marker{display:none}.hmin-sched[open] .hmin-chev{transform:rotate(180deg)}.hmin-chev{color:var(--muted);transition:transform .15s}
+.hmin-sched-body{padding:0 14px 12px;font-size:.85rem}.hmin-sched-body p{margin:6px 0}
+.hmin-wps{list-style:none;margin:6px 0;padding:0}.hmin-wps li{padding:6px 0;border-bottom:1px solid #efeee8}.hmin-wps li:last-child{border-bottom:0}.hmin-wps li.done a{color:var(--muted);text-decoration:line-through}
+.hmin-more{background:none;border:0;color:var(--primary);font-weight:800;font-family:inherit;padding:6px 0;cursor:pointer}
+.hmin-links{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.hmin-link[hidden]{display:none}.hmin-link{border:1px solid var(--border);background:#fff;border-radius:999px;padding:0 10px;min-height:38px;font-size:.74rem;font-weight:700;font-family:inherit;color:inherit;cursor:pointer}
+.hmin-sync{background:#edf8f3;border:1px solid #cfe1d7;border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.hmin-sync b{display:block;font-size:.8rem;color:#0b5841}.hmin-sync div span{font-size:.7rem;color:#3f5a4c}
+.hmin-sync.warn{background:#fff4e5;border-color:#f5d6a8}.hmin-sync.warn b{color:#8a4a03}
+.hmin-hotel-name{font-size:1.05rem;font-weight:800;margin:0 0 4px}.hmin-hotel-row{font-size:.85rem;margin-bottom:10px}
+`;document.head.appendChild(st)})();
 </script>
 </body>
 </html>
