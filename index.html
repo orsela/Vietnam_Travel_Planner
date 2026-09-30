@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.0 (זמן נסיעה בצ'אט)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.1 (זמן נסיעה בצ'אט · שירותי Google החדשים)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -3659,6 +3659,99 @@ sendChatMessage=async function(text){await _tcOrigSendChatMessage(text);runPendi
 /* The send button, Enter key and suggestion chips all call sendChatMessage by its global name at
    click time, so they pick up this wrapper with no re-binding. */
 setTimeout(runPendingChatTravel,0);
+
+/* CHANGE 2026-09-30 TRAVEL-CHAT-02 (v2.10.1): travel-time card now uses Google's CURRENT services.
+   Found in the first real test on Or's phone: every card showed "הערכה" and "מיקום המלון לא ידוע",
+   and one card showed the city ("Hoi An" / "Da Nang") instead of the beach that was asked about.
+   Cause: v2.10.0 called Google's LEGACY Directions and Places services (DirectionsService,
+   PlacesService.findPlaceFromQuery/getDetails). The "Vietnam Trip" Cloud project doesn't have them
+   (Google no longer lets new projects enable them) and the map key allows only the new ones, which Or
+   enabled today: Routes API + Places API (New) + Geocoding API. What changed from v2.10.0:
+   1) Route times: Route.computeRoutes (Routes API, via google.maps.importLibrary('routes')) first,
+      legacy DirectionsService only as a fallback.
+   2) Place search (destination, booked hotel): Place.searchByText (Places API New, importLibrary
+      ('places')) first, legacy findPlaceFromQuery as a fallback.
+   3) Bug fix: the Geocoder fallback accepted a city/province-level answer ("Da Nang") as if it were
+      the place asked about. Now only a specific result is accepted; a city-level or partial match
+      counts as "not found" and the card says so instead of showing a wrong time.
+   4) The v2.9.0 "ביקרנו בפועל" place names (placeId -> name) had the same legacy dependency; they now
+      use Place.fetchFields (Places API New) first.
+   Additive only: tcRoute, tcFindPlace, tcResolvePlace and visResolveNames are REASSIGNED to new
+   versions that fall back to the originals; no existing function body is edited. */
+function tcImportLib(name){
+ try{return(typeof google!=='undefined'&&google.maps&&typeof google.maps.importLibrary==='function')?google.maps.importLibrary(name):Promise.resolve(null)}catch{return Promise.resolve(null)}
+}
+const _tc2LegacyRoute=tcRoute;
+tcRoute=async function(o,dst,mode){
+ try{
+  const lib=await tcWithTimeout(tcImportLib('routes'),6000);
+  if(lib&&lib.Route&&typeof lib.Route.computeRoutes==='function'){
+   const res=await tcWithTimeout(lib.Route.computeRoutes({origin:{lat:o.lat,lng:o.lng},destination:{lat:dst.lat,lng:dst.lng},travelMode:mode==='walking'?'WALKING':'DRIVING',fields:['durationMillis','distanceMeters']}),10000);
+   const r=res&&res.routes&&res.routes[0];
+   if(r&&Number.isFinite(r.durationMillis)&&Number.isFinite(r.distanceMeters))return{sec:r.durationMillis/1000,m:r.distanceMeters};
+  }
+ }catch(e){console.warn('[travel-chat] Routes API failed, trying legacy',e&&e.message)}
+ return _tc2LegacyRoute(o,dst,mode);
+};
+const _tc2LegacyFindPlace=tcFindPlace;
+tcFindPlace=async function(query,bias){
+ try{
+  const lib=await tcWithTimeout(tcImportLib('places'),6000);
+  if(lib&&lib.Place&&typeof lib.Place.searchByText==='function'){
+   const req={textQuery:String(query||''),fields:['displayName','location','id'],maxResultCount:1};
+   if(bias&&valid(bias.lat,bias.lng))req.locationBias={center:{lat:Number(bias.lat),lng:Number(bias.lng)},radius:40000};
+   const res=await tcWithTimeout(lib.Place.searchByText(req),8000);
+   const p=res&&res.places&&res.places[0];
+   if(p&&p.location)return{lat:p.location.lat(),lng:p.location.lng(),name:p.displayName||query,pid:p.id};
+  }
+ }catch(e){console.warn('[travel-chat] Places (New) search failed, trying legacy',e&&e.message)}
+ return _tc2LegacyFindPlace(query,bias);
+};
+const TC_TOO_BROAD=['locality','political','country','administrative_area_level_1','administrative_area_level_2','administrative_area_level_3','sublocality','sublocality_level_1','postal_code','colloquial_area'];
+function tcGeocodeSpecific(query){
+ return new Promise(resolve=>{
+  if(typeof google==='undefined'||!google.maps||!google.maps.Geocoder){resolve(null);return}
+  try{
+   new google.maps.Geocoder().geocode({address:query,region:'vn'},(results,status)=>{
+    const r=status==='OK'&&results&&results[0];
+    if(!r||r.partial_match){resolve(null);return}
+    const types=r.types||[];
+    if(types.length&&types.every(t=>TC_TOO_BROAD.includes(t))){resolve(null);return}
+    const loc=r.geometry.location;resolve({lat:loc.lat(),lng:loc.lng(),label:r.formatted_address||query});
+   });
+  }catch{resolve(null)}
+ });
+}
+tcResolvePlace=async function(query,label){
+ const known=tcKnownPlace(label,query);if(known)return known;
+ const d=tripData[globalDayIndex];
+ const f=await tcWithTimeout(tcFindPlace(query||label,d),9000);
+ if(f)return{lat:f.lat,lng:f.lng,name:label||f.name,gname:f.name};
+ const g=await tcWithTimeout(tcGeocodeSpecific(query||label),8000);
+ if(g)return{lat:g.lat,lng:g.lng,name:label||g.label};
+ return null;
+};
+if(typeof visResolveNames==='function'){
+ const _tc2LegacyVisResolveNames=visResolveNames;
+ visResolveNames=async function(list){
+  if(!visitsOn())return;
+  let lib=null;
+  try{lib=await tcWithTimeout(tcImportLib('places'),6000)}catch{}
+  if(!lib||!lib.Place){_tc2LegacyVisResolveNames(list);return}
+  const names=(timelineDataCache&&timelineDataCache.names)||{};
+  const todo=[...new Set(list.map(v=>v.pid).filter(p=>p&&!names[p]&&!visNamePending.has(p)))];
+  for(const pid of todo){
+   visNamePending.add(pid);
+   try{
+    const place=new lib.Place({id:pid});
+    await tcWithTimeout(place.fetchFields({fields:['displayName']}),8000);
+    if(place.displayName){visNewNames[pid]=place.displayName;if(timelineDataCache){timelineDataCache.names=timelineDataCache.names||{};timelineDataCache.names[pid]=place.displayName}visScheduleNameSave();renderVisitsCard()}
+    else visNamePending.delete(pid);
+   }catch(e){console.warn('[visits] Places (New) name lookup failed',e&&e.message);visNamePending.delete(pid)}
+   await new Promise(r=>setTimeout(r,120));
+  }
+ };
+}
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
