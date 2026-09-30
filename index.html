@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.2 (תיקון הדגשת מצב המפה)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.0 (צ'ק-אין)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -319,6 +319,48 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .hv2-quickstats .hv2-visited-stat{cursor:pointer;border-radius:10px;padding:2px 6px;border:0;background:none;font:inherit;color:inherit;touch-action:manipulation}
 .hv2-quickstats .hv2-visited-stat b{color:#9a5204}
 .hv2-quickstats .hv2-visited-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+/* CHANGE 2026-09-30 CHECKIN-01 (v2.11.0): צ'ק-אין — home button, picker sheet, purple check-in rows,
+   chat card, toast. Additive styles only. */
+.hv2-checkin-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border:0;border-radius:14px;background:var(--primary);color:#fff;font-size:.95rem;font-weight:800;box-shadow:0 4px 12px #0f6b4f40;margin-bottom:10px;cursor:pointer;font-family:inherit;touch-action:manipulation}
+.ci-scrim{display:none;position:fixed;inset:0;background:#0f172aa6;z-index:98}
+.ci-scrim.open{display:block}
+.ci-sheet{display:none;position:fixed;left:0;right:0;bottom:0;max-height:88vh;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px #0000002e;z-index:99;flex-direction:column;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.ci-sheet.open{display:flex}
+.ci-sheet .ci-head{display:flex;align-items:center;gap:10px;padding:8px 16px 4px}
+.ci-sheet .ci-head h3{margin:0;font-size:1.05rem}
+.ci-sheet .ci-sub{font-size:.72rem;color:var(--muted)}
+.ci-sheet .ci-body{overflow-y:auto;padding:8px 14px;display:flex;flex-direction:column;gap:7px}
+.ci-item{display:flex;align-items:center;gap:10px;width:100%;text-align:right;font-family:inherit;background:#fff;border:1px solid var(--border);border-radius:12px;padding:9px 12px;min-height:52px;cursor:pointer;color:var(--text)}
+.ci-item.small{min-height:44px;background:#fbfaf7;padding:7px 10px}
+.ci-item.exact{background:#fbfaf7;border-style:dashed}
+.ci-item.sel{border:1.5px solid var(--primary);background:var(--primary-light)}
+.ci-item .ci-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.ci-item .ci-txt b{font-size:.85rem;overflow-wrap:anywhere}
+.ci-item .ci-txt span{font-size:.72rem;color:var(--muted)}
+.ci-check{color:var(--primary);font-weight:800}
+.ci-msg{font-size:.8rem;color:var(--muted);margin:4px 0}
+.ci-sheet label{font-size:.75rem;font-weight:700;color:#3a443d;margin-top:4px}
+.ci-sheet input{height:42px;border:1px solid var(--border);border-radius:12px;padding:0 12px;font-family:inherit;font-size:.85rem}
+.ci-save{min-height:48px;border:0;border-radius:14px;background:var(--primary);color:#fff;font-size:.95rem;font-weight:800;font-family:inherit;cursor:pointer;margin-top:4px}
+.ci-save:disabled{opacity:.45;cursor:default}
+.ci-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 10px;margin:6px 0;border-radius:12px;background:#f5f0ff;border:1px solid #ddd2fb}
+.ci-row-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none}
+.ci-badge{width:26px;height:26px;flex-shrink:0;border-radius:50%;background:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:.8rem}
+.ci-note{color:#3a443d!important;font-size:.76rem!important}
+.ci-more{border:0;background:none;font-size:1.1rem;color:var(--muted);min-width:44px;min-height:44px;cursor:pointer}
+.ci-actions{flex-basis:100%;display:flex;gap:8px}
+.ci-actions[hidden]{display:none}
+.ci-actions .btn{flex:1}
+.chat-ci-card{width:86%;max-width:340px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;margin:2px 0 8px}
+.chat-ci-card .ci-h{font-size:.78rem;color:var(--muted)}
+.chat-ci-card .ci-links{display:flex;gap:14px}
+.chat-ci-card .ci-link{border:0;background:none;color:var(--primary);font-weight:700;font-size:.76rem;padding:6px 0;cursor:pointer;font-family:inherit}
+.chat-ci-done{width:86%;max-width:340px;background:#f5f0ff;border:1px solid #ddd2fb;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:.84rem;margin:2px 0 8px}
+.chat-ci-done .sub{font-size:.72rem;color:var(--muted)}
+.visits-map-legend .lg-ci-dot{width:10px;height:10px;border-radius:50%;background:#6d28d9}
+.ci-toast{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-120%);background:#17211b;color:#fff;border-radius:999px;padding:9px 16px;font-size:.82rem;font-weight:700;z-index:120;box-shadow:0 6px 16px #00000030;transition:transform .25s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.ci-toast.show{transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.ci-toast{transition:none}}
 /* CHANGE 2026-09-30 TRAVEL-CHAT-01 (v2.10.0): travel-time result card in the chat, per the approved
    mockup. Additive styles only. */
 .chat-travel-card{width:86%;max-width:340px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;margin:2px 0 8px}
@@ -901,6 +943,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
   </div>
  </div>
  <div class="hv2-below">
+  <!-- CHANGE 2026-09-30 CHECKIN-01: check-in button (VISITS/CHECKIN approved mockup) -->
+  <button type="button" class="hv2-checkin-btn" id="hv2CheckinBtn">📍 צ'ק-אין — איפה אנחנו עכשיו?</button>
   <div class="hv2-quickstats">
    <span>📅<b id="hv2Days">0</b>ימים</span>
    <span>📍<b id="hv2Points">0</b>נק' עניין</span>
@@ -1103,6 +1147,18 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      reason as globalFxBtn just above -- see the GM-03 note right below: a fixed element added
      AFTER the script tag does not exist yet when the script wires its onclick synchronously. -->
 <button id="chatFab" class="chat-fab" type="button" aria-label="שאלות על הטיול">💬</button>
+<!-- CHANGE 2026-09-30 CHECKIN-01: צ'ק-אין picker sheet (opened from the home button or the chat card). -->
+<div id="ciScrim" class="ci-scrim"></div>
+<div id="ciSheet" class="ci-sheet" role="dialog" aria-modal="true" aria-labelledby="ciTitle">
+ <div class="chat-handle"></div>
+ <div class="ci-head"><div style="flex:1;min-width:0"><h3 id="ciTitle">📍 איפה אתם?</h3><div class="ci-sub" id="ciSheetSub"></div></div><button type="button" class="chat-x" id="ciCloseBtn" aria-label="סגירה">×</button></div>
+ <div class="ci-body">
+  <div id="ciList" style="display:flex;flex-direction:column;gap:7px"></div>
+  <label for="ciNote">הערה (לא חובה)</label>
+  <input id="ciNote" type="text" maxlength="200" placeholder="למשל: הקפה הכי טוב בטיול ☕">
+  <button type="button" class="ci-save" id="ciSaveBtn" disabled>שמור צ'ק-אין</button>
+ </div>
+</div>
 <div id="chatScrim" class="chat-scrim"></div>
 <div id="chatSheet" class="chat-sheet" role="dialog" aria-label="שאלות על הטיול">
  <div class="chat-handle"></div>
@@ -3766,6 +3822,285 @@ function syncMapModePills(){
 }
 const _mmOrigDrawMap=drawMap;
 drawMap=function(){_mmOrigDrawMap();try{syncMapModePills()}catch(e){console.warn('[map-mode] pill sync failed',e)}};
+
+/* CHANGE 2026-09-30 CHECKIN-01 (v2.11.0): צ'ק-אין — save "where we are right now", per the mockup approved
+   by Or (https://claude.ai/artifact/2c99PsbRUm7MCWETRSajpj). Decisions (Or): button on the home screen AND
+   from the chat; pick the place from a list of nearby Google places (not auto-save); shown in the day's
+   "👣 ביקרנו בפועל" card, on the map and in the home "ביקרנו" count; anyone in the family can check in and
+   anyone can delete; purple so it never reads as a Timeline (orange) stop.
+   What changed from v2.10.2:
+   1) New shared list SHARED key 'planner:checkins' (SS, like every shared list): {id,d,t,lat,lng,acc,pid,
+      name,type,note,by}. d = Vietnam-local date (same fixed +7h rule as the Timeline), so a check-in lands
+      on the right trip day.
+   2) Home: "📍 צ'ק-אין — איפה אנחנו עכשיו?" button above the quick stats -> bottom sheet: phone location
+      (asks permission) -> up to 8 nearby places from Places API (New) searchNearby, nearest first, with
+      type + distance; plus "המיקום המדויק בלבד"; optional note; "שמור צ'ק-אין".
+   3) Day card: check-ins of that day are listed (purple 📌) inside "👣 ביקרנו בפועל" — also on days with no
+      Timeline data. ⋯ on a row: edit note / delete (anyone).
+   4) Map: purple 📌 markers (today's in "היום", all of them in "כל המסלול").
+   5) Home "👣 ביקרנו" count now also counts check-in places (still unique per place).
+   6) Chat: the Edge Function v2.2.0 adds a `check_in` tool; the answer shows a card with the 3 nearest
+      places (+ "עוד מקומות" opening the full sheet). One tap saves. No separate approve step: tapping IS
+      the confirmation.
+   Architecture: additive only — renderVisitsCard, visUniqueCount, drawMap, renderChatBody, chatMessageHtml
+   and sendChatMessage are WRAPPED; nothing protected is touched. Revert: CHECKIN_FEATURE='off'. */
+const CHECKIN_FEATURE='on';
+const CHECKIN_KEY='planner:checkins';
+const CHECKIN_RADIUS_M=150;
+let checkinsCache=[];
+function ciOn(){return CHECKIN_FEATURE==='on'}
+async function getCheckins(){try{const raw=await SS.get(CHECKIN_KEY);const v=raw?JSON.parse(raw):[];return Array.isArray(v)?v:[]}catch{return[]}}
+async function saveCheckins(list){await SS.set(CHECKIN_KEY,JSON.stringify(list))}
+async function loadCheckins(){checkinsCache=await getCheckins()}
+function ciForDay(dayKey){return checkinsCache.filter(c=>c.d===dayKey).sort((a,b)=>String(a.t).localeCompare(String(b.t)))}
+function ciDistLabel(m){return m<1000?`${Math.round(m/5)*5} מ'`:`${(m/1000).toFixed(1)} ק"מ`}
+function ciToast(msg){
+ let el=$('ciToast');
+ if(!el){el=document.createElement('div');el.id='ciToast';el.className='ci-toast';document.body.appendChild(el)}
+ el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2600);
+}
+function ciPosition(){
+ return new Promise(resolve=>{
+  if(!navigator.geolocation){resolve(null);return}
+  try{navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude,acc:Math.round(p.coords.accuracy||0)}),()=>resolve(null),{enableHighAccuracy:true,timeout:10000,maximumAge:30000})}catch{resolve(null)}
+ });
+}
+/* Nearby places via Places API (New) — the only Places flavour the map key allows (see TRAVEL-CHAT-02). */
+async function ciNearby(pos){
+ try{
+  const lib=await tcWithTimeout(tcImportLib('places'),6000);
+  if(!lib||!lib.Place||typeof lib.Place.searchNearby!=='function')return null;
+  const rank=(lib.SearchNearbyRankPreference&&lib.SearchNearbyRankPreference.DISTANCE)||'DISTANCE';
+  const res=await tcWithTimeout(lib.Place.searchNearby({fields:['displayName','location','id','primaryTypeDisplayName'],locationRestriction:{center:{lat:pos.lat,lng:pos.lng},radius:CHECKIN_RADIUS_M},maxResultCount:8,rankPreference:rank}),9000);
+  const list=(res&&res.places)||[];
+  return list.filter(p=>p&&p.location).map(p=>{const lat=p.location.lat(),lng=p.location.lng();return{pid:p.id,name:p.displayName||'מקום',type:p.primaryTypeDisplayName||'',lat,lng,dist:visHaversineM(pos,{lat,lng})}}).sort((a,b)=>a.dist-b.dist);
+ }catch(e){console.warn('[checkin] nearby search failed',e&&e.message);return null}
+}
+async function ciSave(pos,place,note){
+ if(!requireUser())return null;
+ const t=new Date().toISOString();
+ const rec={id:'ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),d:tlVnDateKey(t),t,
+  lat:place?place.lat:pos.lat,lng:place?place.lng:pos.lng,acc:pos.acc||null,pid:place?place.pid:'',
+  name:place?place.name:'',type:place?place.type:'',note:String(note||'').trim(),by:activeUser};
+ const latest=await getCheckins();latest.push(rec);await saveCheckins(latest);checkinsCache=latest;
+ ciRefreshAll();
+ ciToast(`📌 נשמר צ'ק-אין${rec.name?' ב-'+rec.name:''}`);
+ return rec;
+}
+async function ciDelete(id){
+ if(!requireUser())return;
+ if(!confirm('למחוק את הצ\'ק-אין הזה? זה יימחק לכל המשפחה.'))return;
+ const latest=(await getCheckins()).filter(c=>c.id!==id);await saveCheckins(latest);checkinsCache=latest;ciRefreshAll();
+}
+async function ciEditNote(id){
+ if(!requireUser())return;
+ const cur=checkinsCache.find(c=>c.id===id);if(!cur)return;
+ const v=prompt('הערה לצ\'ק-אין:',cur.note||'');if(v===null)return;
+ const latest=await getCheckins();const r=latest.find(c=>c.id===id);if(!r)return;
+ r.note=String(v).trim();await saveCheckins(latest);checkinsCache=latest;ciRefreshAll();
+}
+function ciRefreshAll(){
+ try{renderVisitsCard()}catch{}
+ try{renderHomeVisitedStat()}catch{}
+ try{drawMap()}catch{}
+ try{renderChatBody()}catch{}
+}
+
+/* ---- sheet (home button / "עוד מקומות" from the chat) ---- */
+let ciSheetState=null;
+function ciOpenSheet(prefetched,note){
+ if(!ciOn())return;
+ if(!requireUser())return;
+ ciSheetState={pos:prefetched?prefetched.pos:null,places:prefetched?prefetched.places:null,sel:null,exact:false,loading:!prefetched};
+ $('ciScrim').classList.add('open');$('ciSheet').classList.add('open');
+ $('ciNote').value=note||'';
+ ciRenderSheet();
+ if(!prefetched)ciLoadSheet();
+}
+function ciCloseSheet(){$('ciScrim').classList.remove('open');$('ciSheet').classList.remove('open');ciSheetState=null}
+async function ciLoadSheet(){
+ const st=ciSheetState;if(!st)return;
+ st.pos=await ciPosition();
+ if(ciSheetState!==st)return;
+ if(!st.pos){st.loading=false;st.error='לא הצלחנו לקבל את המיקום של הטלפון. צריך לאשר גישה למיקום בדפדפן ולנסות שוב.';ciRenderSheet();return}
+ st.places=await ciNearby(st.pos);
+ if(ciSheetState!==st)return;
+ st.loading=false;
+ if(!st.places||!st.places.length){st.exact=true}
+ ciRenderSheet();
+}
+function ciRenderSheet(){
+ const st=ciSheetState;if(!st)return;
+ const acc=st.pos&&st.pos.acc?` · דיוק ±${st.pos.acc} מ'`:'';
+ $('ciSheetSub').textContent=st.loading?'מאתר מיקום ומקומות קרובים…':st.error?'':`מקומות קרובים לפי Google${acc}`;
+ const list=$('ciList');
+ if(st.error){list.innerHTML=`<p class="ci-msg">⚠️ ${esc(st.error)}</p>`}
+ else if(st.loading){list.innerHTML='<p class="ci-msg">רגע…</p>'}
+ else{
+  const items=(st.places||[]).map((p,i)=>`<button type="button" class="ci-item${st.sel===i&&!st.exact?' sel':''}" data-ci-sel="${i}"><span class="ci-pin">📌</span><span class="ci-txt"><b>${esc(p.name)}</b><span>${esc([p.type,ciDistLabel(p.dist)].filter(Boolean).join(' · '))}</span></span>${st.sel===i&&!st.exact?'<span class="ci-check">✓</span>':''}</button>`).join('');
+  const none=st.places&&!st.places.length?'<p class="ci-msg">לא נמצאו מקומות בשם בקרבת מקום.</p>':st.places===null?'<p class="ci-msg">חיפוש המקומות לא זמין כרגע — אפשר לשמור את המיקום המדויק.</p>':'';
+  list.innerHTML=items+none+`<button type="button" class="ci-item exact${st.exact?' sel':''}" data-ci-exact="1"><span class="ci-pin">📍</span><span class="ci-txt"><b>המיקום המדויק בלבד</b><span>בלי שם מקום · אפשר לכתוב הערה</span></span>${st.exact?'<span class="ci-check">✓</span>':''}</button>`;
+ }
+ list.querySelectorAll('[data-ci-sel]').forEach(b=>b.onclick=()=>{st.sel=Number(b.dataset.ciSel);st.exact=false;ciRenderSheet()});
+ list.querySelectorAll('[data-ci-exact]').forEach(b=>b.onclick=()=>{st.exact=true;st.sel=null;ciRenderSheet()});
+ $('ciSaveBtn').disabled=!(st.pos&&(st.exact||st.sel!=null));
+}
+if($('ciSaveBtn'))$('ciSaveBtn').onclick=async()=>{
+ const st=ciSheetState;if(!st||!st.pos)return;
+ const place=st.exact?null:(st.places||[])[st.sel];
+ $('ciSaveBtn').disabled=true;
+ const rec=await ciSave(st.pos,place,$('ciNote').value);
+ if(rec)ciCloseSheet();else $('ciSaveBtn').disabled=false;
+};
+if($('ciCloseBtn'))$('ciCloseBtn').onclick=ciCloseSheet;
+if($('ciScrim'))$('ciScrim').onclick=ciCloseSheet;
+if($('hv2CheckinBtn')){$('hv2CheckinBtn').style.display=ciOn()?'':'none';$('hv2CheckinBtn').onclick=()=>ciOpenSheet()}
+
+/* ---- day card ---- */
+function ciRowHtml(c){
+ const time=visVnHM(c.t);
+ const title=c.name||'📍 מיקום מדויק';
+ return`<div class="ci-row" data-ci-row="${esc(c.id)}"><a class="ci-row-main" href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}${c.pid?'&query_place_id='+encodeURIComponent(c.pid):''}" target="_blank" rel="noopener noreferrer"><span class="ci-badge">📌</span><span class="visit-main"><b>${esc(title)}</b><span>${time} · צ'ק-אין של ${esc(c.by||'—')}</span>${c.note?`<span class="ci-note">"${esc(c.note)}"</span>`:''}</span></a><button type="button" class="ci-more" data-ci-more="${esc(c.id)}" aria-label="אפשרויות: עריכה או מחיקה">⋯</button><div class="ci-actions" hidden><button type="button" class="btn outline" data-ci-edit="${esc(c.id)}">✏️ עריכת הערה</button><button type="button" class="btn outline" data-ci-del="${esc(c.id)}">🗑️ מחיקה</button></div></div>`;
+}
+const _ciOrigRenderVisitsCard=renderVisitsCard;
+renderVisitsCard=function(){
+ _ciOrigRenderVisitsCard();
+ if(!ciOn())return;
+ const el=$('visitsCard');if(!el)return;
+ const d=tripData[globalDayIndex];if(!d)return;
+ const list=ciForDay(iso(d.date));
+ if(!list.length)return;
+ const rows=list.map(ciRowHtml).join('');
+ if(el.style.display==='none'||!el.innerHTML.trim()){
+  el.style.display='';
+  el.innerHTML=`<div class="visits-head"><div><h3>👣 ביקרנו בפועל</h3><div class="visits-sub">${list.length} צ'ק-אין</div></div></div><div class="visits-list">${rows}</div><div class="visits-foot">צ'ק-אין נשמר ומשותף לכל המשפחה · לחיצה פותחת ב-Google Maps</div>`;
+ }else{
+  const sub=el.querySelector('.visits-sub');if(sub)sub.textContent=(sub.textContent?sub.textContent+' · ':'')+`${list.length} צ'ק-אין`;
+  let lst=el.querySelector('.visits-list');
+  if(!lst){lst=document.createElement('div');lst.className='visits-list';const foot=el.querySelector('.visits-foot');el.insertBefore(lst,foot||null)}
+  const night=lst.querySelector('.visit-num.night');
+  const nightRow=night?night.closest('.visit-row'):null;
+  if(nightRow)nightRow.insertAdjacentHTML('beforebegin',rows);else lst.insertAdjacentHTML('beforeend',rows);
+ }
+ el.querySelectorAll('[data-ci-more]').forEach(b=>b.onclick=()=>{const a=b.parentElement.querySelector('.ci-actions');a.hidden=!a.hidden});
+ el.querySelectorAll('[data-ci-edit]').forEach(b=>b.onclick=()=>ciEditNote(b.dataset.ciEdit));
+ el.querySelectorAll('[data-ci-del]').forEach(b=>b.onclick=()=>ciDelete(b.dataset.ciDel));
+};
+
+/* ---- home count ---- */
+const _ciOrigVisUniqueCount=visUniqueCount;
+visUniqueCount=function(){
+ const base=_ciOrigVisUniqueCount();
+ if(!ciOn()||!checkinsCache.length)return base;
+ const keys=new Set((visAll()||[]).map(visKey));
+ checkinsCache.forEach(c=>keys.add(c.pid||`${Number(c.lat).toFixed(4)},${Number(c.lng).toFixed(4)}`));
+ return keys.size;
+};
+
+/* ---- map ---- */
+let ciGoogleMarkers=[];
+function ciViewCheckins(){
+ if(mapMode==='day'){const d=tripData[globalDayIndex];return d?ciForDay(iso(d.date)):[]}
+ if(mapMode==='route')return checkinsCache.slice();
+ return[];
+}
+/* Same bounds the VISITS-01 actual-only schematic uses (it keeps them local), so the pins line up. */
+function ciSchematicBounds(){
+ const tog=$('visitsPlanToggle');
+ const actualOnly=tog&&tog.style.display!=='none'&&!visitsShowPlanPref();
+ if(!actualOnly)return mapBounds();
+ const pts=timelinePointsForCurrentView();
+ const vis=timelineShowPref()?visViewVisits():[];
+ const shown=mapMode==='day'?vis:vis.filter(v=>v.n);
+ const all=[...pts.map(p=>[p.lat,p.lng]),...shown.map(v=>[v.lat,v.lng])];
+ if(!all.length)return mapBounds();
+ const lats=all.map(p=>p[0]),lngs=all.map(p=>p[1]);
+ const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+ const rLat=(maxLat-minLat)||.004,rLng=(maxLng-minLng)||.004;
+ return{minLat:minLat-rLat*.55,maxLat:maxLat+rLat*.45,minLng:minLng-rLng*.12,maxLng:maxLng+rLng*.12};
+}
+function applyCheckinMapLayer(){
+ ciGoogleMarkers.forEach(m=>m.setMap(null));ciGoogleMarkers=[];
+ if(!ciOn())return;
+ const list=ciViewCheckins();if(!list.length)return;
+ const lg=$('visitsMapLegend');
+ if(lg&&lg.style.display!=='none'&&!lg.querySelector('.lg-ci'))lg.insertAdjacentHTML('beforeend','<span class="lg lg-ci"><span class="lg-ci-dot"></span>צ\'ק-אין</span>');
+ if(mapProvider==='google'&&map&&typeof google!=='undefined'){
+  list.forEach(c=>{
+   ciGoogleMarkers.push(new google.maps.Marker({position:{lat:c.lat,lng:c.lng},map,zIndex:1000,title:`📌 ${c.name||'צ\'ק-אין'} · ${visVnHM(c.t)}`,
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:mapMode==='day'?11:7,fillColor:'#6d28d9',fillOpacity:1,strokeWeight:2,strokeColor:'#ffffff'},
+    label:mapMode==='day'?{text:'📌',fontSize:'11px'}:undefined}));
+  });
+  return;
+ }
+ const svg=$('map')&&$('map').querySelector('svg');const b=ciSchematicBounds();if(!svg||!b)return;
+ const W=600,H=380;
+ svg.insertAdjacentHTML('beforeend',list.map(c=>{const[x,y]=project(c.lat,c.lng,b,W,H);return`<g><circle cx="${x}" cy="${y}" r="${mapMode==='day'?11:6}" fill="#6d28d9" stroke="#fff" stroke-width="2"><title>${esc('📌 '+(c.name||'צ\'ק-אין'))}</title></circle>${mapMode==='day'?`<text x="${x}" y="${y+4}" text-anchor="middle" font-size="11">📌</text>`:''}</g>`}).join(''));
+}
+const _ciOrigDrawMap=drawMap;
+drawMap=function(){_ciOrigDrawMap();try{applyCheckinMapLayer()}catch(e){console.warn('[checkin] map layer failed',e)}};
+
+/* ---- chat: check_in action ---- */
+function ciChatCardHtml(m,idx){
+ const r=m.checkin||{};
+ const wrap=inner=>`<div class="chat-row" style="justify-content:flex-end"><div class="chat-ci-card">${inner}</div></div>`;
+ if(r.saved)return`<div class="chat-row" style="justify-content:flex-end"><div class="chat-ci-done"><b>📌 נשמר צ'ק-אין</b><span>${esc(r.saved.name||'מיקום מדויק')} · ${visVnHM(r.saved.t)}</span><span class="sub">יופיע ב"ביקרנו בפועל" של אותו יום</span></div></div>`;
+ if(!r.ready)return wrap('<b class="ci-h">📍 צ\'ק-אין</b><span class="ci-msg">מאתר מיקום ומקומות קרובים…</span>');
+ if(r.error)return wrap(`<b class="ci-h">📍 צ'ק-אין</b><span class="ci-msg">⚠️ ${esc(r.error)}</span>`);
+ const top=(r.places||[]).slice(0,3);
+ const items=top.map((p,i)=>`<button type="button" class="ci-item small${r.hint===i?' sel':''}" data-ci-chat-pick="${idx}:${i}"><span class="ci-pin">📌</span><span class="ci-txt"><b>${esc(p.name)}</b><span>${esc([p.type,ciDistLabel(p.dist)].filter(Boolean).join(' · '))}</span></span></button>`).join('');
+ return wrap(`<b class="ci-h">📍 צ'ק-אין · בחרו מקום</b>${items||'<span class="ci-msg">לא נמצאו מקומות בשם בקרבת מקום.</span>'}<div class="ci-links"><button type="button" class="ci-link" data-ci-chat-more="${idx}">עוד מקומות</button><button type="button" class="ci-link" data-ci-chat-exact="${idx}">המיקום המדויק בלבד</button></div>`);
+}
+const _ciOrigChatMessageHtml=chatMessageHtml;
+chatMessageHtml=function(m,idx){
+ if(ciOn()&&m&&m.action&&m.action.type==='check_in')return chatBubbleHtml(m.role,m.text,null,m.img)+ciChatCardHtml(m,idx);
+ return _ciOrigChatMessageHtml(m,idx);
+};
+const _ciOrigRenderChatBody=renderChatBody;
+renderChatBody=function(){
+ _ciOrigRenderChatBody();
+ const el=$('chatBody');if(!el)return;
+ el.querySelectorAll('[data-ci-chat-pick]').forEach(b=>b.onclick=async()=>{
+  const[mi,pi]=b.dataset.ciChatPick.split(':').map(Number);const m=chatHistory[mi];if(!m||!m.checkin||m.checkin.saved)return;
+  const rec=await ciSave(m.checkin.pos,m.checkin.places[pi],(m.action.params||{}).note||'');
+  if(rec){m.checkin.saved=rec;saveChatHistory();renderChatBody()}
+ });
+ el.querySelectorAll('[data-ci-chat-exact]').forEach(b=>b.onclick=async()=>{
+  const m=chatHistory[Number(b.dataset.ciChatExact)];if(!m||!m.checkin||!m.checkin.pos||m.checkin.saved)return;
+  const rec=await ciSave(m.checkin.pos,null,(m.action.params||{}).note||'');
+  if(rec){m.checkin.saved=rec;saveChatHistory();renderChatBody()}
+ });
+ el.querySelectorAll('[data-ci-chat-more]').forEach(b=>b.onclick=()=>{
+  const m=chatHistory[Number(b.dataset.ciChatMore)];if(!m||!m.checkin)return;
+  ciOpenSheet(m.checkin.pos?{pos:m.checkin.pos,places:m.checkin.places||[]}:null,(m.action.params||{}).note||'');
+ });
+};
+const ciRunning=new Set();
+async function runPendingChatCheckins(){
+ if(!ciOn())return;
+ for(const m of chatHistory){
+  if(!m||!m.action||m.action.type!=='check_in'||m.checkin||ciRunning.has(m))continue;
+  ciRunning.add(m);
+  if(CHAT_ACTION_INTROS.includes(m.text))m.text='בשמחה! איזה מהמקומות הקרובים? 👇';
+  m.status='shown';m.checkin={ready:false};renderChatBody();
+  const pos=await ciPosition();
+  if(!pos){m.checkin={ready:true,error:'לא הצלחנו לקבל את המיקום של הטלפון. צריך לאשר גישה למיקום ולנסות שוב.'}}
+  else{
+   const places=(await ciNearby(pos))||[];
+   const hint=tcNorm((m.action.params||{}).place_hint||'');
+   let hi=-1;if(hint)hi=places.findIndex(p=>{const n=tcNorm(p.name);return n&&(n.includes(hint)||hint.includes(n))});
+   if(hi>0){const[p]=places.splice(hi,1);places.unshift(p);hi=0} /* the place the user named goes first */
+   m.checkin={ready:true,pos,places,hint:hi>=0?hi:null};
+  }
+  ciRunning.delete(m);saveChatHistory();renderChatBody();
+ }
+}
+const _ciOrigSendChatMessage=sendChatMessage;
+sendChatMessage=async function(text){await _ciOrigSendChatMessage(text);runPendingChatCheckins()};
+
+(async()=>{try{await loadCheckins();ciRefreshAll()}catch(e){console.warn('[checkin] initial load failed',e)}})();
+/* Other family members' check-ins: refresh on the same cadence the app already uses for shared data. */
+setInterval(async()=>{if(!ciOn()||document.visibilityState!=='visible')return;const before=JSON.stringify(checkinsCache);await loadCheckins();if(JSON.stringify(checkinsCache)!==before)ciRefreshAll()},20000);
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
