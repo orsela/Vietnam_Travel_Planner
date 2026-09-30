@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.0 (צ'ק-אין)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.1 (Timeline בגיבוי · חיפוש בהוספת נקודה)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -361,6 +361,21 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .ci-toast{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-120%);background:#17211b;color:#fff;border-radius:999px;padding:9px 16px;font-size:.82rem;font-weight:700;z-index:120;box-shadow:0 6px 16px #00000030;transition:transform .25s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
 .ci-toast.show{transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){.ci-toast{transition:none}}
+/* CHANGE 2026-09-30 TL-MOVE-01 + WAYPOINT-FIX-01 (v2.11.1): Timeline card in the backup screen; place search
+   in "הוספת נקודת עניין". Additive styles only. */
+.tl-backup-sep{height:1px;background:var(--border);margin:14px 0}
+.timeline-card.tl-in-backup{margin:0 0 var(--sp-3);border:2px solid var(--accent)}
+.wp-search-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.wp-lbl{font-size:.75rem;font-weight:700;color:#3a443d;display:block;margin-top:4px}
+#wpSearch{min-height:44px;border:1.5px solid var(--primary)}
+.wp-picked{border-radius:10px;padding:8px 10px;font-size:.78rem}
+.wp-picked.ok{background:var(--success-bg);color:#0b5841}
+.wp-picked.err{background:#fff4f2;color:var(--primary-dark)}
+.wp-manual{margin:6px 0 10px;border:1px dashed var(--border);border-radius:12px;padding:6px 10px}
+.wp-manual summary{cursor:pointer;color:var(--primary);font-weight:700;font-size:.8rem;padding:6px 0}
+.wp-chat-loc{max-width:82%;border-radius:12px;padding:8px 10px;font-size:.78rem;margin:-4px 0 8px}
+.wp-chat-loc.ok{background:var(--success-bg);color:#0b5841}
+.wp-chat-loc.no{background:#fdf1e1;color:#8a4a03}
 /* CHANGE 2026-09-30 TRAVEL-CHAT-01 (v2.10.0): travel-time result card in the chat, per the approved
    mockup. Additive styles only. */
 .chat-travel-card{width:86%;max-width:340px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;margin:2px 0 8px}
@@ -4101,6 +4116,149 @@ sendChatMessage=async function(text){await _ciOrigSendChatMessage(text);runPendi
 (async()=>{try{await loadCheckins();ciRefreshAll()}catch(e){console.warn('[checkin] initial load failed',e)}})();
 /* Other family members' check-ins: refresh on the same cadence the app already uses for shared data. */
 setInterval(async()=>{if(!ciOn()||document.visibilityState!=='visible')return;const before=JSON.stringify(checkinsCache);await loadCheckins();if(JSON.stringify(checkinsCache)!==before)ciRefreshAll()},20000);
+
+/* CHANGE 2026-09-30 TL-MOVE-01 + WAYPOINT-FIX-01 (v2.11.1), per the mockup approved by Or
+   (https://claude.ai/artifact/VnqQQsfXVjGWAqMNag36bd). What changed from v2.11.0:
+   1) TL-MOVE-01: the "📍 מסלול בפועל מ-Timeline" upload card moves from the route screen to
+      עוד ← ניהול ← גיבוי וטעינה. The SAME element is moved (all its ids and handlers keep working);
+      the route screen gets lighter. Revert: TIMELINE_CARD_IN_BACKUP='off' leaves it where it was.
+   2) WAYPOINT-FIX-01 — "הוספת נקודת עניין" works from a phone:
+      a) New "🔍 חיפוש מקום" field on top: matches points already in the trip + Google results
+         (Places API New searchByText, biased to the viewed day). Picking one fills name + location.
+         The link/coordinates fields stay, folded under "או: קישור Google Maps / קואורדינטות".
+         (Phone "share" links are short maps.app.goo.gl links a browser can't read — search replaces them.)
+      b) Bug fix: saving with empty coordinates stored the point at 0,0 (Number('') is 0, and 0,0 is a
+         "valid" coordinate). Now empty/0,0 coordinates block the save with a clear message.
+      c) A point added from the chat (add_waypoint) was saved with no location, so it never showed on the
+         map. After the family approves it, the app now looks the name up (same Places search) and fills
+         the location; the chat card says whether it was found.
+   Additive: saveWaypoint's handler and applyChatAction/chatMessageHtml are WRAPPED; the modal's existing
+   inputs are re-parented at load, not rewritten. Revert: WAYPOINT_SEARCH='off'. */
+/* CHANGE 2026-09-30 WAYPOINT-FIX-02 (v2.11.1): found while fixing the add-point flow — valid(lat,lng) treats
+   missing values as coordinates: Number(null) and Number('') are 0, and 0,0 is in range, so a point with NO
+   location (e.g. every point added from the chat until now) counted as "valid" and was drawn at 0,0 in the
+   Atlantic, pulling the map's zoom out to the whole world. valid() is REASSIGNED (its body is untouched) to
+   reject null / undefined / empty-string first; every existing caller picks this up by name.
+   Revert: VALID_STRICT='off'. */
+const VALID_STRICT='on';
+const _vsOrigValid=valid;
+valid=function(a,b){if(VALID_STRICT==='on'&&(a==null||b==null||a===''||b===''))return false;return _vsOrigValid(a,b)};
+const TIMELINE_CARD_IN_BACKUP='on';
+const WAYPOINT_SEARCH='on';
+(function tlMoveCard(){
+ if(TIMELINE_CARD_IN_BACKUP!=='on')return;
+ const card=$('timelineCard'),host=$('backup')&&$('backup').querySelector('.topbar + div');
+ if(!card||!host)return;
+ const sep=document.createElement('div');sep.className='tl-backup-sep';
+ host.appendChild(sep);host.appendChild(card);card.classList.add('tl-in-backup');
+})();
+
+let wpSearchTimer=null,wpSearchSeq=0;
+(function wpBuildSearch(){
+ if(WAYPOINT_SEARCH!=='on')return;
+ const box=$('waypointModal')&&$('waypointModal').querySelector('.modal-box');if(!box)return;
+ const h2=box.querySelector('h2');
+ const wrap=document.createElement('div');wrap.className='wp-search-wrap';
+ wrap.innerHTML='<label class="wp-lbl" for="wpSearch">🔍 חיפוש מקום</label><input id="wpSearch" type="search" autocomplete="off" placeholder="שם של מקום, מסעדה, אטרקציה…"><div class="search-results" id="wpSearchResults"></div><div class="wp-picked" id="wpPicked" hidden></div>';
+ h2.insertAdjacentElement('afterend',wrap);
+ const det=document.createElement('details');det.className='wp-manual';det.id='wpManual';
+ det.innerHTML='<summary>או: קישור Google Maps / קואורדינטות</summary>';
+ const mapsLbl=$('mapsInput').closest('.row').previousElementSibling;
+ const moveList=[mapsLbl,$('mapsInput').closest('.row'),$('mapsFeedback'),$('wpLat'),$('wpLng')].filter(Boolean);
+ $('wpNotes').insertAdjacentElement('afterend',det);
+ moveList.forEach(el=>det.appendChild(el));
+ const nameLbl=document.createElement('label');nameLbl.className='wp-lbl';nameLbl.htmlFor='wpName';nameLbl.textContent='שם';
+ $('wpName').insertAdjacentElement('beforebegin',nameLbl);
+ const notesLbl=document.createElement('label');notesLbl.className='wp-lbl';notesLbl.htmlFor='wpNotes';notesLbl.textContent='הערות';
+ $('wpNotes').insertAdjacentElement('beforebegin',notesLbl);
+ $('wpSearch').addEventListener('input',()=>{clearTimeout(wpSearchTimer);wpSearchTimer=setTimeout(wpRunSearch,300)});
+})();
+function wpSetPicked(p){
+ $('wpLat').value=p.lat;$('wpLng').value=p.lng;
+ if(!$('wpName').value.trim()||$('wpName').dataset.auto==='1'){$('wpName').value=p.name;$('wpName').dataset.auto='1'}
+ const el=$('wpPicked');el.hidden=false;el.className='wp-picked ok';
+ el.textContent=`✅ נבחר: ${p.name} · ${Number(p.lat).toFixed(4)}, ${Number(p.lng).toFixed(4)}`;
+ $('wpSearchResults').classList.remove('show');
+}
+async function wpRunSearch(){
+ const q=$('wpSearch').value.trim(),res=$('wpSearchResults'),seq=++wpSearchSeq;
+ if(q.length<2){res.classList.remove('show');res.innerHTML='';return}
+ const day=tripData[globalDayIndex]||{};
+ const nq=tcNorm(q);
+ const saved=allTripPoints().filter(p=>!p.isHotel&&tcNorm(p.name).includes(nq)).slice(0,4);
+ const savedHtml=saved.length?'<div class="search-group-label">📍 כבר בטיול</div>'+saved.map((p,i)=>`<div class="search-item" data-wp-saved="${i}"><span class="ic">📍</span><div class="main"><b>${esc(p.name)}</b><span>יום ${p.day}</span></div></div>`).join(''):'';
+ res.innerHTML=savedHtml+'<div class="search-empty">מחפש ב-Google…</div>';res.classList.add('show');
+ const bindSaved=()=>res.querySelectorAll('[data-wp-saved]').forEach(it=>it.onclick=()=>wpSetPicked(saved[Number(it.dataset.wpSaved)]));
+ bindSaved();
+ let places=[];
+ try{
+  const lib=await tcWithTimeout(tcImportLib('places'),6000);
+  if(lib&&lib.Place&&typeof lib.Place.searchByText==='function'){
+   const req={textQuery:q,fields:['displayName','location','id','formattedAddress'],maxResultCount:5};
+   if(valid(day.lat,day.lng))req.locationBias={center:{lat:Number(day.lat),lng:Number(day.lng)},radius:30000};
+   const r=await tcWithTimeout(lib.Place.searchByText(req),8000);
+   places=((r&&r.places)||[]).filter(p=>p.location).map(p=>{const lat=p.location.lat(),lng=p.location.lng();return{name:p.displayName||q,addr:p.formattedAddress||'',lat,lng,dist:valid(day.lat,day.lng)?visHaversineM({lat:Number(day.lat),lng:Number(day.lng)},{lat,lng}):null}});
+  }
+ }catch(e){console.warn('[waypoint] Places search failed',e&&e.message)}
+ if(seq!==wpSearchSeq)return;
+ const gHtml=places.length?'<div class="search-group-label">🌍 Google</div>'+places.map((p,i)=>`<div class="search-item" data-wp-g="${i}"><span class="ic">🌍</span><div class="main"><b>${esc(p.name)}</b><span>${esc([p.addr.split(',').slice(0,2).join(','),p.dist!=null?ciDistLabel(p.dist):''].filter(Boolean).join(' · '))}</span></div></div>`).join(''):'';
+ res.innerHTML=(savedHtml+gHtml)||'<div class="search-empty">לא נמצאו מקומות. אפשר לנסות שם באנגלית, או להדביק קישור/קואורדינטות למטה.</div>';
+ bindSaved();
+ res.querySelectorAll('[data-wp-g]').forEach(it=>it.onclick=()=>wpSetPicked(places[Number(it.dataset.wpG)]));
+}
+if(WAYPOINT_SEARCH==='on'&&$('newWaypoint')){
+ $('newWaypoint').addEventListener('click',()=>{
+  if(!$('wpSearch'))return;
+  $('wpSearch').value='';$('wpSearchResults').innerHTML='';$('wpSearchResults').classList.remove('show');
+  $('wpPicked').hidden=true;$('wpName').dataset.auto='';
+  /* also found in testing: the dialog kept the PREVIOUS point's name/coordinates, so the next save could reuse them */
+  ['wpName','wpLat','wpLng','wpNotes','mapsInput'].forEach(id=>{if($(id))$(id).value=''});if($('mapsFeedback'))$('mapsFeedback').textContent='';if($('wpManual'))$('wpManual').open=false;
+  const d=tripData[globalDayIndex];const h2=$('waypointModal').querySelector('h2');if(h2&&d)h2.textContent=`📍 הוספת נקודת עניין · יום ${d.day}`;
+  setTimeout(()=>{try{$('wpSearch').focus()}catch{}},60);
+ });
+ $('wpName').addEventListener('input',()=>{$('wpName').dataset.auto=''});
+}
+/* Bug fix b): empty coordinates are not 0,0. */
+if($('saveWaypoint')){
+ const _wpOrigSave=$('saveWaypoint').onclick;
+ $('saveWaypoint').onclick=function(e){
+  const la=String($('wpLat').value).trim(),ln=String($('wpLng').value).trim();
+  if(la===''||ln===''||(Number(la)===0&&Number(ln)===0)){
+   const el=$('wpPicked');
+   const msg='⚠️ חסר מיקום: בחרו מקום מהחיפוש, או הדביקו קישור Google Maps / קואורדינטות.';
+   if(el){el.hidden=false;el.className='wp-picked err';el.textContent=msg}else alert(msg);
+   return;
+  }
+  return _wpOrigSave.call(this,e);
+ };
+}
+/* c) chat add_waypoint: locate the approved point. */
+const _wpOrigApplyChatAction=applyChatAction;
+applyChatAction=async function(idx){
+ const m=chatHistory[idx];
+ const isWp=m&&m.action&&m.action.type==='add_waypoint'&&m.status==='pending';
+ const res=await _wpOrigApplyChatAction(idx);
+ if(!isWp||WAYPOINT_SEARCH!=='on'||m.status!=='approved')return res;
+ try{
+  const p=m.action.params||{};const di=tripData.findIndex(x=>Number(x.day)===Number(p.day));const d=tripData[di];
+  const wp=d&&(d.waypoints||[]).slice().reverse().find(w=>w.name===String(p.name||'').trim()&&(w.lat==null||w.lng==null) /* valid(null,null) is true (Number(null)=0), so test for null directly */);
+  if(wp){
+   const f=await tcWithTimeout(tcFindPlace(`${wp.name}, ${d.region||''}, Vietnam`,d),9000);
+   if(f){wp.lat=f.lat;wp.lng=f.lng;await saveTrip();render();m.wpLocated={ok:true,name:f.name}}
+   else m.wpLocated={ok:false};
+   saveChatHistory();renderChatBody();
+  }
+ }catch(e){console.warn('[waypoint] chat locate failed',e)}
+ return res;
+};
+const _wpOrigChatMessageHtml=chatMessageHtml;
+chatMessageHtml=function(m,idx){
+ let h=_wpOrigChatMessageHtml(m,idx);
+ if(m&&m.wpLocated&&m.status==='approved'){
+  h+=`<div class="chat-row" style="justify-content:flex-end"><div class="wp-chat-loc ${m.wpLocated.ok?'ok':'no'}">${m.wpLocated.ok?`📍 המיקום אותר אוטומטית (${esc(m.wpLocated.name)}) — הנקודה מופיעה על המפה`:'📍 לא מצאתי את המקום במפה — אפשר להוסיף מיקום ידנית במסך המסלול'}</div></div>`;
+ }
+ return h;
+};
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
