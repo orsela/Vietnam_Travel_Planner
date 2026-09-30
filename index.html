@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.1 (זמן נסיעה בצ'אט · שירותי Google החדשים)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.2 (תיקון הדגשת מצב המפה)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -3752,6 +3752,20 @@ if(typeof visResolveNames==='function'){
   }
  };
 }
+
+/* CHANGE 2026-09-30 MAPMODE-FIX-01 (v2.10.2): the route screen's map-mode pills (📍 היום / 🗺️ כל המסלול /
+   🧭 נק' עניין) always showed "כל המסלול" highlighted. Cause: that button carries the static `red` class in
+   the HTML, and the existing [data-map] click handler only toggles `active`, which has no style of its own.
+   Fix (additive): after every drawMap(), the pill of the CURRENT mapMode gets `red` and the others get
+   `outline`, so the highlight always follows the real mode (also when the home 👣 stat switches to "היום").
+   The click handler itself is untouched. Revert: MAPMODE_PILL_FIX='off'. */
+const MAPMODE_PILL_FIX='on';
+function syncMapModePills(){
+ if(MAPMODE_PILL_FIX!=='on')return;
+ document.querySelectorAll('[data-map]').forEach(b=>{const on=b.dataset.map===mapMode;b.classList.toggle('red',on);b.classList.toggle('outline',!on);b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
+}
+const _mmOrigDrawMap=drawMap;
+drawMap=function(){_mmOrigDrawMap();try{syncMapModePills()}catch(e){console.warn('[map-mode] pill sync failed',e)}};
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
