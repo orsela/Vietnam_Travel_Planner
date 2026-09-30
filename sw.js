@@ -1,32 +1,87 @@
-/* CHANGE 2026-08-29 PWA-01: minimal service worker, intentionally network-only for the app
-   itself. This app updates almost every session (v1.5.x -> v1.6.x in a matter of days) -- a
-   caching service worker is the single most common cause of "why is my phone stuck on the old
-   version" bugs in PWAs. So this worker does NOT cache index.html or any JS/CSS: every load goes
-   straight to the network, exactly like a normal bookmark would. It exists ONLY so the app
-   qualifies as an installable PWA (Chrome/Android requires a registered service worker with a
-   fetch handler for the "Add to Home Screen" / install-as-app treatment; iOS Safari does not
-   require this at all, but it doesn't hurt there either). The only thing actually cached is the
-   two icon files, since those never change on their own and caching them costs nothing. See
-   CHANGELOG for the version this shipped in. */
+/* CHANGE 2026-09-30 APP-OFFLINE-01 (v2.12.0, PRD TASK-104): the app now opens with no network.
+   What changed from the PWA-01 version (network-only, icons cached): page navigations are now
+   NETWORK-FIRST with a cache fallback — online, the family still always gets the live version from
+   GitHub Pages (the concern that made PWA-01 network-only); every successful load refreshes the
+   cached copy; offline (or no answer within 6 seconds, e.g. weak airport Wi-Fi) the last cached
+   copy is served. The Supabase library from jsdelivr is cached the same way so the app starts
+   offline. Supabase data / weather / fx / Google calls are still left to the network (the app
+   already falls back to its local data for those). Revert: set SHELL_OFFLINE = false. */
+const SHELL_OFFLINE = true;
 const ICON_CACHE = "vtp-icons-v1";
+const SHELL_CACHE = "vtp-shell-v1";
 const ICONS = ["icon-192.png", "icon-512.png"];
+const NAV_TIMEOUT_MS = 6000;
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(ICON_CACHE).then((c) => c.addAll(ICONS)).catch(() => {}));
+  e.waitUntil(Promise.all([
+    caches.open(ICON_CACHE).then((c) => c.addAll(ICONS)).catch(() => {}),
+    SHELL_OFFLINE ? caches.open(SHELL_CACHE).then((c) => c.add("./")).catch(() => {}) : Promise.resolve()
+  ]));
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(self.clients.claim());
+  e.waitUntil((async () => {
+    if (!SHELL_OFFLINE) await caches.delete(SHELL_CACHE);
+    await self.clients.claim();
+  })());
 });
 
+function shellKey(url) {
+  // one cached copy of the app regardless of "index.html" / query string
+  const u = new URL(url);
+  u.search = ""; u.hash = "";
+  if (u.pathname.endsWith("/index.html")) u.pathname = u.pathname.slice(0, -"index.html".length);
+  return u.href;
+}
+
+async function networkFirst(request, key, timeoutMs) {
+  const cache = await caches.open(SHELL_CACHE);
+  const net = fetch(request).then((res) => {
+    if (res && (res.ok || res.type === "opaque")) cache.put(key, res.clone()).catch(() => {});
+    return res;
+  });
+  const cached = () => cache.match(key);
+  if (!timeoutMs) {
+    try { return await net; } catch (err) { const c = await cached(); if (c) return c; throw err; }
+  }
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(async () => {
+      const c = await cached();
+      if (c && !done) { done = true; resolve(c); }
+    }, timeoutMs);
+    net.then((res) => { if (!done) { done = true; clearTimeout(timer); resolve(res); } })
+      .catch(async (err) => {
+        clearTimeout(timer);
+        if (done) return;
+        const c = await cached();
+        done = true;
+        c ? resolve(c) : reject(err);
+      });
+  });
+}
+
 self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
   if (ICONS.some((i) => url.pathname.endsWith(i))) {
-    e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+    e.respondWith(caches.match(req).then((r) => r || fetch(req)));
     return;
   }
-  // Everything else (the HTML app itself, all JS/CSS, Supabase/weather/fx calls) is left
-  // completely untouched -- no e.respondWith() means the browser just does its normal network
-  // fetch, so the family always gets whatever version is actually live on GitHub Pages.
+  if (!SHELL_OFFLINE) return;
+  if (req.mode === "navigate" && url.origin === self.location.origin) {
+    e.respondWith(networkFirst(req, shellKey(req.url), NAV_TIMEOUT_MS));
+    return;
+  }
+  if (url.hostname === "cdn.jsdelivr.net" && url.pathname.includes("/@supabase/supabase-js")) {
+    e.respondWith(networkFirst(req, url.href, 0));
+    return;
+  }
+  if (url.origin === self.location.origin && /\/(manifest\.webmanifest|manifest\.json|apple-touch-icon\.png)$/.test(url.pathname)) {
+    e.respondWith(networkFirst(req, url.href, 0));
+    return;
+  }
+  // Everything else (Supabase data, weather, fx, Google, the update check) goes straight to the network.
 });

@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.2 (טעינה מהירה · מיזוג סנכרון)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.12.0 (כספת אופליין · קישורי Drive)</title>
 <!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -4363,6 +4363,187 @@ if($('importExcelInput')){
  $('journal').classList.toggle('journal-v2',JOURNAL_LAYOUT==='v2'); /* CHANGE 2026-09-07 JV2-02 */
  $('budget').classList.toggle('budget-v2',BUDGET_LAYOUT==='v2'); /* CHANGE 2026-09-07 BV2-02 */
 })();
+
+/* CHANGE 2026-09-30 VAULT-OFFLINE-01 + VAULT-DRIVE-01 + APP-OFFLINE-01 (v2.12.0) — PRD TASK-104 + TASK-105, per
+   the Phase-A mockup approved by Or (https://claude.ai/artifact/WpjSauNymyFkNjDQfXxtbT). What changed from v2.11.2:
+   1) VAULT-OFFLINE-01: vault documents move from localStorage (~5MB for the whole site — a few passport PDFs filled
+      it and the save then failed) to IndexedDB (hundreds of MB). getDocuments/saveDocuments are REASSIGNED to async
+      IndexedDB versions (every caller already awaited them); on first use the existing documents are copied over
+      and, once the copy is confirmed, removed from localStorage to free space. Persistent storage is requested so
+      the browser doesn't evict the vault. If IndexedDB isn't available the original localStorage code is used.
+      Still per device (unchanged by this release): documents are not synced between family phones.
+   2) VAULT-DRIVE-01 (simple Drive link, Or's choice): a document can be a Google Drive link instead of (or in
+      addition to) a file. Every document card shows its source: "📱 שמור במכשיר · זמין אופליין" / "🔗 קישור ל-Drive"
+      (or both). New "🔗 הוספת קישור Drive" next to "➕ הוסף מסמך", and "🔗 קישור Drive" in each document's ⋯ menu.
+   3) APP-OFFLINE-01: the app itself now opens with no network — sw.js caches the page network-first (online you
+      always get the live version; offline you get the last one). An offline bar shows in the vault, and Drive-only
+      documents are marked as unavailable offline. A "גרסה חדשה זמינה · רענון" card appears when a newer version is
+      published while the app is open (checked every 10 minutes and when the app comes back to the foreground).
+   Revert: VAULT_IDB='off' (localStorage again), APP_UPDATE_CHECK='off'. */
+const APP_VERSION='2.12.0';
+const VAULT_IDB='on';
+const APP_UPDATE_CHECK='on';
+const _vxOrigGetDocuments=getDocuments,_vxOrigSaveDocuments=saveDocuments;
+let vxDbPromise=null,vxCache=null;
+function vxDb(){
+ if(vxDbPromise)return vxDbPromise;
+ vxDbPromise=new Promise(resolve=>{
+  try{
+   if(VAULT_IDB!=='on'||!('indexedDB' in window)){resolve(null);return}
+   const req=indexedDB.open('vtp-vault',1);
+   req.onupgradeneeded=()=>{try{req.result.createObjectStore('kv')}catch{}};
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>resolve(null);req.onblocked=()=>resolve(null);
+  }catch{resolve(null)}
+ });
+ return vxDbPromise;
+}
+function vxIdbGet(db,key){return new Promise(res=>{try{const r=db.transaction('kv','readonly').objectStore('kv').get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>res(undefined)}catch{res(undefined)}})}
+function vxIdbPut(db,key,val){return new Promise(res=>{try{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(val,key);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false);tx.onabort=()=>res(false)}catch{res(false)}})}
+getDocuments=async function(){
+ const db=await vxDb();
+ if(!db)return _vxOrigGetDocuments();
+ if(vxCache)return vxCache.slice();
+ let v=await vxIdbGet(db,'documents');
+ if(!Array.isArray(v)){
+  const legacy=await _vxOrigGetDocuments();
+  v=legacy;
+  if(await vxIdbPut(db,'documents',legacy)){try{if(legacy.length)localStorage.removeItem(DOC_KEY)}catch{}}
+  else return legacy;
+ }
+ vxCache=v;return v.slice();
+};
+saveDocuments=async function(docs){
+ const db=await vxDb();
+ if(!db)return _vxOrigSaveDocuments(docs);
+ const ok=await vxIdbPut(db,'documents',docs);
+ if(ok)vxCache=docs.slice();
+ return ok;
+};
+try{if(VAULT_IDB==='on'&&navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch{}
+
+(function vxCss(){const st=document.createElement('style');st.id='vaultOfflineCss';st.textContent=`
+.doc-src{display:inline-block;margin-top:4px;font-size:.66rem;font-weight:700;border-radius:999px;padding:2px 8px;line-height:1.5}
+.doc-src.local{background:#e7f6ee;color:#0f6b4f}.doc-src.drive{background:#e8f0fe;color:#1a56b8}.doc-src.drive.off{background:#f2f4f7;color:#667085}
+.drive-tile{background:#e8f0fe!important;color:#1a56b8!important}
+.vault-offline-bar{background:#1f2937;color:#fff;border-radius:10px;padding:8px 12px;font-size:.8rem;font-weight:700;margin:6px 0 8px}
+.vault-offline-bar[hidden]{display:none}
+.drive-add{margin-top:8px}.drive-add #docDriveToggle{width:100%}.drive-add #docDriveForm{margin-top:8px;display:grid;gap:6px}.drive-add #docDriveForm[hidden]{display:none}
+.app-update-card{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:9000;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #d0d5dd;border-radius:14px;padding:10px 12px;box-shadow:0 8px 24px rgba(16,24,40,.18);max-width:520px;margin:0 auto}
+.app-update-card b{display:block;font-size:.88rem}.app-update-card span{font-size:.72rem;color:#667085}
+.app-update-card .btn{width:auto;margin:0;padding:8px 14px}
+.app-update-x{background:none;border:0;font-size:1.2rem;color:#667085;cursor:pointer;padding:4px}
+`;document.head.appendChild(st)})();
+/* ---- Drive links ---- */
+function vxIsDriveUrl(u){return/^https:\/\/(drive|docs)\.google\.com\//i.test(String(u||'').trim())}
+const _vxOrigDocThumbHtml=docThumbHtml;
+docThumbHtml=function(d){
+ if(d&&!d.src&&d.driveUrl)return`<a href="${esc(d.driveUrl)}" target="_blank" rel="noopener noreferrer" class="pdf-tile drive-tile" aria-label="פתח ב-Google Drive">🔗<span>Drive</span></a>`;
+ return _vxOrigDocThumbHtml(d);
+};
+function vxSourceTag(d){
+ const off=!navigator.onLine;
+ if(d.src&&d.driveUrl)return'<span class="doc-src local">📱 במכשיר + 🔗 Drive</span>';
+ if(d.src)return'<span class="doc-src local">📱 שמור במכשיר · זמין אופליין</span>';
+ if(d.driveUrl)return off?'<span class="doc-src drive off">🔗 Drive · לא זמין אופליין</span>':'<span class="doc-src drive">🔗 קישור ל-Drive · דורש רשת</span>';
+ return'';
+}
+const _vxOrigRenderDocuments=renderDocuments;
+renderDocuments=async function(){
+ await _vxOrigRenderDocuments();
+ const docs=await getDocuments();
+ document.querySelectorAll('#documentsGrid .doc-card').forEach(card=>{
+  const btn=card.querySelector('[data-doc-menu]');if(!btn)return;
+  const d=docs.find(x=>x.id===btn.dataset.docMenu);if(!d)return;
+  const meta=card.querySelector('.doc-meta');
+  if(meta&&!card.querySelector('.doc-src'))meta.insertAdjacentHTML('afterend',vxSourceTag(d));
+ });
+ vxRenderOfflineBar();
+};
+function vxRenderOfflineBar(){
+ const box=$('documentsModal')&&$('documentsModal').querySelector('.modal-box');if(!box)return;
+ let bar=$('vaultOfflineBar');
+ if(!bar){bar=document.createElement('div');bar.id='vaultOfflineBar';bar.className='vault-offline-bar';bar.textContent='📴 אין חיבור לרשת · המסמכים השמורים במכשיר זמינים';const head=box.querySelector('.modal-head');head.insertAdjacentElement('afterend',bar)}
+ bar.hidden=navigator.onLine;
+}
+window.addEventListener('online',()=>{if(currentDocFolder)renderDocuments();else vxRenderOfflineBar()});
+window.addEventListener('offline',()=>{if(currentDocFolder)renderDocuments();else vxRenderOfflineBar()});
+const _vxOrigUpdateDocumentsSummary=updateDocumentsSummary;
+updateDocumentsSummary=async function(){await _vxOrigUpdateDocumentsSummary();vxRenderOfflineBar()};
+
+(function vxBuildDriveUi(){
+ const addBtn=$('docAddBtn');if(!addBtn)return;
+ const wrap=document.createElement('div');wrap.className='drive-add';
+ wrap.innerHTML='<button class="btn outline" id="docDriveToggle" type="button">🔗 הוספת קישור Drive</button><div id="docDriveForm" hidden><label for="docDriveUrl" class="wp-lbl">קישור לקובץ ב-Google Drive</label><input id="docDriveUrl" type="url" inputmode="url" placeholder="https://drive.google.com/…"><button class="btn blue" id="docDriveSave" type="button">💾 שמירת קישור</button><small id="docDriveFeedback" class="muted"></small></div>';
+ addBtn.insertAdjacentElement('afterend',wrap);
+ $('docDriveToggle').onclick=()=>{$('docDriveForm').hidden=!$('docDriveForm').hidden;if(!$('docDriveForm').hidden)$('docDriveUrl').focus()};
+ $('docDriveSave').onclick=async()=>{
+  if(!requireUser())return;
+  const url=$('docDriveUrl').value.trim();
+  if(!vxIsDriveUrl(url)){$('docDriveFeedback').textContent='⚠️ צריך קישור שמתחיל ב-https://drive.google.com או https://docs.google.com';return}
+  const cat=$('docCategory').value;
+  const docs=await getDocuments();
+  docs.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name:($('docName').value.trim()||'מסמך ב-Drive').slice(0,50),category:cat,categoryLabel:DOC_CATEGORY_LABELS[cat]||cat,src:'',driveUrl:url,createdAt:Date.now(),by:($('docBy').value||activeUser)});
+  const ok=await saveDocuments(docs);
+  $('docDriveFeedback').textContent=ok?'✅ נשמר':'⚠️ השמירה נכשלה';
+  if(ok){$('docDriveUrl').value='';$('docName').value='';$('docDriveForm').hidden=true}
+  if(currentDocFolder)await renderDocuments();else await renderDocFolderGrid();
+  await updateDocumentsSummary();
+ };
+})();
+(function vxDriveAction(){
+ const del=$('docActionDelete');if(!del)return;
+ const b=document.createElement('div');b.className='listitem';b.id='docActionDrive';
+ b.innerHTML='<div class="ic">🔗</div><div class="lbl">קישור Drive (הוספה / עדכון)</div><div class="chev">‹</div>';
+ del.insertAdjacentElement('beforebegin',b);
+ b.onclick=async()=>{
+  closeModal($('docActionModal'));
+  if(!requireUser())return;
+  const docs=await getDocuments();const d=docs.find(x=>x.id===docActionTargetId);if(!d)return;
+  const v=prompt('קישור לקובץ ב-Google Drive (ריק = הסרת הקישור):',d.driveUrl||'');
+  if(v===null)return;
+  const url=v.trim();
+  if(url&&!vxIsDriveUrl(url)){alert('צריך קישור שמתחיל ב-https://drive.google.com או https://docs.google.com');return}
+  if(!url&&!d.src){alert('למסמך הזה אין קובץ במכשיר — אי אפשר להסיר את הקישור היחיד. אפשר למחוק את המסמך.');return}
+  if(url)d.driveUrl=url;else delete d.driveUrl;
+  await saveDocuments(docs);
+  if(currentDocFolder)await renderDocuments();
+ };
+})();
+const _vxOrigShareDocument=shareDocument;
+shareDocument=async function(id){
+ const docs=await getDocuments();const d=docs.find(x=>x.id===id);
+ if(d&&!d.src&&d.driveUrl){
+  try{if(navigator.share){await navigator.share({title:d.name,url:d.driveUrl});return}}catch(err){if(err&&err.name==='AbortError')return}
+  window.open(d.driveUrl,'_blank','noopener');return;
+ }
+ return _vxOrigShareDocument(id);
+};
+
+/* ---- new-version card ---- */
+let vxUpdateShown=false;
+async function vxCheckForUpdate(){
+ if(APP_UPDATE_CHECK!=='on'||vxUpdateShown||!navigator.onLine||location.protocol==='file:')return;
+ try{
+  const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),8000);
+  const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store',signal:ctrl.signal});clearTimeout(t);
+  if(!r.ok)return;
+  const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
+  if(m&&m[1]!==APP_VERSION)vxShowUpdateCard(m[1]);
+ }catch{}
+}
+function vxShowUpdateCard(v){
+ if(vxUpdateShown)return;vxUpdateShown=true;
+ const el=document.createElement('div');el.className='app-update-card';el.setAttribute('role','status');
+ el.innerHTML=`<span style="font-size:1.1rem">✨</span><div style="flex:1;min-width:0"><b>גרסה חדשה זמינה</b><span>v${esc(v)} · האפליקציה עובדת גם בלי רשת</span></div><button type="button" class="btn blue" id="appUpdateBtn">רענון</button><button type="button" class="app-update-x" id="appUpdateX" aria-label="לא עכשיו">×</button>`;
+ document.body.appendChild(el);
+ $('appUpdateBtn').onclick=()=>location.reload();
+ $('appUpdateX').onclick=()=>el.remove();
+}
+if(APP_UPDATE_CHECK==='on'){
+ setInterval(vxCheckForUpdate,10*60*1000);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')vxCheckForUpdate()});
+}
 </script>
 </body>
 </html>
