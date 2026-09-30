@@ -18,7 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.4.8 (Fix: saved-point results unclickable after Places rebind)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.10.0 (זמן נסיעה בצ'אט)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -284,6 +285,60 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .tl-switch.on .knob{right:21px}
 .timeline-actions{display:flex;gap:8px}
 .timeline-actions button{flex:1}
+/* CHANGE 2026-09-30 VISITS-01 (v2.9.0): "ביקרנו בפועל" -- actual visits from the Google Timeline
+   export, per the mockup approved by Or (https://claude.ai/artifact/P6cfLWTZhd8QFfnCDvhjWq).
+   Purely additive styles: the day-screen visits card, the map's "הצג תכנון" toggle + legend,
+   and the home quick-stat that replaced the photo count. Revert: VISITS_FEATURE='off' in the script. */
+.visits-card{border:1.5px solid var(--accent)}
+.visits-card .visits-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+.visits-card .visits-head h3{margin:0;font-size:1rem}
+.visits-card .visits-sub{font-size:.74rem;color:var(--muted)}
+.visits-list{display:flex;flex-direction:column}
+.visit-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);color:var(--text);text-decoration:none}
+.visit-row:first-child{border-top:0}
+.visit-num{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:var(--accent);color:#fff;font-size:.74rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.visit-num.night{background:var(--primary-dark);font-size:.72rem}
+.visit-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.visit-main b{font-size:.86rem;overflow-wrap:anywhere}
+.visit-main span{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.visit-tag{border-radius:999px;padding:2px 8px;font-size:.66rem;font-weight:700;white-space:nowrap}
+.visit-tag.planned{background:var(--success-bg);color:#146c43}
+.visit-tag.extra{background:#f1efe8;color:#4f574f}
+.visits-foot{font-size:.68rem;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px;margin-top:4px}
+.visits-empty{font-size:.8rem;color:var(--muted);margin:4px 0}
+.visits-plan-toggle{position:absolute;bottom:56px;right:10px;z-index:6;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #cfe1d7;border-radius:999px;padding:5px 8px 5px 11px;font-size:.72rem;font-weight:700;color:var(--text);box-shadow:0 2px 8px #00000014;cursor:pointer;touch-action:manipulation;font-family:inherit}
+.visits-plan-toggle .vp-track{display:inline-flex;align-items:center;justify-content:flex-start;width:30px;height:17px;border-radius:999px;padding:2px;box-sizing:border-box;background:#c9ccc3;transition:background .15s}
+.visits-plan-toggle .vp-knob{width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0000003a}
+.visits-plan-toggle[aria-pressed="true"] .vp-track{background:var(--primary);justify-content:flex-end}
+.visits-map-legend{position:absolute;bottom:10px;right:10px;left:10px;z-index:5;display:flex;gap:10px;flex-wrap:wrap;background:#ffffffe6;border-radius:10px;padding:5px 9px;font-size:.66rem;color:#3a443d;pointer-events:none}
+.visits-map-legend .lg{display:flex;align-items:center;gap:4px}
+.visits-map-legend .lg-line{width:14px;border-top:3px solid var(--accent)}
+.visits-map-legend .lg-plan{width:14px;border-top:2px dashed #b42318}
+.visits-map-legend .lg-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.visits-map-legend .lg-night{width:10px;height:10px;border-radius:50%;background:var(--primary-dark)}
+.hv2-quickstats .hv2-visited-stat{cursor:pointer;border-radius:10px;padding:2px 6px;border:0;background:none;font:inherit;color:inherit;touch-action:manipulation}
+.hv2-quickstats .hv2-visited-stat b{color:#9a5204}
+.hv2-quickstats .hv2-visited-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+/* CHANGE 2026-09-30 TRAVEL-CHAT-01 (v2.10.0): travel-time result card in the chat, per the approved
+   mockup. Additive styles only. */
+.chat-travel-card{width:86%;max-width:340px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;margin:2px 0 8px}
+.chat-travel-card .tc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.78rem;color:var(--muted)}
+.chat-travel-card .tc-tag{background:#fdf1e1;color:#8a4a03;border-radius:999px;padding:2px 8px;font-size:.66rem;font-weight:800}
+.chat-travel-card .tc-pts{display:flex;flex-direction:column;gap:3px;font-size:.8rem}
+.chat-travel-card .tc-pts>div{display:flex;gap:6px;align-items:baseline;min-width:0}
+.chat-travel-card .tc-pts span{color:var(--muted);width:22px;flex:none}
+.chat-travel-card .tc-pts b{overflow-wrap:anywhere}
+.chat-travel-card .tc-note{font-size:.7rem;color:var(--muted);padding-right:28px}
+.chat-travel-card .tc-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:#fbfaf7;border-radius:12px;padding:8px 10px}
+.chat-travel-card .tc-row.hl{border:1.5px solid var(--primary);background:var(--primary-light)}
+.chat-travel-card .tc-ic{font-size:1.25rem}
+.chat-travel-card .tc-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.chat-travel-card .tc-lbl,.chat-travel-card .tc-sub{font-size:.7rem;color:var(--muted)}
+.chat-travel-card .tc-main b{font-size:1rem;font-variant-numeric:tabular-nums}
+.chat-travel-card .tc-nav{background:var(--primary);color:#fff;border-radius:999px;padding:9px 13px;font-size:.76rem;font-weight:800;text-decoration:none;white-space:nowrap}
+.chat-travel-card .tc-foot{font-size:.66rem;color:var(--muted)}
+.chat-travel-card .tc-loading{font-size:.8rem;color:var(--muted)}
+.chat-travel-card .tc-err{font-size:.8rem;color:var(--primary-dark)}
 .map-provider-toggle{position:absolute;top:8px;left:8px;z-index:5;background:#fff;border:1px solid var(--border);border-radius:var(--radius-pill);padding:6px 12px;font-size:.72rem;font-weight:700;color:var(--text);cursor:pointer;box-shadow:0 2px 6px #0000001a}
 .map-fallback-note{font-size:.72rem;color:var(--accent);margin:6px 0 0;text-align:center}
 .map-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-2)}
@@ -850,7 +905,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
    <span>📅<b id="hv2Days">0</b>ימים</span>
    <span>📍<b id="hv2Points">0</b>נק' עניין</span>
    <span>🎫<b id="hv2ResCount">0/0</b>הזמנות</span>
-   <span>📷<b id="hv2Photos">0</b>תמונות</span>
+   <!-- CHANGE 2026-09-30 VISITS-01: photo count hidden (it counted journal photos, not the Google Photos library); replaced by unique places visited. VISITS_FEATURE='off' shows it again. -->
+   <span id="hv2PhotosStat" style="display:none">📷<b id="hv2Photos">0</b>תמונות</span>
+   <button type="button" class="hv2-visited-stat" id="hv2VisitedStat" aria-label="מקומות שביקרנו — פתיחת המפה של היום"><span>👣</span><b id="hv2Visited">—</b><span>ביקרנו</span></button>
   </div>
   <div class="hv2-mini-card hv2-weather-card" id="hv2Weather" data-go="route" style="display:none"></div>
   <div class="hv2-mini-card" id="hv2ResCard" data-go="more"><span class="hv2-ic">🎫</span><div class="hv2-txt"><b>הזמנות</b><span id="hv2ResSummary">אין עדיין הזמנות</span></div><span class="hv2-go">‹</span></div>
@@ -872,7 +929,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      - GM-13: a third data-map="poi" button reuses the existing generic
        [data-map] click handler unchanged; only drawGoogleMap/drawSchematicMap gained a poi
        branch (see script). -->
-<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div class="view-toggle" id="routeViewToggle"><button type="button" class="active" data-route-view="map">🗺️ מפה</button><button type="button" data-route-view="timeline">📅 ציר זמן</button></div><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><a id="hotel" class="info-value hotel-link" target="_blank" rel="noopener noreferrer"></a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button>
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div class="view-toggle" id="routeViewToggle"><button type="button" class="active" data-route-view="map">🗺️ מפה</button><button type="button" data-route-view="timeline">📅 ציר זמן</button></div><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><a id="hotel" class="info-value hotel-link" target="_blank" rel="noopener noreferrer"></a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><!-- CHANGE 2026-09-30 VISITS-01: plan toggle + legend over the route map (shown only when there is actual data) --><button type="button" class="visits-plan-toggle" id="visitsPlanToggle" aria-pressed="false" style="display:none"><span>הצג תכנון</span><span class="vp-track"><span class="vp-knob"></span></span></button><div class="visits-map-legend" id="visitsMapLegend" style="display:none"></div><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button>
+<!-- CHANGE 2026-09-30 VISITS-01: "ביקרנו בפועל" card, filled by renderVisitsCard() -->
+<div class="card visits-card" id="visitsCard" style="display:none"></div>
 <!-- CHANGE 2026-09-29 TIMELINE-01: upload a Google Timeline export to draw the actual route
      (where the family really was) alongside the planned route above. Mockup approved by Or:
      https://claude.ai/artifact/Ps1vfk8iRncy7GAo4hMofy -- see JS near the end of the script for
@@ -3086,6 +3145,520 @@ $('timelineFileInput').onchange=e=>{
  };
  reader.readAsText(f);
 };
+
+/* CHANGE 2026-09-30 VISITS-01 (v2.9.0): "ביקרנו בפועל" -- the places the family actually stopped at,
+   taken from the SAME Google Timeline export that TIMELINE-01 (v2.7.0) already uploads, per the mockup
+   approved by Or (https://claude.ai/artifact/P6cfLWTZhd8QFfnCDvhjWq). What changed from v2.8.0:
+   1) Upload now ALSO keeps the Timeline's own "visit" segments (start/end time, location, Google
+      placeId), filtered to the trip's days and to stops of VISIT_MIN_MINUTES (20) or longer, and
+      stores them inside the same shared SHARED.timeline object (new keys: visits, names). A visit
+      that starts on day D and ends on a later date after 3h+ is that night's lodging.
+      Files uploaded before v2.9.0 hold only the path points -- the card asks for a one-time re-upload.
+   2) Day screen: a new "👣 ביקרנו בפועל" card (numbered stops, time + duration, "✓ מתוכנן" when the
+      stop is within VISIT_PLANNED_RADIUS_M of one of that day's waypoints, the night's lodging last).
+      Real place names come from Google Places (placeId -> name), resolved once and saved shared so
+      every family phone sees them without looking them up again.
+   3) Map: when there is actual data for what is being shown, the planned layer (markers + planned
+      route line) is hidden by default; the new "הצג תכנון" toggle brings it back and is remembered
+      per device (localStorage). Days without Timeline data keep showing the plan, with a short note.
+      Day mode adds numbered visit markers + a lodging marker; route mode adds one lodging marker per night.
+   4) Home: the 📷 photo count (it counted journal photos, not the Google Photos library) is hidden and
+      replaced by "👣 ביקרנו" = number of UNIQUE places (by placeId). Tapping it opens today's day map.
+      The home hero map draws the actual path instead of the planned one when actual data exists.
+   Architecture: exactly like TIMELINE-01, nothing protected is edited. drawMap, renderTimelineCard, renderHomeV2,
+   buildHomeStaticMapUrl, renderHomeSchematicFallback, tlExtractPoints and saveTimelineData are WRAPPED
+   (reassigned to call the untouched original first). drawGoogleMap/drawSchematicMap/fallbackToSchematic
+   source text is byte-identical to v2.8.0. Revert: set VISITS_FEATURE='off' -- every wrapper then
+   returns the original's result unchanged and the new UI stays hidden (the photo stat comes back). */
+const VISITS_FEATURE='on';
+const VISIT_MIN_MINUTES=20;
+const VISIT_PLANNED_RADIUS_M=250;
+const VISIT_NIGHT_MIN_MINUTES=180;
+function visitsOn(){return VISITS_FEATURE==='on'}
+function visitsShowPlanPref(){try{return localStorage.getItem('planner:visits:showplan')==='1'}catch{return false}}
+function setVisitsShowPlanPref(v){try{localStorage.setItem('planner:visits:showplan',v?'1':'0')}catch{}}
+function visHaversineM(a,b){
+ const R=6371000,toR=x=>x*Math.PI/180;
+ const dLat=toR(b.lat-a.lat),dLng=toR(b.lng-a.lng);
+ const h=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+ return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+function visVnHM(t){const d=new Date(t);if(isNaN(d))return'';const vn=new Date(d.getTime()+7*3600*1000);return`${String(vn.getUTCHours()).padStart(2,'0')}:${String(vn.getUTCMinutes()).padStart(2,'0')}`}
+function visDurLabel(min){min=Math.round(min);if(min<60)return`${min} דק'`;return`${Math.floor(min/60)}:${String(min%60).padStart(2,'0')} שע'`}
+/* Pulls the Timeline's own "visit" segments. Only the current semanticSegments format carries them
+   (the old Takeout "locations" format has raw points only, so it yields no visits -- handled below). */
+function visExtractFromJson(json){
+ const out=[];
+ if(!json||!Array.isArray(json.semanticSegments))return out;
+ const tripDateKeys=new Set(tripData.map(d=>iso(d.date)).filter(Boolean));
+ json.semanticSegments.forEach(seg=>{
+  const v=seg&&seg.visit;if(!v||!v.topCandidate||!v.topCandidate.placeLocation)return;
+  const ll=tlParseLatLng(v.topCandidate.placeLocation.latLng);if(!ll)return;
+  const s=seg.startTime,e=seg.endTime;
+  const ms=new Date(e).getTime()-new Date(s).getTime();
+  if(!Number.isFinite(ms))return;
+  const min=ms/60000;
+  if(min<VISIT_MIN_MINUTES)return;
+  const d=tlVnDateKey(s);if(!d||!tripDateKeys.has(d))return;
+  const endDay=tlVnDateKey(e);
+  const night=!!(endDay&&endDay>d&&min>=VISIT_NIGHT_MIN_MINUTES);
+  out.push({d,s,e,min:Math.round(min),lat:+ll.lat.toFixed(6),lng:+ll.lng.toFixed(6),pid:v.topCandidate.placeId||'',st:v.topCandidate.semanticType||'',n:night?1:0});
+ });
+ out.sort((a,b)=>String(a.s).localeCompare(String(b.s)));
+ return out;
+}
+let visPendingVisits=null;
+const _visOrigExtractPoints=tlExtractPoints;
+tlExtractPoints=function(json){
+ if(visitsOn()){try{visPendingVisits=visExtractFromJson(json)}catch(e){console.warn('[visits] extract failed',e);visPendingVisits=[]}}
+ return _visOrigExtractPoints(json);
+};
+const _visOrigSaveTimelineData=saveTimelineData;
+saveTimelineData=async function(obj){
+ if(visitsOn()&&obj&&Array.isArray(obj.points)&&!obj.visits&&visPendingVisits){
+  obj.visits=visPendingVisits;obj.names={};visPendingVisits=null;
+ }
+ return _visOrigSaveTimelineData(obj);
+};
+function visAll(){const t=timelineDataCache;return t&&Array.isArray(t.visits)?t.visits:null}
+function visForDay(dayKey){const all=visAll()||[];return all.filter(v=>v.d===dayKey)}
+function visKey(v){return v.pid||`${Number(v.lat).toFixed(4)},${Number(v.lng).toFixed(4)}`}
+function visUniqueCount(){const all=visAll();if(!all)return null;return new Set(all.map(visKey)).size}
+function visPlannedMatch(v,day){
+ let best=null,bestM=Infinity;
+ (day&&day.waypoints||[]).forEach(w=>{if(!valid(w.lat,w.lng))return;const m=visHaversineM(v,{lat:Number(w.lat),lng:Number(w.lng)});if(m<bestM){bestM=m;best=w}});
+ return bestM<=VISIT_PLANNED_RADIUS_M?best:null;
+}
+function visName(v,fallback){const names=(timelineDataCache&&timelineDataCache.names)||{};return(v.pid&&names[v.pid])||fallback||'מקום ללא שם'}
+function visMapsHref(v){return`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`+(v.pid?`&query_place_id=${encodeURIComponent(v.pid)}`:'')}
+
+/* Names: Google Places placeId -> display name. Resolved lazily for the day being viewed, one request
+   at a time, then merged into the SHARED timeline object (re-read first, so a name saved by another
+   phone meanwhile is kept) -- after that no phone needs to look the same place up again. Silently
+   does nothing when Google Maps isn't loaded (schematic mode / offline); the card then falls back to
+   the matched waypoint name or "מקום ללא שם". */
+let visPlacesService=null;const visNamePending=new Set();let visNameSaveTimer=null;const visNewNames={};
+function visResolveNames(list){
+ if(!visitsOn()||typeof google==='undefined'||!google.maps||!google.maps.places)return;
+ const names=(timelineDataCache&&timelineDataCache.names)||{};
+ const todo=[...new Set(list.map(v=>v.pid).filter(p=>p&&!names[p]&&!visNamePending.has(p)))];
+ if(!todo.length)return;
+ if(!visPlacesService)visPlacesService=new google.maps.places.PlacesService(document.createElement('div'));
+ const next=()=>{
+  const pid=todo.shift();if(!pid)return;
+  visNamePending.add(pid);
+  try{
+   visPlacesService.getDetails({placeId:pid,fields:['name']},(res,status)=>{
+    if(status==='OK'&&res&&res.name){visNewNames[pid]=res.name;if(timelineDataCache){timelineDataCache.names=timelineDataCache.names||{};timelineDataCache.names[pid]=res.name}visScheduleNameSave();renderVisitsCard()}
+    else visNamePending.delete(pid);
+    setTimeout(next,120);
+   });
+  }catch(e){console.warn('[visits] Places lookup failed',e);visNamePending.delete(pid)}
+ };
+ next();
+}
+function visScheduleNameSave(){
+ clearTimeout(visNameSaveTimer);
+ visNameSaveTimer=setTimeout(async()=>{
+  const add={...visNewNames};if(!Object.keys(add).length)return;
+  try{
+   const latest=await getTimelineData();if(!latest||!Array.isArray(latest.visits))return;
+   latest.names=Object.assign({},latest.names||{},add);
+   await _visOrigSaveTimelineData(latest);
+   Object.keys(add).forEach(k=>delete visNewNames[k]);
+  }catch(e){console.warn('[visits] saving names failed',e)}
+ },1500);
+}
+
+function renderVisitsCard(){
+ const el=$('visitsCard');if(!el)return;
+ if(!visitsOn()||!timelineDataCache||!Array.isArray(timelineDataCache.points)||!timelineDataCache.points.length){el.style.display='none';return}
+ const d=tripData[globalDayIndex];if(!d){el.style.display='none';return}
+ const all=visAll();
+ if(!all){
+  el.style.display='';
+  el.innerHTML=`<div class="visits-head"><h3>👣 ביקרנו בפועל</h3></div><p class="visits-empty">הקובץ שהועלה לפני גרסה 2.9.0 כולל רק את קו המסלול. כדי לראות את המקומות שבהם עצרתם, צריך להעלות אותו שוב פעם אחת (🔄 החלפת קובץ בכרטיס ה-Timeline למטה).</p>`;
+  return;
+ }
+ const dayKey=iso(d.date);
+ const lastDay=all.reduce((m,v)=>v.d>m?v.d:m,'')||timelineDataCache.points.reduce((m,p)=>p.d>m?p.d:m,'');
+ const list=visForDay(dayKey);
+ if(!list.length&&(!lastDay||dayKey>lastDay)){el.style.display='none';return}
+ el.style.display='';
+ const stops=list.filter(v=>!v.n),night=list.filter(v=>v.n).slice(-1)[0]||null;
+ const wps=(d.waypoints||[]).filter(w=>valid(w.lat,w.lng));
+ /* One-to-one: each planned waypoint marks only the single CLOSEST stop within the radius, so a cafe
+    150m from the Japanese bridge isn't also tagged "✓ מתוכנן" (caught in testing). */
+ const wpFor=new Map();
+ wps.forEach(w=>{let best=-1,bm=Infinity;stops.forEach((v,i)=>{const m=visHaversineM(v,{lat:Number(w.lat),lng:Number(w.lng)});if(m<bm){bm=m;best=i}});if(best>=0&&bm<=VISIT_PLANNED_RADIUS_M&&!wpFor.has(best))wpFor.set(best,w)});
+ const matched=new Set(wpFor.values());
+ const rows=stops.map((v,i)=>{
+  const w=wpFor.get(i)||null;
+  const name=visName(v,w&&w.name);
+  return`<a class="visit-row" href="${visMapsHref(v)}" target="_blank" rel="noopener noreferrer"><span class="visit-num">${i+1}</span><span class="visit-main"><b>${esc(name)}</b><span>${visVnHM(v.s)} · ${visDurLabel(v.min)}</span></span>${w?'<span class="visit-tag planned">✓ מתוכנן</span>':'<span class="visit-tag extra">+ לא מתוכנן</span>'}</a>`;
+ }).join('');
+ const nightRow=night?`<a class="visit-row" href="${visMapsHref(night)}" target="_blank" rel="noopener noreferrer"><span class="visit-num night">🌙</span><span class="visit-main"><b>לינה: ${esc(visName(night,d.bookedHotel||d.hotel))}</b><span>מ-${visVnHM(night.s)}</span></span></a>`:'';
+ const sub=stops.length?`${stops.length} מקומות`+(wps.length?` · ${matched.size} מתוך ${wps.length} המתוכננים`:''):'';
+ el.innerHTML=`<div class="visits-head"><div><h3>👣 ביקרנו בפועל</h3><div class="visits-sub">${sub}</div></div></div>`+
+  (rows||nightRow?`<div class="visits-list">${rows}${nightRow}</div>`:`<p class="visits-empty">לא נרשמו ביום הזה עצירות של ${VISIT_MIN_MINUTES} דק' ומעלה.</p>`)+
+  `<div class="visits-foot">מקור: Google Timeline שהועלה · שמות מ-Google Places · עצירות של ${VISIT_MIN_MINUTES} דק' ומעלה בלבד · לחיצה פותחת ב-Google Maps</div>`;
+ visResolveNames(list);
+}
+
+/* Map layer: runs after the (already TIMELINE-01-wrapped) drawMap, i.e. after the protected drawer
+   and the amber actual-path overlay have both finished. */
+let visitGoogleMarkers=[];
+function visViewVisits(){
+ const all=visAll()||[];
+ if(mapMode==='day'){const d=tripData[globalDayIndex];return d?visForDay(iso(d.date)):[]}
+ if(mapMode==='route'){return all.filter(v=>{const dd=tripData.find(x=>iso(x.date)===v.d);return!dd||!isFlightDay(dd)})}
+ return[];
+}
+function applyVisitsMapLayer(){
+ const tog=$('visitsPlanToggle'),lg=$('visitsMapLegend');
+ visitGoogleMarkers.forEach(m=>m.setMap(null));visitGoogleMarkers=[];
+ if(!visitsOn()||mapMode==='poi'){if(tog)tog.style.display='none';if(lg)lg.style.display='none';return}
+ const pts=timelinePointsForCurrentView();
+ const vis=timelineShowPref()?visViewVisits():[];
+ const shownVis=mapMode==='day'?vis:vis.filter(v=>v.n);
+ const hasActual=pts.length>1||vis.length>0;
+ if(!hasActual){
+  if(tog)tog.style.display='none';
+  if(lg){
+   if(timelineDataCache&&timelineShowPref()&&mapMode==='day'){lg.style.display='';lg.innerHTML='<span class="lg">אין עדיין נתוני Timeline ליום זה — מוצג התכנון</span>'}
+   else lg.style.display='none';
+  }
+  return;
+ }
+ const showPlan=visitsShowPlanPref();
+ if(tog){tog.style.display='';tog.setAttribute('aria-pressed',showPlan?'true':'false')}
+ if(lg){
+  lg.style.display='';
+  lg.innerHTML=(showPlan?'<span class="lg"><span class="lg-plan"></span>מתוכנן</span>':'')+
+   (pts.length>1?'<span class="lg"><span class="lg-line"></span>בפועל</span>':'')+
+   (mapMode==='day'&&shownVis.some(v=>!v.n)?'<span class="lg"><span class="lg-dot"></span>ביקור</span>':'')+
+   (shownVis.some(v=>v.n)?'<span class="lg"><span class="lg-night"></span>לינה</span>':'');
+ }
+ const dayStops=shownVis.filter(v=>!v.n),nights=shownVis.filter(v=>v.n);
+ if(mapProvider==='google'&&map&&typeof google!=='undefined'){
+  if(!showPlan){markers.forEach(m=>m.setMap(null));if(polyLine)polyLine.setMap(null)}
+  dayStops.forEach((v,i)=>{
+   const d=tripData[globalDayIndex];
+   const mk=new google.maps.Marker({position:{lat:v.lat,lng:v.lng},map,zIndex:900+i,title:visName(v,(visPlannedMatch(v,d)||{}).name),
+    label:{text:String(i+1),color:'#ffffff',fontSize:'11px',fontWeight:'800'},
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:11,fillColor:'#d97706',fillOpacity:1,strokeWeight:2,strokeColor:'#ffffff'}});
+   visitGoogleMarkers.push(mk);
+  });
+  nights.forEach(v=>{
+   const mk=new google.maps.Marker({position:{lat:v.lat,lng:v.lng},map,zIndex:950,title:'לינה: '+visName(v,''),
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:mapMode==='day'?11:6,fillColor:'#083f30',fillOpacity:1,strokeWeight:2,strokeColor:'#ffffff'},
+    label:mapMode==='day'?{text:'🌙',fontSize:'11px'}:undefined});
+   visitGoogleMarkers.push(mk);
+  });
+  const bounds=new google.maps.LatLngBounds();let n=0;
+  pts.forEach(p=>{bounds.extend(p);n++});
+  shownVis.forEach(v=>{bounds.extend({lat:v.lat,lng:v.lng});n++});
+  if(showPlan){
+   markers.forEach(m=>{const p=m.getPosition&&m.getPosition();if(p){bounds.extend(p);n++}});
+   if(polyLine&&polyLine.getPath)polyLine.getPath().forEach(p=>{bounds.extend(p);n++});
+  }
+  if(n>1)map.fitBounds(bounds,{top:64,bottom:96,left:24,right:24});else if(n===1){map.setCenter(bounds.getCenter());map.setZoom(15)}
+  return;
+ }
+ const el=$('map');if(!el)return;
+ const W=600,H=380;
+ if(!showPlan){
+  const all=[...pts.map(p=>[p.lat,p.lng]),...shownVis.map(v=>[v.lat,v.lng])];
+  const lats=all.map(p=>p[0]),lngs=all.map(p=>p[1]);
+  let minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+  /* Extra room top and bottom: the route-v2 map-mode pills sit over the top of the map and the
+     legend/toggles over the bottom, so markers must not land under them (caught in a screenshot). */
+  const rLat=(maxLat-minLat)||.004,rLng=(maxLng-minLng)||.004;
+  const b={minLat:minLat-rLat*.55,maxLat:maxLat+rLat*.45,minLng:minLng-rLng*.12,maxLng:maxLng+rLng*.12};
+  const base=`<rect x="0" y="0" width="${W}" height="${H}" fill="#cfe3f2"/><polygon points="${landShape(b,W,H)}" fill="#e3ecd9" stroke="#9db98c" stroke-width="1.5"/><path d="${linePath(VN_RIVER,b,W,H)}" fill="none" stroke="#7fb3d5" stroke-width="2" opacity=".85"/>${VN_MEKONG.map(seg=>`<path d="${linePath(seg,b,W,H)}" fill="none" stroke="#7fb3d5" stroke-width="1.5" opacity=".8"/>`).join('')}`;
+  const path=pts.length>1?`<path d="${pts.map((p,i)=>{const[x,y]=project(p.lat,p.lng,b,W,H);return`${i===0?'M':'L'}${x},${y}`}).join(' ')}" fill="none" stroke="#d97706" stroke-width="3" opacity=".9"/>`:'';
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;background:#cfe3f2" xmlns="http://www.w3.org/2000/svg">${base}${path}${visSchematicMarks(dayStops,nights,b,W,H)}</svg>`;
+  return;
+ }
+ const svg=el.querySelector('svg');const b=mapBounds();if(!svg||!b)return;
+ svg.insertAdjacentHTML('beforeend',visSchematicMarks(dayStops,nights,b,W,H));
+}
+function visSchematicMarks(dayStops,nights,b,W,H){
+ let s='';
+ dayStops.forEach((v,i)=>{const[x,y]=project(v.lat,v.lng,b,W,H);s+=`<g><circle cx="${x}" cy="${y}" r="10" fill="#d97706" stroke="#fff" stroke-width="2"><title>${esc(visName(v,''))}</title></circle><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">${i+1}</text></g>`});
+ nights.forEach(v=>{const[x,y]=project(v.lat,v.lng,b,W,H);s+=`<circle cx="${x}" cy="${y}" r="${mapMode==='day'?9:5}" fill="#083f30" stroke="#fff" stroke-width="2"><title>${esc('לינה: '+visName(v,''))}</title></circle>`});
+ return s;
+}
+const _visOrigDrawMap=drawMap;
+drawMap=function(){_visOrigDrawMap();try{applyVisitsMapLayer()}catch(e){console.warn('[visits] map layer failed',e)}};
+if($('visitsPlanToggle'))$('visitsPlanToggle').onclick=()=>{setVisitsShowPlanPref(!visitsShowPlanPref());drawMap()};
+
+/* Home: 📷 -> 👣 (unique places), and the hero map follows the actual path when there is one. */
+function renderHomeVisitedStat(){
+ const ph=$('hv2PhotosStat'),vs=$('hv2VisitedStat');
+ if(!visitsOn()){if(ph)ph.style.display='';if(vs)vs.style.display='none';return}
+ if(ph)ph.style.display='none';
+ if(vs)vs.style.display='';
+ const c=visUniqueCount();
+ if($('hv2Visited'))$('hv2Visited').textContent=c==null?'—':c.toLocaleString('he-IL');
+}
+if($('hv2VisitedStat'))$('hv2VisitedStat').onclick=()=>{
+ switchPanel('route');
+ if($('route').classList.contains('route-view-timeline')){const mb=document.querySelector('#routeViewToggle [data-route-view="map"]');if(mb)mb.click()}
+ const dayBtn=document.querySelector('#route [data-map="day"]');if(dayBtn)dayBtn.click();
+};
+const _visOrigRenderHomeV2=renderHomeV2;
+renderHomeV2=async function(){await _visOrigRenderHomeV2();try{renderHomeVisitedStat()}catch(e){console.warn('[visits] home stat failed',e)}};
+function visHomeActualPts(){
+ if(!visitsOn()||!timelineShowPref())return[];
+ const data=timelineDataCache;if(!data||!Array.isArray(data.points))return[];
+ return data.points.filter(p=>{const dd=tripData.find(x=>iso(x.date)===p.d);return!dd||!isFlightDay(dd)});
+}
+function visEncodePolyline(pts){
+ let out='',pLat=0,pLng=0;
+ const enc=v=>{v=v<0?~(v<<1):(v<<1);let s='';while(v>=0x20){s+=String.fromCharCode((0x20|(v&0x1f))+63);v>>=5}return s+String.fromCharCode(v+63)};
+ pts.forEach(p=>{const la=Math.round(p.lat*1e5),ln=Math.round(p.lng*1e5);out+=enc(la-pLat)+enc(ln-pLng);pLat=la;pLng=ln});
+ return out;
+}
+function visSample(arr,max){if(arr.length<=max)return arr;const step=arr.length/max,out=[];for(let i=0;i<max;i++)out.push(arr[Math.floor(i*step)]);out.push(arr[arr.length-1]);return out}
+const _visOrigBuildHomeStaticMapUrl=buildHomeStaticMapUrl;
+buildHomeStaticMapUrl=function(pts){
+ const orig=_visOrigBuildHomeStaticMapUrl(pts);
+ try{
+  const act=visHomeActualPts();if(act.length<2)return orig;
+  const sorted=[...act].sort((a,b)=>String(a.t).localeCompare(String(b.t)));
+  const line=visSample(sorted,250);
+  const keyM=orig.match(/[?&]key=([^&]+)/);
+  const nights=(visAll()||[]).filter(v=>v.n).slice(-20).map(v=>`${v.lat.toFixed(5)},${v.lng.toFixed(5)}`);
+  const last=line[line.length-1];
+  const params=['size=640x396','scale=2','maptype=terrain','language=he','region=VN',
+   'style=feature:poi|visibility:off','style=feature:transit|visibility:off',
+   'path=color:0xd97706ee|weight:3|enc:'+visEncodePolyline(line)];
+  if(nights.length)params.push('markers=size:tiny|color:0x083f30|'+nights.join('|'));
+  params.push(`markers=size:mid|color:0xd97706|${Number(last.lat).toFixed(5)},${Number(last.lng).toFixed(5)}`);
+  if(keyM)params.push('key='+keyM[1]);
+  return'https://maps.googleapis.com/maps/api/staticmap?'+params.join('&');
+ }catch(e){console.warn('[visits] home static map fallback',e);return orig}
+};
+const _visOrigRenderHomeSchematicFallback=renderHomeSchematicFallback;
+renderHomeSchematicFallback=function(pts){
+ _visOrigRenderHomeSchematicFallback(pts);
+ try{
+  const act=visHomeActualPts();if(act.length<2)return;
+  const dotsEl=$('hv2MapDots'),lineEl=$('hv2RouteLine'),labelsEl=$('hv2MapLabels');if(!dotsEl||!lineEl)return;
+  const line=visSample([...act].sort((a,b)=>String(a.t).localeCompare(String(b.t))),400);
+  const lats=line.map(p=>p.lat),lngs=line.map(p=>p.lng);
+  const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+  const padX=34,padY=18,w=300-padX*2,h=230-padY*2;
+  const rLat=Math.max(0.0001,maxLat-minLat),rLng=Math.max(0.0001,maxLng-minLng);
+  const xy=p=>({x:padX+((p.lng-minLng)/rLng)*w,y:padY+h-((p.lat-minLat)/rLat)*h});
+  const c=line.map(xy);
+  lineEl.innerHTML=`<path style="stroke:#d97706" d="${c.map((q,i)=>(i===0?'M':'L')+q.x.toFixed(1)+' '+q.y.toFixed(1)).join(' ')}"/>`;
+  const e=c[c.length-1];
+  dotsEl.innerHTML=`<circle class="hv2-map-marker today" style="fill:#d97706" cx="${e.x.toFixed(1)}" cy="${e.y.toFixed(1)}" r="7.2"/>`;
+  if(labelsEl)labelsEl.innerHTML='';
+ }catch(err){console.warn('[visits] home schematic failed',err)}
+};
+/* CHANGE 2026-09-30 VISITS-01: after the Timeline file is (re)uploaded or removed, the visits card and
+   home stat must refresh too; the TIMELINE-01 handlers call renderTimelineCard(), so hook that. */
+const _visOrigRenderTimelineCard=renderTimelineCard;
+/* render() already ends by calling renderTimelineCard(), so this one hook also covers every day change.
+   The home hero map is redrawn only when the uploaded data itself changed (boot, upload, removal),
+   not on every day change -- renderHomeV2 already redraws it then. */
+let visHomeSig=null;
+renderTimelineCard=async function(){
+ await _visOrigRenderTimelineCard();
+ try{
+  renderVisitsCard();renderHomeVisitedStat();
+  const t=timelineDataCache;const sig=t?`${t.uploadedAt||''}|${(t.points||[]).length}|${(t.visits||[]).length}|${timelineShowPref()}`:'none';
+  if(sig!==visHomeSig){visHomeSig=sig;if(typeof drawHomeV2Map==='function')drawHomeV2Map()}
+ }catch(e){console.warn('[visits] refresh failed',e)}
+};
+
+/* CHANGE 2026-09-30 TRAVEL-CHAT-01 (v2.10.0): travel time between places is now asked in the chat,
+   per the mockup approved by Or (https://claude.ai/artifact/3k9ZTsiR6NurrA3USrs35Z). What changed
+   from v2.9.0:
+   1) The "⏱️ זמן נסיעה בין נקודות" button on the route screen is hidden (TRAVEL_TIME_UI='off'). Its
+      modal and helper functions are untouched and still in the file; geocodePlace() and
+      calculateDistanceKm()/formatTravelTimes() are reused below.
+   2) The chat-assistant Edge Function v2.1.0 adds a `travel_time` tool. Claude only understands the
+      question and names the two places; it never estimates times itself. The app then resolves both
+      places and asks Google Maps (DirectionsService, already loaded with the Maps JS API) for the real
+      walking + driving route, and shows the result as a card under the answer, with "נווט ›" buttons
+      that open Google Maps navigation. Nothing is saved to the trip, so there is no approve step.
+   3) Origin when none is given: the phone's current location (asks permission once); if that is not
+      available -> the hotel of the viewed day (booked hotel name via Google Places, else that night's
+      lodging from the Timeline visits, else the day's own point), and the card says so.
+   4) If Google Maps is unavailable the card falls back to the old straight-line estimate, marked "הערכה"
+      and "~". Driving time is without live traffic (DirectionsService default).
+   Architecture: additive only. chatMessageHtml and sendChatMessage are WRAPPED; applyChatAction,
+   chatActionCardHtml and the protected map functions are unchanged. Results are stored on the chat
+   message (local chat history, like the rest of the chat) so re-opening the chat doesn't re-query.
+   Revert: TRAVEL_TIME_UI='on' brings the button back; TRAVEL_CHAT='off' ignores travel_time actions. */
+const TRAVEL_TIME_UI='off';
+const TRAVEL_CHAT='on';
+const TRAVEL_WALK_NOT_RECOMMENDED_MIN=90;
+if(TRAVEL_TIME_UI==='off'&&$('openTravelTimeBtn'))$('openTravelTimeBtn').style.display='none';
+
+function tcNorm(s){return String(s||'').toLowerCase().replace(/[֑-ׇ]/g,'').replace(/["'׳״`.,()\-–—]/g,' ').replace(/\s+/g,' ').trim()}
+function tcWithTimeout(p,ms){return Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))])}
+function tcCurrentPosition(){
+ return new Promise(resolve=>{
+  if(!navigator.geolocation){resolve(null);return}
+  try{navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude}),()=>resolve(null),{enableHighAccuracy:true,timeout:8000,maximumAge:120000})}catch{resolve(null)}
+ });
+}
+let tcPlacesService=null;
+function tcFindPlace(query,bias){
+ return new Promise(resolve=>{
+  if(typeof google==='undefined'||!google.maps||!google.maps.places){resolve(null);return}
+  try{
+   if(!tcPlacesService)tcPlacesService=new google.maps.places.PlacesService(document.createElement('div'));
+   const req={query,fields:['name','geometry','place_id']};
+   if(bias&&valid(bias.lat,bias.lng))req.locationBias={center:{lat:Number(bias.lat),lng:Number(bias.lng)},radius:40000};
+   tcPlacesService.findPlaceFromQuery(req,(res,status)=>{
+    if(status==='OK'&&res&&res[0]&&res[0].geometry){const l=res[0].geometry.location;resolve({lat:l.lat(),lng:l.lng(),name:res[0].name,pid:res[0].place_id})}
+    else resolve(null);
+   });
+  }catch{resolve(null)}
+ });
+}
+/* A place the trip already knows (a waypoint on any day, or a named Timeline visit) beats a search:
+   exact coordinates, no network, and the family's own name for it. */
+function tcKnownPlace(label,query){
+ const cands=[tcNorm(label),tcNorm(query)].filter(x=>x.length>=2);
+ if(!cands.length)return null;
+ const d=tripData[globalDayIndex];
+ const days=[d,...tripData.filter(x=>x!==d)].filter(Boolean);
+ for(const day of days){
+  for(const w of day.waypoints||[]){
+   if(!valid(w.lat,w.lng))continue;
+   const n=tcNorm(w.name);
+   if(n&&cands.some(c=>n===c||n.includes(c)||c.includes(n)))return{lat:Number(w.lat),lng:Number(w.lng),name:w.name};
+  }
+ }
+ const names=(typeof timelineDataCache!=='undefined'&&timelineDataCache&&timelineDataCache.names)||{};
+ const all=(typeof visAll==='function'&&visAll())||[];
+ for(const v of all){const n=tcNorm(names[v.pid]);if(n&&cands.some(c=>n===c||n.includes(c)||c.includes(n)))return{lat:v.lat,lng:v.lng,name:names[v.pid]}}
+ return null;
+}
+function tcIsGenericHotel(name){const n=String(name||'').trim();return!n||/^מלון ב/.test(n)||/^ריזורט ב/.test(n)||n==='בטיסה'||n.startsWith('רכבת')||n.startsWith('קרוז')}
+async function tcHotelPoint(dayNum){
+ const idx=dayNum!=null?tripData.findIndex(x=>Number(x.day)===Number(dayNum)):globalDayIndex;
+ const d=tripData[idx>=0?idx:globalDayIndex];if(!d)return null;
+ const booked=d.bookedHotel||'';
+ if(!tcIsGenericHotel(booked)){
+  const f=await tcWithTimeout(tcFindPlace(booked,{lat:d.lat,lng:d.lng}),8000);
+  if(f)return{lat:f.lat,lng:f.lng,name:booked};
+ }
+ const all=(typeof visAll==='function'&&visAll())||[];
+ const key=iso(d.date);const prevKey=idx>0?iso(tripData[idx-1].date):'';
+ const night=all.filter(v=>v.n&&(v.d===key||v.d===prevKey)).sort((a,b)=>String(b.s).localeCompare(String(a.s)))[0];
+ if(night){const nm=(timelineDataCache&&timelineDataCache.names&&timelineDataCache.names[night.pid])||booked||d.hotel||'המלון';return{lat:night.lat,lng:night.lng,name:nm}}
+ if(valid(d.lat,d.lng))return{lat:Number(d.lat),lng:Number(d.lng),name:(booked||d.hotel||d.region),approx:true};
+ return null;
+}
+async function tcResolvePlace(query,label){
+ const known=tcKnownPlace(label,query);if(known)return known;
+ const d=tripData[globalDayIndex];
+ const f=await tcWithTimeout(tcFindPlace(query||label,d),8000);
+ if(f)return{lat:f.lat,lng:f.lng,name:label||f.name,gname:f.name};
+ const g=await tcWithTimeout(geocodePlace(query||label),8000);
+ if(g)return{lat:g.lat,lng:g.lng,name:label||g.label};
+ return null;
+}
+function tcRoute(o,dst,mode){
+ return new Promise(resolve=>{
+  if(typeof google==='undefined'||!google.maps||!google.maps.DirectionsService){resolve(null);return}
+  try{
+   new google.maps.DirectionsService().route({origin:{lat:o.lat,lng:o.lng},destination:{lat:dst.lat,lng:dst.lng},travelMode:mode==='walking'?google.maps.TravelMode.WALKING:google.maps.TravelMode.DRIVING},(res,status)=>{
+    const leg=status==='OK'&&res&&res.routes&&res.routes[0]&&res.routes[0].legs&&res.routes[0].legs[0];
+    resolve(leg?{sec:leg.duration.value,m:leg.distance.value}:null);
+   });
+  }catch{resolve(null)}
+ });
+}
+function tcDur(sec){const min=Math.max(1,Math.round(sec/60));if(min<60)return`${min} דק'`;return`${Math.floor(min/60)}:${String(min%60).padStart(2,'0')} שע'`}
+function tcDist(m){return m<1000?`${Math.round(m/10)*10} מ'`:`${(m/1000).toFixed(1)} ק"מ`}
+async function computeChatTravel(params){
+ const out={when:Date.now(),mode:params.mode||'both'};
+ let origin=null;
+ if(params.origin_type==='current_location'){
+  const pos=await tcCurrentPosition();
+  if(pos)origin={...pos,name:'📍 המיקום שלכם',current:true};
+  else{origin=await tcHotelPoint(params.day);if(origin)out.originNote=`📍 המיקום לא זמין — מחושב מהמלון של יום ${tripData[globalDayIndex]?.day??''}`}
+ }else if(params.origin_type==='hotel'){origin=await tcHotelPoint(params.day)}
+ else origin=await tcResolvePlace(params.origin_query,params.origin_label);
+ if(!origin){out.error='לא הצלחתי לזהות את נקודת המוצא. אפשר לנסות שוב עם שם מדויק יותר.';return out}
+ if(origin.approx)out.originNote=(out.originNote?out.originNote+' · ':'')+'מיקום המלון לא ידוע — מחושב ממרכז האזור';
+ const dest=await tcResolvePlace(params.destination_query,params.destination_label);
+ if(!dest){out.error=`לא מצאתי את "${params.destination_label||params.destination_query}" במפה. אפשר לנסות שם באנגלית או כתובת.`;return out}
+ out.origin={lat:origin.lat,lng:origin.lng,name:origin.name,current:!!origin.current};
+ out.dest={lat:dest.lat,lng:dest.lng,name:dest.name};
+ const [walk,drive]=await Promise.all([tcWithTimeout(tcRoute(origin,dest,'walking'),10000),tcWithTimeout(tcRoute(origin,dest,'driving'),10000)]);
+ if(walk||drive){
+  out.source='google';
+  if(walk)out.walk={t:tcDur(walk.sec),d:tcDist(walk.m),min:walk.sec/60};
+  if(drive)out.drive={t:tcDur(drive.sec),d:tcDist(drive.m),min:drive.sec/60};
+ }else{
+  out.source='estimate';
+  const km=calculateDistanceKm(origin.lat,origin.lng,dest.lat,dest.lng);const t=formatTravelTimes(km);
+  out.walk={t:'~ '+t.walkText,d:'~ '+t.kmText,min:km/4.5*60};
+  out.drive={t:'~ '+t.driveText,d:'~ '+t.kmText,min:km/25*60};
+ }
+ return out;
+}
+function tcNavUrl(r,mode){
+ const d=`${r.dest.lat},${r.dest.lng}`;
+ const o=r.origin&&!r.origin.current?`&origin=${r.origin.lat},${r.origin.lng}`:'';
+ return`https://www.google.com/maps/dir/?api=1${o}&destination=${d}&travelmode=${mode}`;
+}
+function chatTravelCardHtml(m){
+ const r=m.travel;
+ const wrap=inner=>`<div class="chat-row" style="justify-content:flex-end"><div class="chat-travel-card">${inner}</div></div>`;
+ if(!r)return wrap(`<div class="tc-head"><b>🧭 זמן נסיעה</b></div><div class="tc-loading">מחשב מסלול ב-Google Maps…</div>`);
+ if(r.error)return wrap(`<div class="tc-head"><b>🧭 זמן נסיעה</b></div><div class="tc-err">⚠️ ${esc(r.error)}</div>`);
+ const time=new Date(r.when).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+ const walkBad=r.walk&&r.walk.min>TRAVEL_WALK_NOT_RECOMMENDED_MIN;
+ const row=(key,icon,label,val,mode)=>{
+  if(!val)return'';
+  const hl=(r.mode==='walking'&&key==='walk')||(r.mode==='driving'&&key==='drive')||(r.mode==='both'&&key==='drive'&&walkBad);
+  const shown=key==='walk'&&walkBad?'לא מומלץ':val.t;
+  return`<div class="tc-row${hl?' hl':''}"><span class="tc-ic">${icon}</span><span class="tc-main"><span class="tc-lbl">${label}</span><b>${esc(shown)}</b><span class="tc-sub">${esc(val.d)}</span></span><a class="tc-nav" href="${tcNavUrl(r,mode)}" target="_blank" rel="noopener noreferrer">נווט ›</a></div>`;
+ };
+ const rows=r.mode==='driving'?[row('drive','🚗','נסיעה ברכב / Grab',r.drive,'driving'),row('walk','🚶','הליכה',r.walk,'walking')]:[row('walk','🚶','הליכה',r.walk,'walking'),row('drive','🚗','נסיעה ברכב / Grab',r.drive,'driving')];
+ if(r.mode==='both'&&walkBad)rows.reverse();
+ return wrap(`<div class="tc-head"><b>🧭 זמן נסיעה</b>${r.source==='estimate'?'<span class="tc-tag">הערכה</span>':''}</div>`+
+  `<div class="tc-pts"><div><span>מ-</span><b>${esc(r.origin.name)}</b></div>${r.originNote?`<div class="tc-note">${esc(r.originNote)}</div>`:''}<div><span>אל</span><b>${esc(r.dest.name)}</b></div></div>`+
+  rows.join('')+
+  `<div class="tc-foot">${r.source==='estimate'?'Google Maps לא זמין כרגע · הערכה לפי קו אווירי':`לפי מסלול של Google Maps · ${time} · ברכב ללא עומסי תנועה`}</div>`);
+}
+const _tcOrigChatMessageHtml=chatMessageHtml;
+chatMessageHtml=function(m,idx){
+ if(TRAVEL_CHAT==='on'&&m&&m.action&&m.action.type==='travel_time'){
+  return chatBubbleHtml(m.role,m.text,null,m.img)+chatTravelCardHtml(m);
+ }
+ return _tcOrigChatMessageHtml(m,idx);
+};
+const tcRunning=new Set();
+async function runPendingChatTravel(){
+ if(TRAVEL_CHAT!=='on')return;
+ for(let i=0;i<chatHistory.length;i++){
+  const m=chatHistory[i];
+  if(!m||!m.action||m.action.type!=='travel_time'||m.travel||tcRunning.has(m))continue;
+  tcRunning.add(m);
+  if(CHAT_ACTION_INTROS.includes(m.text))m.text='הנה הזמנים 👇';
+  m.status='shown';
+  try{m.travel=await computeChatTravel(m.action.params||{})}catch(e){console.warn('[travel-chat] failed',e);m.travel={error:'משהו השתבש בחישוב. אפשר לנסות שוב.',when:Date.now()}}
+  tcRunning.delete(m);
+  saveChatHistory();renderChatBody();
+ }
+}
+const _tcOrigSendChatMessage=sendChatMessage;
+sendChatMessage=async function(text){await _tcOrigSendChatMessage(text);runPendingChatTravel()};
+/* The send button, Enter key and suggestion chips all call sendChatMessage by its global name at
+   click time, so they pick up this wrapper with no re-binding. */
+setTimeout(runPendingChatTravel,0);
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
