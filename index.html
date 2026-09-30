@@ -18,9 +18,9 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.1 (Timeline בגיבוי · חיפוש בהוספת נקודה)</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.11.2 (טעינה מהירה · מיזוג סנכרון)</title>
+<!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
      hasCloud layer was already built to look for) never existed in a plain browser --
@@ -1287,6 +1287,47 @@ const SS={
   }catch{return[]}
  }
 };
+/* CHANGE 2026-09-30 SYNC-MERGE-01 (v2.11.2): see the PERF-01 + SYNC-MERGE-01 note near the end of this script.
+   Placed right after SS so that EVERY read of a shared list (including the first ones at boot) records the merge base. */
+const SYNC_MERGE='on';
+const SYNC_MERGE_KEYS=[SHARED.expenses,SHARED.reservations,'planner:checkins'];
+function smBaseKey(k){return'planner:mergebase:'+k}
+function smParse(v){try{const x=typeof v==='string'?JSON.parse(v):v;return Array.isArray(x)?x:null}catch{return null}}
+function smId(item){return JSON.stringify(item)}
+function smGetBase(k){try{return smParse(localStorage.getItem(smBaseKey(k)))}catch{return null}}
+function smSetBase(k,arr){try{localStorage.setItem(smBaseKey(k),JSON.stringify(arr))}catch{}}
+/* result = remote − (deleted here) + (added here), relative to base. With no base: union (never lose data). */
+function smMerge3(base,local,remote){
+ if(!remote)return local;
+ const L=new Set(local.map(smId)),R=new Set(remote.map(smId));
+ if(!base){const out=remote.slice();local.forEach(i=>{if(!R.has(smId(i)))out.push(i)});return out}
+ const B=new Set(base.map(smId));
+ const removed=new Set([...B].filter(id=>!L.has(id)));
+ const out=remote.filter(i=>!removed.has(smId(i)));
+ const have=new Set(out.map(smId));
+ local.forEach(i=>{const id=smId(i);if(!B.has(id)&&!have.has(id)){out.push(i);have.add(id)}});
+ return out;
+}
+(function smWrapStorage(){
+ if(SYNC_MERGE!=='on'||!window.storage||typeof window.storage.set!=='function')return;
+ const st=window.storage,origGet=st.get.bind(st),origSet=st.set.bind(st);
+ st.get=async function(key,shared){
+  const r=await origGet(key,shared);
+  if(SYNC_MERGE_KEYS.includes(key)&&r&&r.value!=null){const arr=smParse(r.value);if(arr)smSetBase(key,arr)}
+  return r;
+ };
+ st.set=async function(key,value,shared){
+  if(!SYNC_MERGE_KEYS.includes(key))return origSet(key,value,shared);
+  const local=smParse(value);if(!local)return origSet(key,value,shared);
+  let remote=null;try{const r=await origGet(key,shared);remote=r&&r.value!=null?smParse(r.value):null}catch{}
+  const merged=smMerge3(smGetBase(key),local,remote);
+  const out=JSON.stringify(merged);
+  const res=await origSet(key,out,shared);
+  smSetBase(key,merged);
+  try{localStorage.setItem(key,out)}catch{}
+  return res;
+ };
+})();
 function compressImage(file){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const img=new Image();
  img.onload=()=>{const M=1200;let w=img.width,h=img.height;
   if(w>h&&w>M){h*=M/w;w=M}else if(h>M){w*=M/h;h=M}
@@ -4259,6 +4300,50 @@ chatMessageHtml=function(m,idx){
  }
  return h;
 };
+
+/* CHANGE 2026-09-30 PERF-01 + SYNC-MERGE-01 (v2.11.2) — Phase A of the PRD review approved by Or
+   ("מאושר להתקדם בשלבים"). No UI change. What changed from v2.11.1:
+   1) PERF-01 (load): the Excel library (xlsx.full.min.js, ~900KB) was loaded on EVERY app start just for
+      the rarely used Excel backup/import. Its <script> tag is removed from <head>; ensureXLSX() loads it
+      on demand — prefetched when the backup/import dialog opens, awaited by the two Excel handlers
+      (which are WRAPPED, their bodies unchanged). Revert: XLSX_LAZY='off' loads it at start again.
+   2) SYNC-MERGE-01 (PRD TASK-108): shared LISTS (expenses, check-ins, reservations) are stored as one
+      value each, so two phones adding at almost the same time — or a phone that was offline flushing its
+      queue later — overwrote each other ("last write wins"). Every cloud write of those keys now goes
+      through a 3-way merge: remote (fetched right before writing) + what this device added − what this
+      device deleted, relative to the last version this device read. Additions from both phones survive;
+      deletions still work. Applied at the single choke point window.storage.set, so it also covers the
+      offline-queue flush. The whole-trip object (planner:trip) is not a list and is unchanged.
+      Revert: SYNC_MERGE='off'. */
+const XLSX_LAZY='on';
+const XLSX_SRC='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+let xlsxLoading=null;
+function ensureXLSX(){
+ if(typeof XLSX!=='undefined'&&XLSX.utils)return Promise.resolve(true);
+ if(xlsxLoading)return xlsxLoading;
+ xlsxLoading=new Promise(resolve=>{
+  const s=document.createElement('script');s.src=XLSX_SRC;s.async=true;
+  s.onload=()=>resolve(true);s.onerror=()=>{xlsxLoading=null;resolve(false)};
+  document.head.appendChild(s);
+ });
+ return xlsxLoading;
+}
+if(XLSX_LAZY!=='on')ensureXLSX();
+if($('backupNowBtn'))$('backupNowBtn').addEventListener('click',()=>{ensureXLSX()});
+if($('backupDownloadXlsx')){
+ const _pfOrigDl=$('backupDownloadXlsx').onclick;
+ $('backupDownloadXlsx').onclick=async function(e){
+  if(!(await ensureXLSX())){$('backupFeedback').textContent='⚠️ לא הצלחנו לטעון את רכיב האקסל (בדקו חיבור לרשת) — אפשר להוריד/להעתיק כ-JSON במקום';return}
+  return _pfOrigDl.call(this,e);
+ };
+}
+if($('importExcelInput')){
+ const _pfOrigImp=$('importExcelInput').onchange;
+ $('importExcelInput').onchange=async function(e){
+  if(!(await ensureXLSX())){alert('לא הצלחנו לטעון את רכיב האקסל — בדקו חיבור לרשת ונסו שוב.');e.target.value='';return}
+  return _pfOrigImp.call(this,e);
+ };
+}
 
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
