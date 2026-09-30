@@ -266,6 +266,24 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .urow .ucheck{width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem}
 .urow .cambadge{position:relative;width:28px;height:28px;margin-inline-start:-16px;margin-top:22px;border-radius:50%;background:#fff;border:2px solid var(--primary);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;flex-shrink:0;touch-action:manipulation}
 .map{height:340px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;position:relative}
+/* CHANGE 2026-09-29 TIMELINE-01: "actual route" card (upload a Google Timeline export,
+   see the JS block near the end of the script for the full design note) + its on/off switch. */
+.timeline-card h3{display:flex;align-items:center;gap:6px}
+.timeline-desc{font-size:.78rem;color:var(--muted);margin:0 0 12px;line-height:1.5}
+.timeline-source-hint{font-size:.68rem;color:var(--muted);margin-top:8px;text-align:center}
+.timeline-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.timeline-stat{background:var(--bg);border-radius:10px;padding:8px 10px;text-align:center}
+.timeline-stat .num{font-size:1.1rem;font-weight:800;color:var(--accent)}
+.timeline-stat .lbl{font-size:.66rem;color:var(--muted)}
+.timeline-meta{font-size:.72rem;color:var(--muted);margin-bottom:10px}
+.timeline-toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.timeline-toggle-row span{font-size:.82rem;font-weight:700}
+.tl-switch{position:relative;width:42px;height:24px;background:#ddd8ca;border-radius:99px;cursor:pointer;transition:.15s;flex-shrink:0}
+.tl-switch.on{background:var(--success)}
+.tl-switch .knob{position:absolute;top:3px;right:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 3px #0003}
+.tl-switch.on .knob{right:21px}
+.timeline-actions{display:flex;gap:8px}
+.timeline-actions button{flex:1}
 .map-provider-toggle{position:absolute;top:8px;left:8px;z-index:5;background:#fff;border:1px solid var(--border);border-radius:var(--radius-pill);padding:6px 12px;font-size:.72rem;font-weight:700;color:var(--text);cursor:pointer;box-shadow:0 2px 6px #0000001a}
 .map-fallback-note{font-size:.72rem;color:var(--accent);margin:6px 0 0;text-align:center}
 .map-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-2)}
@@ -430,6 +448,10 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 .doc-thumb-wrap{position:relative}
 .doc-share-icon{position:absolute;top:6px;inset-inline-end:6px;width:28px;height:28px;border-radius:50%;background:#ffffffe0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text);box-shadow:0 1px 4px #00000022}
 .doc-share-icon svg{width:15px;height:15px}
+/* CHANGE 2026-09-30 DOC-MOVE-01: single "..." menu icon replacing the old share-icon-on-thumb +
+   full-width delete-button per card -- opens a small action sheet (share/move/delete), per the
+   mockup Or approved (option B): https://claude.ai/artifact/KLwCPQGV6aHSVbs12AYKm8 */
+.doc-menu-icon{position:absolute;top:6px;inset-inline-end:6px;width:28px;height:28px;border-radius:50%;background:#ffffffe0;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text);box-shadow:0 1px 4px #00000022;font-size:1.1rem;font-weight:800;line-height:1;cursor:pointer}
 .pdf-tile{width:100%;aspect-ratio:1.35;border-radius:10px;background:var(--booking-light);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--booking);font-weight:800;font-size:1.6rem;text-decoration:none}
 /* CHANGE 2026-09-28 VAULT-FOLDERS-01: vault folder tiles + family-member filter, per the mockup
    approved by Or (vault-folders-mockup.html). Fixed folders = the existing CATEGORIES already used
@@ -850,7 +872,27 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
      - GM-13: a third data-map="poi" button reuses the existing generic
        [data-map] click handler unchanged; only drawGoogleMap/drawSchematicMap gained a poi
        branch (see script). -->
-<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div class="view-toggle" id="routeViewToggle"><button type="button" class="active" data-route-view="map">🗺️ מפה</button><button type="button" data-route-view="timeline">📅 ציר זמן</button></div><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><a id="hotel" class="info-value hotel-link" target="_blank" rel="noopener noreferrer"></a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button></div></div></section>
+<section id="route" class="panel"><div class="topbar"><span class="topbar-action" id="dayEditBtn">✎</span><h1>מסלול ומפה</h1></div><div class="day-nav-wrap"><button class="btn outline nav-arrow" id="routePrevDay" type="button">‹</button><div id="routeDayStrip" class="day-strip" aria-label="בחירת יום"></div><button class="btn outline nav-arrow" id="routeNextDay" type="button">›</button></div><div id="dayProgress" class="day-progress"></div><select id="daySelect" style="display:none" aria-hidden="true" tabindex="-1"></select><div class="view-toggle" id="routeViewToggle"><button type="button" class="active" data-route-view="map">🗺️ מפה</button><button type="button" data-route-view="timeline">📅 ציר זמן</button></div><div id="routeDayWeather" class="weather-card" style="display:none"></div><div class="grid"><div class="card"><div class="row"><span id="dayBadge" class="badge"></span><span id="dateBadge" class="badge"></span><span id="regionBadge" class="badge"></span></div><h2 id="title"></h2><div class="info-grid"><div class="info-item"><span class="info-label">🎯 פעילויות</span><span id="activities" class="info-value"></span></div><div class="info-item"><span class="info-label">🏨 מלון</span><a id="hotel" class="info-value hotel-link" target="_blank" rel="noopener noreferrer"></a></div></div><div id="dayReservations"></div><details class="subsection"><summary>עוד פרטים</summary><div class="subsection-body"><div class="info-item" style="margin-bottom:var(--sp-3)"><span class="info-label">💰 עלות מתוכננת</span><span id="dayCost" class="info-value cost"></span></div><div class="subsection" style="margin-top:0;padding-top:0;border-top:0"><b style="font-size:.95rem">💡 דגשים</b><div><span id="notes" class="muted"></span></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">📍 נקודות עניין</b><span id="waypointBadge" class="badge"></span></div><div class="row" style="justify-content:flex-end;margin:var(--sp-2) 0"><button class="btn gold" id="newWaypoint">➕ הוסף מ־Maps</button></div><div id="waypoints"></div></div><div class="subsection"><div class="row" style="justify-content:space-between"><b style="font-size:.95rem">🏨 הזמנה</b><span id="bookingBadge" class="badge"></span></div><p id="bookingInfo" class="muted"></p><div class="row" style="margin-top:var(--sp-2)"><a id="bookingLink" class="btn blue" target="_blank" rel="noopener noreferrer">פתח חיפוש ב־Booking</a><button class="btn green" id="bookingBtn">הוספת הזמנה מאושרת</button></div></div></div></details></div><div class="route-map-wrap"><div class="row map-mode-row" style="gap:8px;margin-bottom:var(--sp-2)"><button class="btn outline pillbtn" style="flex:1" data-map="day">📍 היום</button><button class="btn red pillbtn active" style="flex:1" data-map="route">🗺️ כל המסלול</button><button class="btn outline pillbtn" style="flex:1" data-map="poi">🧭 נק' עניין</button></div><div class="map"><button type="button" class="map-provider-toggle" id="mapProviderToggle"></button><div id="map" style="width:100%;height:100%"></div></div><p class="map-fallback-note" id="mapFallbackNote" style="display:none"></p><a id="openGmaps" class="btn outline no-print" target="_blank" rel="noopener noreferrer" style="margin-top:8px;display:inline-flex">📍 פתח מיקום ב־Google Maps</a><!-- CHANGE 2026-09-17 TRAVEL-TIME-01: opens #travelTimeModal, per the mockup approved by Or. --><button type="button" class="btn outline no-print" id="openTravelTimeBtn" style="margin-top:8px;width:100%">⏱️ זמן נסיעה בין נקודות</button>
+<!-- CHANGE 2026-09-29 TIMELINE-01: upload a Google Timeline export to draw the actual route
+     (where the family really was) alongside the planned route above. Mockup approved by Or:
+     https://claude.ai/artifact/Ps1vfk8iRncy7GAo4hMofy -- see JS near the end of the script for
+     the parsing/storage/overlay design note. -->
+<div class="card timeline-card" id="timelineCard">
+ <h3>📍 מסלול בפועל מ-Timeline</h3>
+ <div id="timelineBeforeState">
+  <p class="timeline-desc">אפשר להעלות קובץ Timeline שיוצא מהטלפון, והאפליקציה תצייר על המפה בדיוק איפה הייתם בפועל, לצד המסלול המתוכנן. הקובץ נשמר במאגר המשותף למשפחה -- רק מי שמעלה בוחר קובץ, כולם רואים את התוצאה.</p>
+  <button class="btn blue" type="button" id="timelineUploadBtn" style="width:100%">⬆️ העלאת קובץ Timeline</button>
+  <div class="timeline-source-hint">איך מוציאים את הקובץ? הגדרות ← מיקום ← Timeline ← "ייצוא נתוני Timeline" 📄</div>
+ </div>
+ <div id="timelineAfterState" style="display:none">
+  <div class="timeline-stats"><div class="timeline-stat"><div class="num" id="timelinePointCount">0</div><div class="lbl">נקודות מיקום</div></div><div class="timeline-stat"><div class="num" id="timelineDayCount">0</div><div class="lbl">ימים מכוסים</div></div></div>
+  <div class="timeline-meta" id="timelineMeta"></div>
+  <div class="timeline-toggle-row"><span>הצג על המפה</span><div class="tl-switch" id="timelineShowToggle"><div class="knob"></div></div></div>
+  <div class="timeline-actions"><button class="btn outline" type="button" id="timelineReplaceBtn">🔄 החלפת קובץ</button><button class="btn outline" type="button" id="timelineRemoveBtn" style="color:var(--primary)">🗑️ הסרה</button></div>
+ </div>
+ <input id="timelineFileInput" type="file" accept="application/json,.json" class="file-input-vh">
+</div>
+</div></div></section>
 <section id="journal" class="panel"><div class="topbar"><h1>יומן</h1></div><div class="card row"><select id="journalDay"></select><button class="btn outline" data-move="-1">←</button><button class="btn outline" data-move="1">→</button></div><div class="card journal-card"><h2 id="journalTitle"></h2><div id="journalFeed" class="journal-feed"></div><label class="muted journal-compose-label">הוספת רשומה חדשה (לא מוחקת שום דבר שכבר נכתב)</label><textarea id="journalText" rows="3" placeholder="שתף את החוויות שלך..."></textarea><button class="btn green" id="saveJournal">+ הוסף רשומה</button><div id="photoGrid" class="photo-grid"></div></div></section>
 <section id="album" class="panel"><div class="topbar"><button class="topbar-back" data-go="more">›</button><h1>אלבום</h1></div><div class="tabrow2"><button class="tabrow2-item active" id="albumTabAll">כל התמונות</button><button class="tabrow2-item" id="albumTabDays">לפי ימים</button></div><div id="albumAllView"><div class="pgrid2" id="albumGrid"></div></div><div id="albumDaysView" style="display:none"><div id="albumBody"></div></div></section>
 <!-- CHANGE 2026-09-29 BUDGET-REDESIGN-01: whole-screen redesign per the mockup approved by
@@ -921,6 +963,10 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:none;border
 <div id="photoCleanupModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🗑️ ניקוי תמונות ישנות</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted">האלבום באפליקציה הוחלף בקישור ל-Google Photos משותף. כלי זה מוחק לצמיתות מהענן את כל התמונות שהועלו בעבר דרך היומן — רשומות הטקסט של היומן עצמן לא נפגעות. פעולה זו בלתי הפיכה.</p><button class="btn outline" id="photoCleanupScanBtn" type="button">🔍 סריקת תמונות קיימות</button><div id="photoCleanupResult"></div></div></div>
 <!-- CHANGE 2026-09-14 SHARE-02: In-app share sheet. It is only a safe fallback/preparation surface; existing vault remains unchanged. -->
 <div id="shareDocumentModal" class="modal"><div class="modal-box"><div class="modal-head"><h2 id="shareDocumentTitle">שיתוף מסמך</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div id="shareDocumentBody"></div><div class="row" style="margin-top:8px"><button class="btn green" id="shareNativeBtn" type="button">📤 שיתוף</button><button class="btn blue" id="shareOpenBtn" type="button">🖼️ פתח תמונה</button></div><button class="btn outline" id="shareSaveBtn" type="button">💾 שמור במכשיר</button></div></div>
+<!-- CHANGE 2026-09-30 DOC-MOVE-01: unified doc-card action menu (share/move/delete), per the
+     approved mockup https://claude.ai/artifact/KLwCPQGV6aHSVbs12AYKm8 (option B). -->
+<div id="docActionModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>פעולות על המסמך</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><div class="listitem" id="docActionMove"><div class="ic">🔀</div><div class="lbl">העברה בין תיקייה / תגית</div><div class="chev">‹</div></div><div class="listitem" id="docActionShare"><div class="ic">📤</div><div class="lbl">שיתוף</div><div class="chev">‹</div></div><div class="listitem" id="docActionDelete"><div class="ic" style="background:#fff4f2">🗑️</div><div class="lbl" style="color:var(--primary)">מחיקה</div><div class="chev">‹</div></div></div></div>
+<div id="docMoveModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>🔀 העברת מסמך</h2><button class="modal-x" type="button" data-modal-x aria-label="סגירה">×</button></div><p class="muted" id="docMoveName" style="margin-top:0"></p><div class="muted" style="margin-bottom:6px;font-weight:700;font-size:.78rem">תקייה</div><select id="docMoveCategory" style="width:100%;margin-bottom:12px"><option value="flights">✈️ טיסות</option><option value="passport">🛂 דרכונים / ויזות</option><option value="hotels">🏨 מלונות</option><option value="insurance">🛡️ ביטוח</option><option value="transport">🚗 תחבורה</option><option value="other">📎 אחר</option></select><div class="muted" style="margin-bottom:6px;font-weight:700;font-size:.78rem">שייך ל</div><select id="docMoveBy" style="width:100%;margin-bottom:12px"><option value="אור">אור</option><option value="שירי">שירי</option><option value="שחר">שחר</option><option value="עמית">עמית</option><option value="עפרי">עפרי</option></select><button class="btn green" id="docMoveSaveBtn" type="button" style="width:100%">💾 שמירה</button><button class="btn outline close" type="button" style="width:100%;margin-top:8px">ביטול</button></div></div>
 <div id="tripSettingsModal" class="modal"><div class="modal-box"><h2>🧭 הגדרות מסע</h2><label class="muted">שם הטיול</label><input id="tripNameInput" placeholder="שם הטיול" maxlength="60"><button class="btn green" id="saveTripName">שמור</button><button class="btn outline close" type="button">סגור</button></div></div>
 <div id="dayEditModal" class="modal"><div class="modal-box"><h2>✎ עריכת יום</h2><select id="editSelect"></select><form id="dayForm"><div class="grid"><input id="fDate" required placeholder="תאריך DD/MM/YYYY"><input id="fRegion" required placeholder="אזור"><input id="fTitle" required placeholder="כותרת"><textarea id="fActivities" required placeholder="פעילויות"></textarea><input id="fHotel" required placeholder="מלון"><input id="fCost" type="number" min="0" required placeholder="עלות"><input id="fLat" type="number" step="any" required placeholder="Latitude"><input id="fLng" type="number" step="any" required placeholder="Longitude"><textarea id="fNotes" placeholder="דגשים"></textarea></div><button class="btn green">שמור שינויים</button><button class="btn outline" type="button" id="deleteDay">מחק יום</button><button class="btn outline close" type="button">סגור</button></form></div></div>
 <div id="userModal" class="modal"><div class="modal-box"><h2>👋 מי נכנס לאפליקציה?</h2><p class="muted">הבחירה תסומן בכל תמונה, רשומה, הוצאה, נקודת עניין והזמנה.</p><div id="userChoices"></div><input id="customUser" maxlength="30" placeholder="או שם אחר"><button class="btn green" id="saveUser">כניסה</button><small class="muted">💡 לוחצים על תג המצלמה כדי להוסיף תמונת פנים אישית (נשמרת בלי צורך באינטרנט)</small><input id="userPhotoInput" type="file" accept="image/*" class="file-input-vh"></div></div>
@@ -1063,7 +1109,7 @@ let JOURNAL_LAYOUT='v2';
    the original appearance — pure CSS class removal, category tile editing untouched either way. */
 let BUDGET_LAYOUT='v2';
 let activeUser='',tripData=[],globalDayIndex=0,map=null,markers=[],polyLine=null,mapMode='route',fxState={result:null},mapProvider='google',mapLoadTimer=null,poiKmlLayers=[];const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',reservations:'planner:reservations',googlePhotosLink:'planner:googlephotoslink'};
+const SHARED={trip:'planner:trip',expenses:'planner:expenses',budget:'planner:budget',reservations:'planner:reservations',googlePhotosLink:'planner:googlephotoslink',timeline:'planner:timeline'};
 const QKEY='planner:__queue__';
 const hasCloud=()=>!!(window.storage&&typeof window.storage.set==='function');
 function readQueue(){try{return JSON.parse(localStorage.getItem(QKEY)||'[]')}catch{return[]}}
@@ -1213,7 +1259,7 @@ function daysInRange(checkinISO,checkoutISO){if(!checkinISO||!checkoutISO)return
 function renderManualDaysList(containerId,selectedSet){const el=$(containerId);if(!el)return;el.innerHTML=tripData.map((d,i)=>`<label class="day-check"><input type="checkbox" data-day-i="${i}" ${selectedSet.has(i)?'checked':''}><span><b>יום ${d.day}</b> · ${esc(d.date)} · <span class="muted">${esc(d.region)}</span></span></label>`).join('')}
 function readManualDaysList(containerId){const el=$(containerId);if(!el)return[];return[...el.querySelectorAll('input[type=checkbox]')].filter(c=>c.checked).map(c=>Number(c.dataset.dayI))}
 function updateDaysMatchHint(hintId,days){const el=$(hintId);if(!el)return;el.textContent=days.length?`✓ נמצאו ${days.length} ימים תואמים בטיול: ${days.map(i=>`יום ${tripData[i].day} (${tripData[i].date})`).join(', ')}`:'⚠️ לא נמצאו ימים בטווח הזה — ניתן לבחור ידנית למטה'}
-function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}function render(){const d=tripData[globalDayIndex];$('dayBadge').textContent=`יום ${d.day}`;$('dateBadge').textContent=d.date;$('regionBadge').textContent=d.region;$('title').textContent=d.title;$('activities').textContent=d.activities;$('hotel').textContent=d.bookedHotel||d.hotel;{const hu=d.bookingLink||bookingUrl(globalDayIndex);if(hu){$('hotel').href=hu}else{$('hotel').removeAttribute('href')}}$('notes').textContent=d.notes;$('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;$('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';$('bookingBadge').textContent=d.isBooked?'✅':'טרם';const u=bookingUrl(globalDayIndex);$('bookingLink').style.display=u?'inline-flex':'none';$('bookingLink').href=u;const wp=d.waypoints||[];$('waypointBadge').textContent=wp.length||'';$('waypointBadge').style.display=wp.length?'':'none';$('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';loadForm();loadJournal();drawMap();renderHome();renderBudget();renderRouteDayWeather();renderDayReservations();
+function fillSelects(){['daySelect','journalDay','editSelect'].forEach(id=>{$(id).innerHTML=tripData.map((d,i)=>`<option value="${i}">יום ${d.day} — ${esc(d.title)}</option>`).join('');$(id).value=globalDayIndex})}function updateDates(){const t=`${tripData[0].date} – ${tripData.at(-1).date} · ${tripData.length} ימים`;$('homeDates').textContent=t}function render(){const d=tripData[globalDayIndex];$('dayBadge').textContent=`יום ${d.day}`;$('dateBadge').textContent=d.date;$('regionBadge').textContent=d.region;$('title').textContent=d.title;$('activities').textContent=d.activities;$('hotel').textContent=d.bookedHotel||d.hotel;{const hu=d.bookingLink||bookingUrl(globalDayIndex);if(hu){$('hotel').href=hu}else{$('hotel').removeAttribute('href')}}$('notes').textContent=d.notes;$('dayCost').textContent=`${Number(d.actualCost??d.cost).toLocaleString('he-IL')} ₪`;$('bookingInfo').textContent=d.isBooked?`✅ הוזמן · ${d.bookingRef||''}`:'טרם הוזמן';$('bookingBadge').textContent=d.isBooked?'✅':'טרם';const u=bookingUrl(globalDayIndex);$('bookingLink').style.display=u?'inline-flex':'none';$('bookingLink').href=u;const wp=d.waypoints||[];$('waypointBadge').textContent=wp.length||'';$('waypointBadge').style.display=wp.length?'':'none';$('waypoints').innerHTML=wp.map((w,i)=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0"><span>${esc(w.name)} <small class="muted">${esc(w.addedBy||'')}</small></span><button class="btn outline" data-delete-waypoint="${i}">🗑️</button></div>`).join('')||'<span class="muted">אין נקודות</span>';loadForm();loadJournal();drawMap();renderHome();renderBudget();renderRouteDayWeather();renderDayReservations();renderTimelineCard();
  /* CHANGE 2026-08-26 GM-17: keep the chat panel's day-badge and suggestion chips in sync if the
     day changes while it's open (e.g. via the day-strip) rather than only when it's opened. */
  if(typeof isChatOpen==='function'&&isChatOpen()){updateChatDayBadge();renderChatBody()}}
@@ -2056,7 +2102,44 @@ async function openDocFolder(key){
  await renderDocuments();
 }
 $('docFolderBack').onclick=()=>{currentDocFolder=null;$('docFolderView').style.display='none';$('docFolderGrid').style.display='';renderDocFolderGrid()};
-async function renderDocuments(){const docs=currentDocFolder?await filteredDocsFor(currentDocFolder):[];if($('docFvCount'))$('docFvCount').textContent=`${docs.length} ${docs.length===1?'מסמך':'מסמכים'}`;$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card"><div class="doc-thumb-wrap">${docThumbHtml(d)}<button type="button" class="doc-share-icon" data-doc-share="${esc(d.id)}" aria-label="שיתוף">${SHARE_ICON_SVG}</button></div><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.by||'')} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div><button class="btn outline" style="width:100%;margin-top:7px" data-doc-delete="${esc(d.id)}">🗑️ מחיקה</button></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים בתקייה זו</p>'}
+async function renderDocuments(){const docs=currentDocFolder?await filteredDocsFor(currentDocFolder):[];if($('docFvCount'))$('docFvCount').textContent=`${docs.length} ${docs.length===1?'מסמך':'מסמכים'}`;$('documentsGrid').innerHTML=docs.map(d=>`<article class="doc-card"><div class="doc-thumb-wrap">${docThumbHtml(d)}<button type="button" class="doc-menu-icon" data-doc-menu="${esc(d.id)}" aria-label="פעולות">⋯</button></div><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(d.by||'')} · ${new Date(d.createdAt).toLocaleDateString('he-IL')}</div></article>`).join('')||'<p class="muted" style="grid-column:1/-1">אין עדיין מסמכים בתקייה זו</p>'}
+/* CHANGE 2026-09-30 DOC-MOVE-01: "..." on a doc card opens docActionModal (share/move/delete),
+   replacing the old inline share-icon + full-width delete-button per card. */
+let docActionTargetId=null;
+const DOC_CATEGORY_LABELS={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};
+$('docActionMove').onclick=async()=>{
+ closeModal($('docActionModal'));
+ const docs=await getDocuments();const d=docs.find(x=>x.id===docActionTargetId);if(!d)return;
+ $('docMoveName').textContent=d.name;
+ $('docMoveCategory').value=d.category||'other';
+ $('docMoveBy').value=d.by||activeUser||'אור';
+ openModal('docMoveModal');
+};
+$('docActionShare').onclick=async()=>{closeModal($('docActionModal'));await shareDocument(docActionTargetId)};
+$('docActionDelete').onclick=async()=>{
+ closeModal($('docActionModal'));
+ if(!requireUser())return;
+ if(!confirm('למחוק את המסמך?'))return;
+ const docs=(await getDocuments()).filter(d=>d.id!==docActionTargetId);
+ await saveDocuments(docs);
+ if(currentDocFolder)await renderDocuments();
+ await renderDocFolderGrid();
+ await updateDocumentsSummary();
+};
+$('docMoveSaveBtn').onclick=async()=>{
+ if(!requireUser())return;
+ const docs=await getDocuments();
+ const idx=docs.findIndex(x=>x.id===docActionTargetId);
+ if(idx<0)return;
+ const cat=$('docMoveCategory').value;
+ docs[idx]={...docs[idx],category:cat,categoryLabel:DOC_CATEGORY_LABELS[cat]||cat,by:$('docMoveBy').value||docs[idx].by};
+ await saveDocuments(docs);
+ closeModal($('docMoveModal'));
+ if(currentDocFolder)await renderDocuments();
+ await renderDocFolderGrid();
+ await renderDocMemberRow();
+ await updateDocumentsSummary();
+};
 const WEATHER_KEY='planner:weather:';
 const weatherCodeMap={0:['☀️','בהיר'],1:['🌤️','בהיר ברובו'],2:['⛅','מעונן חלקית'],3:['☁️','מעונן'],45:['🌫️','ערפל'],48:['🌫️','ערפל'],51:['🌦️','טפטוף'],53:['🌦️','טפטוף'],55:['🌧️','גשם קל'],61:['🌧️','גשם'],63:['🌧️','גשם'],65:['🌧️','גשם חזק'],71:['🌨️','שלג'],73:['🌨️','שלג'],75:['❄️','שלג כבד'],80:['🌦️','ממטרים'],81:['🌧️','ממטרים'],82:['⛈️','ממטרים חזקים'],95:['⛈️','סופת רעמים'],96:['⛈️','סופת רעמים'],99:['⛈️','סופת רעמים']};
 async function getTomorrowWeather(dayIndex=globalDayIndex){const d=tripData[dayIndex];if(!d||!valid(d.lat,d.lng))return null;const target=parseDate(d.date);if(!target)return null;target.setDate(target.getDate()+1);const date=target.toISOString().slice(0,10);const cacheKey=WEATHER_KEY+date+':'+d.lat+':'+d.lng;try{const cached=localStorage.getItem(cacheKey);if(cached){const c=JSON.parse(cached);if(Date.now()-c.ts<30*60*1000)return c.data}}catch{}
@@ -2423,7 +2506,7 @@ function closeModal(m){if(!m)return;if(m.id==='userModal'&&!activeUser)return;m.
 const TAB_FOR_PANEL={home:'home',route:'route',journal:'journal',budget:'budget',more:'more',album:'more',management:'more',backup:'more'};
 function switchPanel(id){const activeId=(id==='home'&&HOME_LAYOUT==='v2')?'homeV2':id;document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===activeId));const activeTabId=TAB_FOR_PANEL[id]||id;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===activeTabId));if(id==='budget'){renderBudget();refreshFxInputs();renderDailyBurn()}if(id==='album')renderAlbum();if(id==='route'){setTimeout(()=>{if(map)google.maps.event.trigger(map,'resize');drawMap()},100);updateRouteDayStrip();renderRouteDayWeather()}if(id==='management')renderManagement();if(id==='backup')renderBackupScreen();if(id==='more'){updateDocumentsSummary();updateReservationsSummary();updateGooglePhotosSummary()}window.scrollTo(0,0)}
 function ensureModalXControls(){document.querySelectorAll('.modal').forEach(m=>{if(m.querySelector('[data-modal-x]'))return;const b=document.createElement('button');b.type='button';b.className='modal-x';b.dataset.modalX='';b.setAttribute('aria-label','סגירה');b.textContent='×';b.style.position='absolute';b.style.top='10px';b.style.right='10px';m.querySelector('.modal-box')?.appendChild(b)})}ensureModalXControls();document.querySelectorAll('[data-modal-x]').forEach(b=>b.onclick=()=>closeModal(b.closest('.modal')));
-$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent='';$('quickFxAddExpenseBtn').style.display='none';$('quickFxAddExpenseHint').style.display='none';quickFxLastResult=null};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{currentDocFolder=null;currentDocMember='all';$('docFolderView').style.display='none';$('docFolderGrid').style.display='';if($('docBy'))$('docBy').value=activeUser;openModal('documentsModal');await renderDocMemberRow();await renderDocFolderGrid()};$('googlePhotosBtn').onclick=()=>openGooglePhotosModal();$('mgmtPhotoCleanup').onclick=()=>{$('photoCleanupResult').innerHTML='';photoCleanupScan=null;openModal('photoCleanupModal')};$('googlePhotosSaveBtn').onclick=async()=>{if(!requireUser())return;const v=$('googlePhotosUrl').value.trim();await SS.set(SHARED.googlePhotosLink,v);$('googlePhotosFeedback').textContent=v?'✅ הקישור נשמר ומשותף לכל המשפחה':'הקישור נמחק';if(v){$('googlePhotosOpenBtn').href=v;$('googlePhotosOpenBtn').style.display=''}else{$('googlePhotosOpenBtn').style.display='none'}await updateGooglePhotosSummary()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:($('docBy').value||activeUser),...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';if(currentDocFolder)await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=async e=>{const shareBtn=e.target.closest('[data-doc-share]');if(shareBtn){await shareDocument(shareBtn.dataset.docShare);return}const b=e.target.closest('[data-doc-delete]');if(!b||!requireUser())return;const docs=(await getDocuments()).filter(d=>d.id!==b.dataset.docDelete);await saveDocuments(docs);if(currentDocFolder)await renderDocuments();await updateDocumentsSummary()};
+$('globalFxBtn').onclick=()=>{openModal('fxQuickModal');$('quickFxAmount').value='';$('quickFxResult').textContent='';$('quickFxAddExpenseBtn').style.display='none';$('quickFxAddExpenseHint').style.display='none';quickFxLastResult=null};$('quickFxCalculate').onclick=quickFxCalculate;$('homeWeather').onclick=showWeatherDetails;$('documentsBtn').onclick=async()=>{currentDocFolder=null;currentDocMember='all';$('docFolderView').style.display='none';$('docFolderGrid').style.display='';if($('docBy'))$('docBy').value=activeUser;openModal('documentsModal');await renderDocMemberRow();await renderDocFolderGrid()};$('googlePhotosBtn').onclick=()=>openGooglePhotosModal();$('mgmtPhotoCleanup').onclick=()=>{$('photoCleanupResult').innerHTML='';photoCleanupScan=null;openModal('photoCleanupModal')};$('googlePhotosSaveBtn').onclick=async()=>{if(!requireUser())return;const v=$('googlePhotosUrl').value.trim();await SS.set(SHARED.googlePhotosLink,v);$('googlePhotosFeedback').textContent=v?'✅ הקישור נשמר ומשותף לכל המשפחה':'הקישור נמחק';if(v){$('googlePhotosOpenBtn').href=v;$('googlePhotosOpenBtn').style.display=''}else{$('googlePhotosOpenBtn').style.display='none'}await updateGooglePhotosSummary()};$('docAddBtn').onclick=()=>$('docInput').click();$('docInput').onchange=async e=>{if(!requireUser())return;const files=[...e.target.files];if(!files.length)return;const cat=$('docCategory').value,labels={flights:'טיסות',passport:'דרכונים / ויזות',hotels:'מלונות',insurance:'ביטוח',transport:'תחבורה',other:'אחר'};let docs=await getDocuments();let skippedTooBig=0;for(const f of files){const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);let src,extra={};if(isPdf){if(f.size>3*1024*1024){skippedTooBig++;continue}src=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(f)});extra={isPdf:true}}else{src=await compressImage(f)}if(!src)continue;const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);docs.push({id,name:($('docName').value.trim()||f.name).slice(0,50),category:cat,categoryLabel:labels[cat],src,createdAt:Date.now(),by:($('docBy').value||activeUser),...extra})}const ok=await saveDocuments(docs);$('docName').value='';e.target.value='';if(currentDocFolder)await renderDocuments();await updateDocumentsSummary();if(skippedTooBig)alert(`${skippedTooBig} קובץ/י PDF לא הועלו — חורגים מהמגבלה של 3MB`);if(!ok)alert('שמירת המסמך נכשלה — כנראה שהאחסון המקומי במכשיר מלא. נסו למחוק מסמכים ישנים.')};$('documentsGrid').onclick=e=>{const menuBtn=e.target.closest('[data-doc-menu]');if(!menuBtn)return;docActionTargetId=menuBtn.dataset.docMenu;openModal('docActionModal')};
 /* CHANGE 2026-08-30 RES-01: Reservations Center event wiring — additive, inserted between two pre-existing handlers without altering either. See CHANGELOG_v1.8.0.txt. */
 $('reservationsBtn').onclick=async()=>{openModal('reservationsModal');currentResFilter='all';document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c.dataset.resFilter==='all'));await renderReservationsList()};
 $('resFilters').onclick=async e=>{const chip=e.target.closest('[data-res-filter]');if(!chip)return;currentResFilter=chip.dataset.resFilter;document.querySelectorAll('[data-res-filter]').forEach(c=>c.classList.toggle('active',c===chip));await renderReservationsList()};
@@ -2824,9 +2907,190 @@ $('chatImageInput').onchange=async e=>{
 $('chatPreviewStrip').onclick=e=>{if(e.target.closest('[data-chat-remove-preview]')){pendingChatImage=null;renderChatPreview()}};
 loadChatHistory();
 
+/* CHANGE 2026-09-29 TIMELINE-01: "actual route" overlay -- lets a family member upload their
+   own Google Timeline export (phone Settings -> Location -> Timeline -> "ייצוא נתוני Timeline")
+   so the app can draw where they actually were, on top of the planned route. Stored SHARED
+   (SS.get/set on SHARED.timeline) like everything else in this app, so the whole family sees it
+   once uploaded -- only the uploader needs to do it once. Only points that fall within the trip's
+   own 22 days are kept (matched against tripData dates, in Vietnam-local time via a fixed +7h
+   offset since Vietnam has no DST), and each day is capped at TIMELINE_MAX_POINTS_PER_DAY points
+   (evenly subsampled if a real device logged more) so the shared payload stays small no matter how
+   much history the exported file covers -- verified against a real 47MB export (4,279 segments
+   spanning February-September 2026) that this reduces to roughly 1,500 points once filtered to a
+   22-day window, comfortably small for SS storage.
+   Architecture note: drawMap()/drawGoogleMap()/drawSchematicMap()/fallbackToSchematic() are this
+   app's protected, byte-compared map functions -- per Or's standing rule, not one of their bodies
+   is touched by this change. Instead, drawMap is WRAPPED right after its original definition
+   (reassigned to call the untouched original, then renderActualPathOverlay()) -- every existing
+   call site ($('routePrevDay').onclick, the [data-map] handler, fallbackToSchematic, the map
+   provider toggle, etc.) already calls drawMap() by name and automatically picks up the overlay,
+   with zero changes to any call site or to the protected functions' own source text. */
+const TIMELINE_MAX_POINTS_PER_DAY=200;
+let timelineDataCache=null;
+async function getTimelineData(){try{const raw=await SS.get(SHARED.timeline);return raw?JSON.parse(raw):null}catch{return null}}
+async function saveTimelineData(obj){await SS.set(SHARED.timeline,JSON.stringify(obj))}
+async function deleteTimelineData(){await SS.del(SHARED.timeline)}
+async function loadTimelineData(){timelineDataCache=await getTimelineData().catch(()=>null)}
+function timelineShowPref(){try{return localStorage.getItem('planner:timeline:show')!=='0'}catch{return true}}
+function setTimelineShowPref(v){try{localStorage.setItem('planner:timeline:show',v?'1':'0')}catch{}}
+
+function tlParseLatLng(s){
+ const m=String(s||'').match(/(-?\d+(?:\.\d+)?)[^\d-]+(-?\d+(?:\.\d+)?)/);
+ if(!m)return null;
+ const lat=Number(m[1]),lng=Number(m[2]);
+ return valid(lat,lng)?{lat,lng}:null;
+}
+function tlVnDateKey(t){
+ const d=typeof t==='number'?new Date(t):new Date(t);
+ if(isNaN(d))return null;
+ const vn=new Date(d.getTime()+7*3600*1000); // Vietnam is fixed UTC+7, no DST
+ return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth()+1).padStart(2,'0')}-${String(vn.getUTCDate()).padStart(2,'0')}`;
+}
+/* Extracts raw {t,lat,lng} points from either the CURRENT Google Timeline export shape
+   (semanticSegments: visit/activity/timelinePath, coordinates as "lat°, lng°" strings -- the
+   format a phone's own "ייצוא נתוני Timeline" produces, confirmed against a real export) or the
+   OLDER Google Takeout shape (a flat "locations" array with latitudeE7/longitudeE7), as a
+   defensive fallback in case a family member's phone/account produces that instead. Anything it
+   doesn't recognize is silently skipped rather than guessed at. */
+function tlExtractPoints(json){
+ const out=[];
+ if(json&&Array.isArray(json.semanticSegments)){
+  json.semanticSegments.forEach(seg=>{
+   if(Array.isArray(seg.timelinePath)){
+    seg.timelinePath.forEach(p=>{const ll=tlParseLatLng(p.point);if(ll)out.push({t:p.time||seg.startTime,lat:ll.lat,lng:ll.lng})});
+   }else if(seg.visit&&seg.visit.topCandidate&&seg.visit.topCandidate.placeLocation){
+    const ll=tlParseLatLng(seg.visit.topCandidate.placeLocation.latLng);
+    if(ll)out.push({t:seg.startTime,lat:ll.lat,lng:ll.lng});
+   }else if(seg.activity){
+    const a=seg.activity;
+    if(a.start){const ll=tlParseLatLng(a.start.latLng);if(ll)out.push({t:seg.startTime,lat:ll.lat,lng:ll.lng})}
+    if(a.end){const ll=tlParseLatLng(a.end.latLng);if(ll)out.push({t:seg.endTime,lat:ll.lat,lng:ll.lng})}
+   }
+  });
+  return out;
+ }
+ if(json&&Array.isArray(json.locations)){
+  json.locations.forEach(loc=>{
+   const lat=loc.latitudeE7!=null?loc.latitudeE7/1e7:(loc.lat!=null?Number(loc.lat):null);
+   const lng=loc.longitudeE7!=null?loc.longitudeE7/1e7:(loc.lng!=null?Number(loc.lng):null);
+   const t=loc.timestamp||(loc.timestampMs!=null?Number(loc.timestampMs):null);
+   if(valid(lat,lng)&&t)out.push({t,lat,lng});
+  });
+ }
+ return out;
+}
+function tlThinPerDay(pointsByDay){
+ const out={};
+ Object.entries(pointsByDay).forEach(([day,pts])=>{
+  pts.sort((a,b)=>String(a.t).localeCompare(String(b.t)));
+  if(pts.length<=TIMELINE_MAX_POINTS_PER_DAY){out[day]=pts;return}
+  const step=pts.length/TIMELINE_MAX_POINTS_PER_DAY;
+  const kept=[];
+  for(let i=0;i<TIMELINE_MAX_POINTS_PER_DAY;i++)kept.push(pts[Math.floor(i*step)]);
+  out[day]=kept;
+ });
+ return out;
+}
+/* Parses+filters an uploaded Timeline file against the CURRENT tripData date range. Returns
+   {points:[{d,lat,lng,t}], dayCount} or {error:'...'} -- never throws, so a malformed/unrecognized
+   file shows a friendly message instead of an uncaught crash. */
+function tlParseFile(text){
+ let json;
+ try{json=JSON.parse(text)}catch{return{error:'הקובץ הזה לא נראה כמו JSON תקין.'}}
+ const raw=tlExtractPoints(json);
+ if(!raw.length)return{error:'לא זיהיתי נתוני מיקום מוכרים בקובץ הזה. ודאו שזה קובץ Timeline שיוצא מהטלפון (הגדרות ← מיקום ← Timeline ← ייצוא נתוני Timeline).'};
+ const tripDateKeys=new Set(tripData.map(d=>iso(d.date)).filter(Boolean));
+ const byDay={};
+ raw.forEach(p=>{
+  const day=tlVnDateKey(p.t);
+  if(!day||!tripDateKeys.has(day))return;
+  (byDay[day]=byDay[day]||[]).push(p);
+ });
+ const thinned=tlThinPerDay(byDay);
+ const points=[];
+ Object.entries(thinned).forEach(([day,pts])=>pts.forEach(p=>points.push({d:day,lat:p.lat,lng:p.lng,t:p.t})));
+ if(!points.length)return{error:'הקובץ תקין, אבל לא נמצאו בו נקודות מיקום בטווח התאריכים של הטיול (15/09–06/10/2026).'};
+ return{points,dayCount:Object.keys(thinned).length};
+}
+
+async function renderTimelineCard(){
+ const el=$('timelineCard');if(!el)return;
+ const data=timelineDataCache;
+ const before=$('timelineBeforeState'),after=$('timelineAfterState');
+ if(!data||!Array.isArray(data.points)||!data.points.length){before.style.display='';after.style.display='none';return}
+ before.style.display='none';after.style.display='';
+ $('timelinePointCount').textContent=data.points.length.toLocaleString('he-IL');
+ $('timelineDayCount').textContent=new Set(data.points.map(p=>p.d)).size;
+ const uploadedAt=data.uploadedAt?new Date(data.uploadedAt).toLocaleDateString('he-IL'):'';
+ $('timelineMeta').textContent=`הועלה ע"י ${data.uploadedBy||'—'} · ${uploadedAt}`;
+ $('timelineShowToggle').classList.toggle('on',timelineShowPref());
+}
+function timelinePointsForCurrentView(){
+ if(!timelineShowPref())return[];
+ const data=timelineDataCache;
+ if(!data||!Array.isArray(data.points)||!data.points.length)return[];
+ if(mapMode==='day'){
+  const d=tripData[globalDayIndex];if(!d)return[];
+  const day=iso(d.date);
+  return data.points.filter(p=>p.d===day).map(p=>({lat:p.lat,lng:p.lng}));
+ }
+ if(mapMode==='route'){
+  return data.points.filter(p=>{const dd=tripData.find(x=>iso(x.date)===p.d);return!dd||!isFlightDay(dd)}).map(p=>({lat:p.lat,lng:p.lng}));
+ }
+ return[]; // not drawn in "poi" mode -- that view is about waypoints, not the traveled path
+}
+let timelineGooglePolyline=null;
+function renderActualPathOverlay(){
+ const pts=timelinePointsForCurrentView();
+ if(timelineGooglePolyline){timelineGooglePolyline.setMap(null);timelineGooglePolyline=null}
+ if(mapProvider==='google'&&map&&typeof google!=='undefined'){
+  if(pts.length>1){
+   timelineGooglePolyline=new google.maps.Polyline({path:pts,geodesic:true,strokeColor:'#d97706',strokeOpacity:.9,strokeWeight:3});
+   timelineGooglePolyline.setMap(map);
+  }
+  return;
+ }
+ // Schematic map: append one more <path> onto the SVG drawSchematicMap() just rendered, reusing
+ // its own (unprotected, reusable) mapBounds()/project() helpers so the projection matches exactly.
+ if(pts.length<2)return;
+ const svg=$('map')&&$('map').querySelector('svg');if(!svg)return;
+ const b=mapBounds();if(!b)return;
+ const W=600,H=380;
+ const d=pts.map((p,i)=>{const[x,y]=project(p.lat,p.lng,b,W,H);return`${i===0?'M':'L'}${x},${y}`}).join(' ');
+ svg.insertAdjacentHTML('beforeend',`<path d="${d}" fill="none" stroke="#d97706" stroke-width="3" opacity=".9"/>`);
+}
+const _tlOrigDrawMap=drawMap;
+drawMap=function(){_tlOrigDrawMap();renderActualPathOverlay()};
+
+$('timelineUploadBtn').onclick=()=>$('timelineFileInput').click();
+$('timelineReplaceBtn').onclick=()=>$('timelineFileInput').click();
+$('timelineRemoveBtn').onclick=async()=>{
+ if(!requireUser())return;
+ if(!confirm('להסיר את המסלול בפועל שהועלה? אפשר להעלות קובץ חדש בכל שלב.'))return;
+ await deleteTimelineData();timelineDataCache=null;
+ await renderTimelineCard();drawMap();
+};
+$('timelineShowToggle').onclick=()=>{setTimelineShowPref(!timelineShowPref());renderTimelineCard();drawMap()};
+$('timelineFileInput').onchange=e=>{
+ const f=e.target.files[0];e.target.value='';
+ if(!f)return;
+ if(!requireUser())return;
+ const reader=new FileReader();
+ reader.onload=async()=>{
+  const result=tlParseFile(String(reader.result||''));
+  if(result.error){alert(result.error);return}
+  if(!confirm(`נמצאו ${result.points.length.toLocaleString('he-IL')} נקודות מיקום ב-${result.dayCount} ימים בתוך טווח הטיול. להעלות ולשתף עם המשפחה?`))return;
+  await saveTimelineData({points:result.points,uploadedBy:activeUser,uploadedAt:Date.now()});
+  await loadTimelineData();setTimelineShowPref(true);
+  await renderTimelineCard();drawMap();
+ };
+ reader.readAsText(f);
+};
+
 (async function boot(){
  await loadState();setupUsers();fillSelects();updateDates();render();
  await ensureDefaultLodgingBudget();renderBudget();
+ await loadTimelineData();renderTimelineCard();drawMap(); /* CHANGE 2026-09-29 TIMELINE-01 */
  $('tripName').textContent=await getTripName();
  updateSyncBadge();flushQueue();
  window.addEventListener('online',flushQueue);
