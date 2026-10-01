@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.13.0 (בית מינימלי · הוצאה מהירה)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. CHANGE 2026-10-01 UI-KIT-01/FLIGHT-CARD-01: bumped to v2.14.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.14.0 (ערכת פקדים אחידה · כרטיס יום טיסה)</title>
 <!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -4380,7 +4380,7 @@ if($('importExcelInput')){
       documents are marked as unavailable offline. A "גרסה חדשה זמינה · רענון" card appears when a newer version is
       published while the app is open (checked every 10 minutes and when the app comes back to the foreground).
    Revert: VAULT_IDB='off' (localStorage again), APP_UPDATE_CHECK='off'. */
-const APP_VERSION='2.13.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card) */
+const APP_VERSION='2.14.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card). CHANGE 2026-10-01 v2.14.0: bumped with UI-KIT-01/FLIGHT-CARD-01 */
 const VAULT_IDB='on';
 const APP_UPDATE_CHECK='on';
 const _vxOrigGetDocuments=getDocuments,_vxOrigSaveDocuments=saveDocuments;
@@ -4775,6 +4775,177 @@ if(HOME_MIN==='on'){
 .hmin-sync.warn{background:#fff4e5;border-color:#f5d6a8}.hmin-sync.warn b{color:#8a4a03}
 .hmin-hotel-name{font-size:1.05rem;font-weight:800;margin:0 0 4px}.hmin-hotel-row{font-size:.85rem;margin-bottom:10px}
 `;document.head.appendChild(st)})();
+
+/* CHANGE 2026-10-01 UI-KIT-01 + FLIGHT-CARD-01 (v2.14.0), per the mockup approved by Or
+   (https://claude.ai/artifact/BwAoSYsdrQBLqcbkX3uNoD, "כן. תתחיל לפתח"). What changed from v2.13.0:
+   1) UI-KIT-01 — one visual system for buttons, switches, segmented controls, chips and close buttons.
+      Pure CSS layer scoped under html.ui-kit and loaded LAST, so it only restyles; no id, handler or markup changes.
+      Button roles by existing class: .btn.green / check-in / ci-save = filled (the main action),
+      .btn.blue / .btn.gold = tonal, .btn.outline = outlined, .btn.red (not the map pills) = destructive.
+      The 3 switch styles (.tl-switch, .switch, .visits-plan-toggle) share one size and colour.
+      The map-mode row, the route view toggle and the album tabs look like one segmented control.
+      Chips (.curchip, .res-chip, .qe-chip, .chat-chip, .member-chip) share one shape and selected state.
+      Save buttons get a 0.9 s busy state that also swallows a second tap (no more double-saved expenses).
+   2) FLIGHT-CARD-01 — "✈️ יום מעבר" card on the minimal home, on a flight day and from 18:00 the evening before.
+      Source: reservations of type flight, by their linked day (or a dd/mm date in "תאריך / שעה") and an HH:MM time.
+      Shows route codes, countdown, recommended "leave for the airport" and "check-in closes" times, and buttons:
+      boarding passes (vault → flights), navigate to the airport, reservation details. While shown, the
+      "ניווט לנקודה הבאה" and "הוצאה מהירה" tiles hide and check-in becomes outlined (one filled button per screen).
+      A flight day with no flight reservation/time still gets the card, with a button to add the time.
+   Revert: UI_KIT='off' (old look, untouched), FLIGHT_CARD='off' (no card). Protected functions untouched. */
+const UI_KIT='on';
+const FLIGHT_CARD='on';
+if(UI_KIT==='on')document.documentElement.classList.add('ui-kit');
+(function uiKitCss(){if(UI_KIT!=='on')return;const st=document.createElement('style');st.id='uiKitCss';st.textContent=`
+html.ui-kit .btn{min-height:44px;border-radius:14px;font-weight:800;letter-spacing:.01em;transition:transform .1s ease,box-shadow .15s ease,background-color .15s ease;-webkit-tap-highlight-color:transparent}
+html.ui-kit .btn:active{transform:scale(.97)}
+html.ui-kit .btn.green,html.ui-kit .btn.red.pillbtn:not([data-map]),html.ui-kit .ci-save,html.ui-kit .hv2-checkin-btn{background:linear-gradient(180deg,#14805f 0%,#0f6b4f 100%);color:#fff;border:0;box-shadow:0 1px 0 #ffffff33 inset,0 4px 12px #0f6b4f45}
+html.ui-kit .btn.green:active,html.ui-kit .ci-save:active,html.ui-kit .hv2-checkin-btn:active{background:#083f30;box-shadow:0 1px 4px #0f6b4f40}
+html.ui-kit .btn.blue,html.ui-kit .btn.gold{background:#d7efe3;color:#083f30;border:0;box-shadow:none}
+html.ui-kit .btn.blue:active,html.ui-kit .btn.gold:active{background:#c4e6d5}
+html.ui-kit .btn.outline{background:#fff;color:var(--text);border:1.5px solid #d5d9cf;box-shadow:none}
+html.ui-kit .btn.outline:active{background:var(--bg)}
+html.ui-kit .btn.red:not(.pillbtn){background:#fdecea;color:#b42318;border:0;box-shadow:none}
+html.ui-kit .btn:disabled,html.ui-kit .ci-save:disabled{background:#e7e9e3!important;color:#a3aaa4!important;box-shadow:none!important;border-color:transparent!important;opacity:1;cursor:not-allowed;transform:none}
+html.ui-kit .hv2-checkin-btn{border-radius:14px;min-height:52px}
+html.ui-kit .home-min.fc-on .hv2-checkin-btn{background:#fff;color:var(--text);border:1.5px solid #d5d9cf;box-shadow:none}
+html.ui-kit .budget-detail-table .bd-actions .btn{min-height:34px;padding:0 9px;border-radius:10px}
+html.ui-kit .chat-action-btns .btn{min-height:38px}
+html.ui-kit .personal-mini-row .btn{min-height:40px}
+html.ui-kit .ui-busy{position:relative;color:transparent!important;pointer-events:none}
+html.ui-kit .ui-busy::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;border:2px solid #ffffff66;border-top-color:#fff;animation:uiSpin .7s linear infinite}
+html.ui-kit .btn.outline.ui-busy::after,html.ui-kit .btn.blue.ui-busy::after,html.ui-kit .btn.gold.ui-busy::after{border-color:#0f6b4f40;border-top-color:#0f6b4f}
+@keyframes uiSpin{to{transform:rotate(360deg)}}
+html.ui-kit .tl-switch{width:40px;height:23px;background:#cfd3c9}
+html.ui-kit .tl-switch.on{background:var(--primary)}
+html.ui-kit .tl-switch .knob{top:3px;right:3px;width:17px;height:17px}
+html.ui-kit .tl-switch.on .knob{right:20px}
+html.ui-kit .switch{width:40px;height:23px;background:var(--primary)}
+html.ui-kit .switch::after{top:3px;right:3px;width:17px;height:17px}
+html.ui-kit .switch.off{background:#cfd3c9}
+html.ui-kit .switch.off::after{right:auto;left:3px}
+html.ui-kit .visits-plan-toggle .vp-track{width:40px;height:23px;padding:3px;background:#cfd3c9}
+html.ui-kit .visits-plan-toggle[aria-pressed="true"] .vp-track{background:var(--primary)}
+html.ui-kit .visits-plan-toggle .vp-knob{width:17px;height:17px}
+html.ui-kit .map-mode-row{background:#fff;border:1px solid var(--border);border-radius:999px;padding:3px;gap:2px!important;box-shadow:0 2px 8px #0002;flex-wrap:nowrap}
+html.ui-kit .map-mode-row .btn{background:none!important;color:var(--muted)!important;border:0!important;box-shadow:none!important;min-height:34px;border-radius:999px!important;font-size:.72rem;padding:0 6px}
+html.ui-kit .map-mode-row .btn.active,html.ui-kit .map-mode-row .btn[aria-pressed="true"]{background:var(--primary)!important;color:#fff!important}
+html.ui-kit #route .view-toggle{padding:3px;gap:2px}
+html.ui-kit #route .view-toggle button{min-height:34px;font-size:.76rem}
+html.ui-kit .tabrow2{border:1px solid var(--border);background:#fff;border-radius:999px;padding:3px;gap:2px;margin:6px 16px 12px}
+html.ui-kit .tabrow2-item{border-radius:999px;border-bottom:0;min-height:34px;padding:0 8px;font-size:.78rem}
+html.ui-kit .tabrow2-item.active{background:var(--primary);color:#fff}
+html.ui-kit .res-chip,html.ui-kit .qe-chip,html.ui-kit .chat-chip,html.ui-kit .member-chip{border:1.5px solid #d5d9cf;border-radius:999px;min-height:36px;display:inline-flex;align-items:center;gap:5px;font-weight:700;background:#fff}
+html.ui-kit .res-chip.active,html.ui-kit .qe-chip.on{background:var(--primary-light);border-color:var(--primary);color:#0b5841}
+html.ui-kit .curchip{border:1.5px solid #d5d9cf;border-radius:14px}
+html.ui-kit .curchip.active{background:var(--primary-light);border-color:var(--primary);color:#0b5841}
+html.ui-kit .modal-x,html.ui-kit .chat-x{width:40px;height:40px;border-radius:12px;border:1.5px solid #d5d9cf;background:#fff}
+html.ui-kit button:focus-visible{outline:2px solid #d97706;outline-offset:2px}
+.fc-card{border:1.5px solid var(--booking);background:var(--booking-light);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:9px;margin-bottom:10px}
+.fc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fc-eyebrow{font-size:.72rem;font-weight:800;color:var(--booking)}
+.fc-route{font-size:1.15rem;font-weight:900;color:var(--booking);letter-spacing:.02em}
+.fc-meta{font-size:.72rem;color:var(--muted)}
+.fc-cd{text-align:center;background:#fff;border-radius:12px;padding:6px 10px;min-width:78px}
+.fc-cd b{display:block;font-size:1.2rem;color:var(--booking);font-variant-numeric:tabular-nums}
+.fc-cd span{font-size:.62rem;color:var(--muted)}
+.fc-steps{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.fc-steps li{display:flex;align-items:center;gap:8px;font-size:.8rem;background:#fff;border-radius:10px;padding:6px 10px}
+.fc-steps li b{font-variant-numeric:tabular-nums;min-width:42px;color:var(--booking)}
+.fc-steps li.done{opacity:.55;text-decoration:line-through}
+.fc-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fc-btns .btn{margin:0;font-size:.8rem;padding:0 8px;width:100%}
+.fc-more{background:none;border:0;color:var(--booking);font-weight:800;font-family:inherit;font-size:.78rem;padding:4px 0;cursor:pointer;align-self:flex-start;min-height:36px}
+.fc-note{font-size:.74rem;color:var(--muted);margin:0}
+.home-min.fc-on #hminNav,.home-min.fc-on #hminExp{display:none}
+.home-min.fc-on .hmin-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (prefers-reduced-motion:reduce){html.ui-kit .btn{transition:none}html.ui-kit .ui-busy::after{animation:none}}
+`;document.head.appendChild(st)})();
+/* busy guard for save buttons: capture phase, so a second tap within 0.9 s never reaches the original handler */
+const UI_BUSY_IDS=new Set(['saveExpense','qeSave','resSaveBtn','saveJournal','ciSaveBtn','docMoveSaveBtn','saveWaypoint','saveBooking','savePersonalBudgetTarget','saveBudgetTarget']);
+if(UI_KIT==='on')document.addEventListener('click',e=>{
+ const b=e.target.closest&&e.target.closest('button');if(!b||!UI_BUSY_IDS.has(b.id))return;
+ if(b.classList.contains('ui-busy')){e.preventDefault();e.stopImmediatePropagation();return}
+ b.classList.add('ui-busy');b.setAttribute('aria-busy','true');
+ setTimeout(()=>{b.classList.remove('ui-busy');b.removeAttribute('aria-busy')},900);
+},true);
+
+/* ---- flight-day card ---- */
+const FC_AIRPORTS={HAN:'Noi Bai International Airport, Hanoi',DAD:'Da Nang International Airport',SGN:'Tan Son Nhat International Airport',CXR:'Cam Ranh International Airport',PQC:'Phu Quoc International Airport',HUI:'Phu Bai International Airport, Hue',VDO:'Van Don International Airport',AUH:'Zayed International Airport, Abu Dhabi',TLV:'Ben Gurion Airport'};
+const FC_VN=new Set(['HAN','DAD','SGN','CXR','PQC','HUI','VDO','VCA','HPH','DLI','VII','UIH','BMV','THD','VCL','TBB','VKG','PXU','DIN','CAH','VCS']);
+const FC_TZ={TLV:'+03:00',AUH:'+04:00'};
+function fcHHMM(d){return d.toLocaleTimeString('he-IL',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit'})}
+function fcVnHour(){try{return Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',hour12:false}).format(new Date()))%24}catch{return new Date().getHours()}}
+function fcParse(r){
+ const s=String(r.datetime||''),txt=[r.title,r.provider,r.notes,r.address].join(' ');
+ let dayIdx=r.linkedDayStart!=null&&tripData[r.linkedDayStart]?Number(r.linkedDayStart):null;
+ if(dayIdx===null){const m=s.match(/(\d{1,2})[./](\d{1,2})(?:[./]\d{2,4})?/);if(m){const i=tripData.findIndex(d=>{const p=parseDate(d.date);return p&&p.getDate()===+m[1]&&p.getMonth()+1===+m[2]});if(i>-1)dayIdx=i}}
+ const codes=[...txt.matchAll(/(?:^|[^A-Z])([A-Z]{3})(?=[^A-Z]|$)/g)].map(x=>x[1]).filter(c=>FC_AIRPORTS[c]||FC_VN.has(c));
+ const from=codes[0]||'',to=codes.find(c=>c!==from)||'';
+ const fnm=txt.match(/\b((?:[A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d{2,4})\b/);
+ const tm=s.match(/(\d{1,2}):(\d{2})/);
+ let dep=null;
+ if(dayIdx!==null&&tm){const di=iso(tripData[dayIdx].date);if(di)dep=new Date(`${di}T${tm[1].padStart(2,'0')}:${tm[2]}:00${FC_TZ[from]||'+07:00'}`)}
+ if(dep&&isNaN(dep))dep=null;
+ const intl=(from&&!FC_VN.has(from))||(to&&!FC_VN.has(to))||(dayIdx!==null&&isFlightDay(tripData[dayIdx]));
+ return{r,dayIdx,dep,from,to,fno:fnm?fnm[1]:'',intl};
+}
+function fcLooksLikeFlightDay(d){return!!d&&(isFlightDay(d)||/טיס/.test(String(d.title||'')+' '+String(d.activities||'')))}
+async function fcPick(){
+ const t=hminTodayIdx();if(t.state!=='during')return null;
+ const now=Date.now(),evening=fcVnHour()>=18;
+ const flights=(await getReservations()).filter(r=>r.type==='flight').map(fcParse).filter(f=>f.dayIdx!==null);
+ const ok=f=>(f.dayIdx===t.i&&(!f.dep||now<f.dep.getTime()+60*60000))||(evening&&f.dayIdx===t.i+1);
+ const cand=flights.filter(ok).sort((a,b)=>(a.dayIdx-b.dayIdx)||((a.dep?a.dep.getTime():9e15)-(b.dep?b.dep.getTime():9e15)));
+ if(cand.length)return cand[0];
+ const di=fcLooksLikeFlightDay(tripData[t.i])?t.i:(evening&&fcLooksLikeFlightDay(tripData[t.i+1])?t.i+1:null);
+ if(di===null)return null;
+ if(di===t.i&&flights.some(f=>f.dayIdx===t.i))return null; // today's flight already departed
+ return{r:null,dayIdx:di,dep:null,from:'',to:'',fno:'',intl:isFlightDay(tripData[di])};
+}
+function fcAirportNav(f){
+ const d=tripData[f.dayIdx]||{};
+ const q=(f.r&&f.r.address)||FC_AIRPORTS[f.from]||`airport ${d.region||''} Vietnam`;
+ return`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
+}
+async function fcRender(){
+ if(FLIGHT_CARD!=='on'||HOME_MIN!=='on')return;
+ const top=document.querySelector('#homeV2 .hmin-top');if(!top)return;
+ let el=$('fcCard');
+ const f=await fcPick();
+ $('homeV2').classList.toggle('fc-on',!!f);
+ if(!f){if(el)el.remove();return}
+ if(!el){el=document.createElement('section');el.id='fcCard';el.className='fc-card';el.setAttribute('aria-label','יום טיסה');const day=top.querySelector('.hmin-day');(day||top.firstChild).insertAdjacentElement('afterend',el)}
+ const d=tripData[f.dayIdx],tomorrow=f.dayIdx!==hminTodayIdx().i;
+ const route=f.from&&f.to?`${f.from} → ${f.to}`:(f.r&&f.r.title)||d.title;
+ const meta=[f.fno,f.r&&f.r.confirmationRef?`אישור ${f.r.confirmationRef}`:''].filter(Boolean).join(' · ');
+ let cd='',steps='';
+ if(f.dep){
+  const now=Date.now(),diff=f.dep.getTime()-now;
+  if(diff>0){const h=Math.floor(diff/36e5),m=Math.floor(diff%36e5/6e4);cd=`<div class="fc-cd"><b>${h}:${String(m).padStart(2,'0')}</b><span>שעות להמראה</span></div>`}
+  else cd=`<div class="fc-cd"><b>✈️</b><span>טיסה נעימה!</span></div>`;
+  const leave=new Date(f.dep.getTime()-(f.intl?210:120)*6e4),close=new Date(f.dep.getTime()-(f.intl?60:40)*6e4);
+  const li=(t,txt)=>`<li class="${now>t.getTime()?'done':''}"><b>${fcHHMM(t)}</b>${txt}</li>`;
+  steps=`<ol class="fc-steps">${li(leave,'יציאה לשדה (מומלץ)')}${li(close,`סגירת דלפק צ'ק-אין (${f.intl?'כ-60':'כ-40'} דק' לפני)`)}${li(f.dep,'המראה')}</ol>`;
+ }else{
+  steps=`<p class="fc-note">${f.r?'אין שעת המראה בהזמנה.':'לא נמצאה הזמנת טיסה ליום הזה.'} הוסיפו שעה (למשל 15:00) ב"תאריך / שעה" כדי לראות ספירה לאחור ומתי לצאת לשדה.</p>`;
+ }
+ el.innerHTML=`<div class="fc-top"><div><div class="fc-eyebrow">✈️ ${tomorrow?'מחר: יום מעבר':'יום מעבר'}</div><div class="fc-route" dir="ltr">${esc(route)}</div>${meta?`<div class="fc-meta" dir="ltr">${esc(meta)}</div>`:''}</div>${cd}</div>
+  ${steps}
+  <div class="fc-btns"><button type="button" class="btn green" id="fcDocs">🎫 כרטיסי עלייה</button><a class="btn blue" id="fcNav" href="${esc(fcAirportNav(f))}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none">🧭 ניווט לשדה</a></div>
+  <button type="button" class="fc-more" id="fcRes">${f.r?(f.dep?'פרטי ההזמנה ›':'➕ הוספת שעת המראה ›'):'➕ הוספת הזמנת טיסה ›'}</button>`;
+ $('fcDocs').onclick=()=>hminOpenVault('flights');
+ $('fcRes').onclick=async()=>{
+  if(f.r){await openReservationDetail(f.r.id);return}
+  await openReservationDetail(null,'flight');
+  try{$('resDay').value=String(f.dayIdx);if(!$('resDatetime').value)$('resDatetime').value=String(d.date).slice(0,5)+' '}catch{}
+ };
+}
+if(FLIGHT_CARD==='on'&&HOME_MIN==='on'){
+ const _fcOrigHminRender=hminRender;
+ hminRender=async function(){const r=await _fcOrigHminRender.apply(this,arguments);try{await fcRender()}catch(e){console.warn('[flight card]',e)}return r};
+ fcRender().catch(()=>{});
+}
 </script>
 </body>
 </html>
