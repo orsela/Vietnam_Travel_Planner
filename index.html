@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. CHANGE 2026-10-01 UI-KIT-01/FLIGHT-CARD-01: bumped to v2.14.0. CHANGE 2026-10-02 DAY-PICKER-01/EDIT-MENU-01: bumped to v2.15.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.15.0 (בורר ימים אחיד · פקד עריכה ⋯)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. CHANGE 2026-10-01 UI-KIT-01/FLIGHT-CARD-01: bumped to v2.14.0. CHANGE 2026-10-02 DAY-PICKER-01/EDIT-MENU-01: bumped to v2.15.0. CHANGE 2026-10-02 HOME-EDIT-01: bumped to v2.15.1. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.15.1 (עריכת היום מהבית)</title>
 <!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -4380,7 +4380,7 @@ if($('importExcelInput')){
       documents are marked as unavailable offline. A "גרסה חדשה זמינה · רענון" card appears when a newer version is
       published while the app is open (checked every 10 minutes and when the app comes back to the foreground).
    Revert: VAULT_IDB='off' (localStorage again), APP_UPDATE_CHECK='off'. */
-const APP_VERSION='2.15.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card). CHANGE 2026-10-01 v2.14.0: bumped with UI-KIT-01/FLIGHT-CARD-01. CHANGE 2026-10-02 v2.15.0: bumped with DAY-PICKER-01/EDIT-MENU-01 */
+const APP_VERSION='2.15.1'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card). CHANGE 2026-10-01 v2.14.0: bumped with UI-KIT-01/FLIGHT-CARD-01. CHANGE 2026-10-02 v2.15.0: bumped with DAY-PICKER-01/EDIT-MENU-01. CHANGE 2026-10-02 v2.15.1: bumped with HOME-EDIT-01 */
 const VAULT_IDB='on';
 const APP_UPDATE_CHECK='on';
 const _vxOrigGetDocuments=getDocuments,_vxOrigSaveDocuments=saveDocuments;
@@ -5168,6 +5168,52 @@ if(EDIT_MENU==='on'){
  // tapping an expense row (not a button) edits it
  $('expenseList').addEventListener('click',e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-ui-exp]');if(tr)expEdit(Number(tr.dataset.uiExp))});
 }
+
+/* CHANGE 2026-10-02 HOME-EDIT-01 (v2.15.1), per the mockup approved by Or ("מאושר",
+   https://claude.ai/artifact/HMNhB9fopmyoXjVT56NAMA). What changed from v2.15.0:
+   - A ⋯ button on the home day card ("📅 יום X מתוך 22") opens the shared action sheet (uiSheetOpen, v2.15.0) for the
+     day the card shows (hminTodayIdx: today during the trip, day 1 before it, the last day after it):
+     ✏️ עריכת פרטי היום (existing "עריכת יום" form) · ➕ הוספת נקודת עניין (existing search dialog) ·
+     🏨 מלון והזמנה (existing "הזמנה מאושרת", not on a night in flight) · ✈️ הזמנת הטיסה (only while the v2.14.0
+     flight card shows) · 📍 פתיחה במסלול (same as the location pill). No delete here: deleting a day stays in the form.
+   - Each action first moves the app to that day (globalDayIndex) and returns to the home tab when its dialog closes
+     (modalReturnPanel='home', so the 🏠 tab stays highlighted).
+   - Edit opened from home: after a successful save the form closes with a "✅ היום עודכן" toast
+     (from the route screen the form still stays open, as before).
+   Revert: HOME_EDIT='off'. dayForm.onsubmit is wrapped; its body is unchanged. */
+const HOME_EDIT='on';
+let hmEditFromHome=false;
+function heGoDay(i){if(globalDayIndex!==i){globalDayIndex=i;fillSelects();render()}}
+function heBackHome(){modalReturnPanel='home'}
+async function heOpenSheet(){
+ const t=hminTodayIdx(),i=t.i,d=tripData[i];if(!d)return;
+ const h=hminHotelInfo(i);
+ const acts=[
+  {icon:'✏️',label:'עריכת פרטי היום',run:()=>{heGoDay(i);hmEditFromHome=true;$('dayEditBtn').onclick();heBackHome()}},
+  {icon:'➕',label:'הוספת נקודת עניין',run:()=>{heGoDay(i);$('newWaypoint').click();heBackHome()}}];
+ if(h&&!h.flight)acts.push({icon:'🏨',label:`מלון והזמנה${h.name?' · '+h.name:''}`,run:async()=>{heGoDay(i);await $('bookingBtn').onclick();heBackHome()}});
+ const fr=$('fcRes');
+ if(fr&&$('homeV2').classList.contains('fc-on'))acts.push({icon:'✈️',label:/הוספת הזמנת/.test(fr.textContent)?'הוספת הזמנת טיסה':'הזמנת הטיסה',run:async()=>{await fr.onclick();heBackHome()}});
+ acts.push({icon:'📍',label:'פתיחה במסלול',run:()=>$('hminPill').click()});
+ uiSheetOpen({title:`יום ${d.day} · ${d.region||''}`,sub:d.title||'',actions:acts});
+}
+(function heBuild(){
+ if(HOME_EDIT!=='on'||HOME_MIN!=='on')return;
+ const card=document.querySelector('#homeV2 .hmin-day');if(!card)return;
+ card.classList.add('he-on');
+ const b=document.createElement('button');b.type='button';b.className='ui-more he-more';b.id='hminDayMore';b.setAttribute('aria-label','עריכת היום ופעולות');b.textContent='⋯';
+ card.appendChild(b);b.onclick=heOpenSheet;
+ const st=document.createElement('style');st.id='homeEditCss';st.textContent=`.hmin-day.he-on{position:relative}.hmin-day.he-on .hmin-day-h{padding-inline-end:52px}.he-more{position:absolute;top:6px;inset-inline-end:6px}`;document.head.appendChild(st);
+ const origSubmit=$('dayForm').onsubmit;
+ $('dayForm').onsubmit=async function(e){
+  const fromHome=hmEditFromHome,before=Date.now();
+  const r=await origSubmit.call(this,e);
+  const d=tripData[globalDayIndex];
+  if(fromHome&&d&&Number(d.lastEditedAt)>=before){hmEditFromHome=false;modalReturnPanel='home';closeModal($('dayEditModal'));try{ciToast('✅ היום עודכן')}catch{}}
+  return r;
+ };
+ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#dayEditBtn'))hmEditFromHome=false},true);
+})();
 </script>
 </body>
 </html>
