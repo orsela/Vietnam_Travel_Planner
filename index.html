@@ -18,8 +18,8 @@ if('serviceWorker' in navigator){
  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 </script>
-<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. CHANGE 2026-10-01 UI-KIT-01/FLIGHT-CARD-01: bumped to v2.14.0. -->
-<title>Vietnam Travel Planner — ויאטנם 2026 · v2.14.0 (ערכת פקדים אחידה · כרטיס יום טיסה)</title>
+<!-- CHANGE 2026-09-30 VISITS-01: title version bumped to v2.9.0 (it had been left at v2.4.8 since that release). CHANGE 2026-09-30 TRAVEL-CHAT-01: bumped to v2.10.0. CHANGE 2026-09-30 TRAVEL-CHAT-02: bumped to v2.10.1. CHANGE 2026-09-30 MAPMODE-FIX-01: bumped to v2.10.2. CHANGE 2026-09-30 CHECKIN-01: bumped to v2.11.0. CHANGE 2026-09-30 WAYPOINT-FIX-01: bumped to v2.11.1. CHANGE 2026-09-30 PERF-01/SYNC-MERGE-01: bumped to v2.11.2. CHANGE 2026-09-30 VAULT-OFFLINE-01/VAULT-DRIVE-01/APP-OFFLINE-01: bumped to v2.12.0. CHANGE 2026-09-30 QUICK-EXP-01/HOME-MIN-01: bumped to v2.13.0. CHANGE 2026-10-01 UI-KIT-01/FLIGHT-CARD-01: bumped to v2.14.0. CHANGE 2026-10-02 DAY-PICKER-01/EDIT-MENU-01: bumped to v2.15.0. -->
+<title>Vietnam Travel Planner — ויאטנם 2026 · v2.15.0 (בורר ימים אחיד · פקד עריכה ⋯)</title>
 <!-- CHANGE 2026-09-30 PERF-01 (v2.11.2): xlsx.full.min.js (~900KB) is no longer loaded here on every start; ensureXLSX() in the main script loads it only when Excel backup/import is used. -->
 <!-- CHANGE 2026-08-22 GM-08: real cross-device family sync via Supabase (a free
      Postgres-based backend). Until now `window.storage` (the hook the app's own SS/
@@ -4380,7 +4380,7 @@ if($('importExcelInput')){
       documents are marked as unavailable offline. A "גרסה חדשה זמינה · רענון" card appears when a newer version is
       published while the app is open (checked every 10 minutes and when the app comes back to the foreground).
    Revert: VAULT_IDB='off' (localStorage again), APP_UPDATE_CHECK='off'. */
-const APP_VERSION='2.14.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card). CHANGE 2026-10-01 v2.14.0: bumped with UI-KIT-01/FLIGHT-CARD-01 */
+const APP_VERSION='2.15.0'; /* CHANGE 2026-09-30 v2.13.0: bumped with QUICK-EXP-01/HOME-MIN-01 (drives the new-version card). CHANGE 2026-10-01 v2.14.0: bumped with UI-KIT-01/FLIGHT-CARD-01. CHANGE 2026-10-02 v2.15.0: bumped with DAY-PICKER-01/EDIT-MENU-01 */
 const VAULT_IDB='on';
 const APP_UPDATE_CHECK='on';
 const _vxOrigGetDocuments=getDocuments,_vxOrigSaveDocuments=saveDocuments;
@@ -4945,6 +4945,228 @@ if(FLIGHT_CARD==='on'&&HOME_MIN==='on'){
  const _fcOrigHminRender=hminRender;
  hminRender=async function(){const r=await _fcOrigHminRender.apply(this,arguments);try{await fcRender()}catch(e){console.warn('[flight card]',e)}return r};
  fcRender().catch(()=>{});
+}
+
+/* CHANGE 2026-10-02 DAY-PICKER-01 + EDIT-MENU-01 (v2.15.0), per the mockup approved by Or
+   (https://claude.ai/artifact/BwAoSYsdrQBLqcbkX3uNoD, component 4 + phone ה; "ניתן להתקדם עם תכנית הפיתוח").
+   What changed from v2.14.0:
+   1) DAY-PICKER-01 — one day picker, the same strip + arrows as the route screen, now also in:
+      - the journal (replaces the <select> + ← → row; #journalDay stays in the DOM, hidden, still filled by fillSelects)
+      - the full "➕ הוספת הוצאה" form (replaces the slider; a "ללא יום" chip first replaces "✕ הסר שיוך ליום";
+        the slider stays in the DOM, hidden, and renderExpenseDaySlider still runs and is WRAPPED).
+      The real calendar day ("today") has a dashed border in every strip, the route strip included.
+   2) EDIT-MENU-01 — one edit control: a ⋯ button on every editable row opens one action sheet
+      (fixed order: open/edit, move, share, delete last in red). Delete asks inside the sheet instead of the
+      browser's confirm(); a note/link asks inside the sheet instead of prompt().
+      - expenses table: ⋯ replaces ✎ + 🗑️ (they stay in the DOM, hidden, and the sheet clicks them); tapping the row edits
+        and now also opens + scrolls to the form.
+      - points of interest: ⋯ replaces 🗑️ (navigate · delete — deleting a point now asks first; before it was instant).
+      - reservations: ⋯ replaces 🗑️ (edit · delete); tapping the row still opens it.
+      - vault documents and check-ins: their existing ⋯ now opens the same sheet (same actions as before).
+      Every action runs the ORIGINAL handler: confirm()/prompt() are answered by the sheet through a one-shot bypass
+      (uiAnswerNext), only for the synchronous call the sheet itself makes.
+   Revert: DAY_PICKER='off', EDIT_MENU='off' (each restores the v2.14.0 screen exactly). Protected functions untouched. */
+const DAY_PICKER='on';
+const EDIT_MENU='on';
+if(DAY_PICKER==='on')document.documentElement.classList.add('day-picker');
+if(EDIT_MENU==='on')document.documentElement.classList.add('edit-menu');
+(function v215Css(){if(DAY_PICKER!=='on'&&EDIT_MENU!=='on')return;const st=document.createElement('style');st.id='v215Css';st.textContent=`
+html.day-picker .ui-dp-legacy{display:none!important}
+html.day-picker #addExpenseDetails .day-slider-wrap{display:none}
+.ui-daypick{margin:0 0 6px}
+.ui-daypick .day-strip{position:relative}
+.ui-daypick-label{text-align:center;font-size:.72rem;color:var(--muted);padding:0 0 8px}
+#journalDayPicker{margin:0 2px 10px}
+#expenseDayPicker{margin-bottom:var(--sp-3)}
+.day-chip.today{border-style:dashed;border-color:var(--primary)}
+.day-chip.none strong{color:var(--muted)}
+html.edit-menu #expenseList .bd-actions [data-edit-expense],html.edit-menu #expenseList .bd-actions [data-delete-expense]{display:none}
+html.edit-menu #waypoints [data-delete-waypoint]{display:none}
+html.edit-menu #reservationsList .res-row-del{display:none}
+html.edit-menu #expenseList tr[data-ui-exp]{cursor:pointer}
+.ui-more{width:40px;height:40px;border-radius:12px;border:0;background:none;color:var(--muted);font-size:1.15rem;font-weight:900;line-height:1;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.ui-more:active,.ui-more:hover{background:var(--bg)}
+.budget-detail-table .bd-actions .ui-more{width:34px;height:34px}
+.ui-scrim{position:fixed;inset:0;background:#0f172a66;z-index:109}
+.ui-sheet{position:fixed;left:0;right:0;bottom:0;z-index:110;max-width:560px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -8px 28px #00000026;padding:10px 16px calc(18px + env(safe-area-inset-bottom));max-height:80vh;overflow:auto}
+.ui-sheet::before{content:'';display:block;width:38px;height:4px;border-radius:99px;background:var(--border);margin:0 auto 10px}
+.ui-sheet-h{display:flex;align-items:flex-start;gap:10px}
+.ui-sheet-h>div{flex:1;min-width:0}
+.ui-sheet-h b{display:block;font-size:.98rem;overflow-wrap:anywhere}
+.ui-sheet-h span{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
+.ui-sheet-x{width:40px;height:40px;border-radius:12px;border:1.5px solid #d5d9cf;background:#fff;font-size:1.1rem;cursor:pointer;flex-shrink:0;color:var(--text)}
+.ui-acts{display:flex;flex-direction:column;gap:2px;margin-top:10px}
+.ui-act{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;border:0;background:none;border-radius:12px;padding:0 10px;font-weight:700;font-size:.92rem;font-family:inherit;color:var(--text);cursor:pointer;text-align:right}
+.ui-act:active,.ui-act:hover{background:var(--bg)}
+.ui-act .i{width:32px;height:32px;border-radius:10px;background:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.ui-act.danger{color:#b42318}.ui-act.danger .i{background:#fdecea}
+.ui-confirm{margin-top:12px;background:#fff4f2;border:1px solid #f3c9c5;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;color:#7a160e}
+.ui-confirm b{font-size:.92rem}.ui-confirm span{font-size:.8rem}
+.ui-2btn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.ui-2btn .btn{margin:0;width:100%}
+.ui-danger-solid{background:#b42318!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px #b4231840!important}
+.ui-input{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.ui-input label{font-size:.78rem;font-weight:700;color:#3a443d}
+.ui-input input{margin:0}
+.ui-input .err{display:block;color:#b42318;font-size:.76rem;min-height:1em}
+`;document.head.appendChild(st)})();
+
+/* ---- answer the next confirm()/prompt() from the sheet (one synchronous call only) ---- */
+/* The answer is consumed by the first confirm()/prompt() of the matching type. It is cleared right after the call
+   returns, except with persist (a handler that awaits before asking); then it expires after 4 s. */
+let uiAnswerNext=null;
+(function(){
+ const _c=window.confirm.bind(window),_p=window.prompt.bind(window);
+ const take=type=>{const a=uiAnswerNext;if(!a||a.type!==type)return null;if(a.until&&Date.now()>a.until){uiAnswerNext=null;return null}uiAnswerNext=null;return a};
+ window.confirm=function(m){return take('confirm')?true:_c(m)};
+ window.prompt=function(m,d){const a=take('prompt');return a?a.value:_p(m,d)};
+})();
+function uiRunAnswered(answer,fn,persist){uiAnswerNext=Object.assign({},answer,persist?{until:Date.now()+4000}:{});try{return fn()}finally{if(!persist)uiAnswerNext=null}}
+
+/* ---- unified day picker ---- */
+function uiTodayIdx(){try{return expenseDefaultDayIndex()}catch{return null}}
+function uiDayPicker(host,opts){
+ host.classList.add('day-nav-wrap','ui-daypick');
+ host.innerHTML=`<button class="btn outline nav-arrow" type="button" data-dp-step="-1" aria-label="היום הקודם">‹</button><div class="day-strip" data-dp-strip role="group" aria-label="${esc(opts.label||'בחירת יום')}"></div><button class="btn outline nav-arrow" type="button" data-dp-step="1" aria-label="היום הבא">›</button>`;
+ const strip=host.querySelector('[data-dp-strip]');
+ const lbl=document.createElement('div');lbl.className='ui-daypick-label';host.insertAdjacentElement('afterend',lbl);
+ const center=()=>{const a=strip.querySelector('.active');if(!a)return;const sr=strip.getBoundingClientRect(),cr=a.getBoundingClientRect();if(!sr.width)return;strip.scrollLeft+=(cr.left+cr.width/2)-(sr.left+sr.width/2)};
+ const paint=()=>{
+  const cur=opts.get(),today=uiTodayIdx();
+  strip.innerHTML=(opts.withNone?`<button type="button" class="day-chip none ${cur===null?'active':''}" data-dp="none" aria-pressed="${cur===null}"><strong>—</strong>ללא יום</button>`:'')+
+   tripData.map((d,i)=>`<button type="button" class="day-chip ${i===cur?'active':''} ${i===today?'today':''}" data-dp="${i}" aria-pressed="${i===cur}"${i===today?' aria-current="date"':''}><strong>יום ${d.day}</strong>${esc(String(d.date).slice(0,5))}</button>`).join('');
+  const d=cur!=null?tripData[cur]:null;
+  lbl.textContent=d?`יום ${d.day} מתוך ${tripData.length} · ${d.region||''}${cur===today?' · היום':''}`:'לא משויך ליום מסוים';
+  center();
+ };
+ strip.addEventListener('click',e=>{const b=e.target.closest('[data-dp]');if(!b)return;opts.set(b.dataset.dp==='none'?null:Number(b.dataset.dp))});
+ host.addEventListener('click',e=>{const b=e.target.closest('[data-dp-step]');if(!b)return;const step=Number(b.dataset.dpStep),cur=opts.get();
+  let next;if(cur===null)next=step>0?(uiTodayIdx()??0):null;else{next=cur+step;if(next<0)next=opts.withNone?null:0;if(next>tripData.length-1)next=tripData.length-1}
+  if(next!==cur)opts.set(next)});
+ strip.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;e.preventDefault();strip.scrollLeft+=e.deltaY},{passive:false});
+ return{paint,center};
+}
+let uiJournalPicker=null,uiExpensePicker=null;
+if(DAY_PICKER==='on'){
+ // journal
+ const jRow=$('journalDay')&&$('journalDay').closest('.card');
+ if(jRow){
+  const host=document.createElement('div');host.id='journalDayPicker';jRow.insertAdjacentElement('beforebegin',host);jRow.classList.add('ui-dp-legacy');
+  uiJournalPicker=uiDayPicker(host,{label:'בחירת יום ביומן',get:()=>globalDayIndex,set:i=>{if(i===null)return;globalDayIndex=i;fillSelects();render()}});
+  const _dpOrigLoadJournal=loadJournal;
+  loadJournal=function(){try{uiJournalPicker.paint()}catch{}return _dpOrigLoadJournal.apply(this,arguments)};
+  uiJournalPicker.paint();
+ }
+ // full expense form
+ const sWrap=document.querySelector('#addExpenseDetails .day-slider-wrap');
+ if(sWrap){
+  const host=document.createElement('div');host.id='expenseDayPicker';sWrap.insertAdjacentElement('beforebegin',host);
+  uiExpensePicker=uiDayPicker(host,{label:'יום ההוצאה',withNone:true,get:()=>expenseFormDayIndex,set:i=>{expenseFormDayIndex=i;expenseFormDayInited=true;renderExpenseDaySlider()}});
+  const _dpOrigRenderSlider=renderExpenseDaySlider;
+  renderExpenseDaySlider=function(){const r=_dpOrigRenderSlider.apply(this,arguments);try{uiExpensePicker.paint()}catch{}return r};
+  $('addExpenseDetails').addEventListener('toggle',()=>{if($('addExpenseDetails').open)uiExpensePicker.center()});
+  uiExpensePicker.paint();
+ }
+ // route strip: mark the real calendar day too
+ const _dpOrigUpdateRouteDayStrip=updateRouteDayStrip;
+ updateRouteDayStrip=function(){const r=_dpOrigUpdateRouteDayStrip.apply(this,arguments);const t=uiTodayIdx();if(t!=null){const c=document.querySelector(`#routeDayStrip [data-route-day="${t}"]`);if(c){c.classList.add('today');c.setAttribute('aria-current','date')}}return r};
+ try{updateRouteDayStrip()}catch{}
+ // a strip painted while its screen was hidden is centred when the screen opens
+ const _dpOrigSwitchPanel=switchPanel;
+ switchPanel=function(id){const r=_dpOrigSwitchPanel.apply(this,arguments);if(id==='journal'&&uiJournalPicker)setTimeout(uiJournalPicker.center,0);if(id==='budget'&&uiExpensePicker)setTimeout(uiExpensePicker.center,0);return r};
+}
+
+/* ---- unified edit control: one action sheet ---- */
+const uiSheet={el:null,scrim:null,ret:null};
+function uiSheetBuild(){
+ if(uiSheet.el)return;
+ const s=document.createElement('div');s.className='ui-scrim';s.id='uiActScrim';s.hidden=true;
+ const el=document.createElement('div');el.className='ui-sheet';el.id='uiActSheet';el.hidden=true;el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-labelledby','uiActTitle');
+ document.body.append(s,el);uiSheet.el=el;uiSheet.scrim=s;
+ s.onclick=uiSheetClose;
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!el.hidden)uiSheetClose()});
+}
+function uiSheetClose(){if(!uiSheet.el)return;uiSheet.el.hidden=true;uiSheet.scrim.hidden=true;uiSheet.el.innerHTML='';const r=uiSheet.ret;uiSheet.ret=null;try{r&&r.isConnected&&r.focus()}catch{}}
+/* spec: {title, sub, actions:[{icon,label,danger,run, confirm:{title,text,ok}, input:{label,value,placeholder,type,validate}}]} */
+function uiSheetOpen(spec){
+ uiSheetBuild();const el=uiSheet.el;uiSheet.ret=document.activeElement;
+ const head=`<div class="ui-sheet-h"><div><b id="uiActTitle">${esc(spec.title||'')}</b>${spec.sub?`<span>${esc(spec.sub)}</span>`:''}</div><button type="button" class="ui-sheet-x" data-ui-x aria-label="סגירה">×</button></div>`;
+ const list=()=>{el.innerHTML=head+`<div class="ui-acts">${spec.actions.map((a,i)=>`<button type="button" class="ui-act ${a.danger?'danger':''}" data-ui-act="${i}"><span class="i" aria-hidden="true">${a.icon}</span>${esc(a.label)}</button>`).join('')}</div>`;bind();const f=el.querySelector('.ui-act');if(f)f.focus()};
+ const bind=()=>{el.querySelector('[data-ui-x]').onclick=uiSheetClose;el.querySelectorAll('[data-ui-act]').forEach(b=>b.onclick=()=>pick(spec.actions[Number(b.dataset.uiAct)]))};
+ const pick=a=>{
+  if(a.confirm){
+   el.innerHTML=head+`<div class="ui-confirm" role="alertdialog" aria-labelledby="uiCfT"><b id="uiCfT">${esc(a.confirm.title)}</b>${a.confirm.text?`<span>${esc(a.confirm.text)}</span>`:''}<div class="ui-2btn"><button type="button" class="btn ui-danger-solid" data-ui-ok>${esc(a.confirm.ok||'מחק')}</button><button type="button" class="btn outline" data-ui-back>ביטול</button></div></div>`;
+   el.querySelector('[data-ui-x]').onclick=uiSheetClose;el.querySelector('[data-ui-back]').onclick=list;
+   el.querySelector('[data-ui-ok]').onclick=()=>{uiSheetClose();a.run()};el.querySelector('[data-ui-back]').focus();return;
+  }
+  if(a.input){
+   const inp=a.input;
+   el.innerHTML=head+`<div class="ui-input"><label for="uiActInput">${esc(inp.label)}</label><input id="uiActInput" type="${inp.type||'text'}" value="${esc(inp.value||'')}" placeholder="${esc(inp.placeholder||'')}" autocomplete="off"><span class="err" id="uiActErr" aria-live="polite"></span><div class="ui-2btn"><button type="button" class="btn green" data-ui-ok>שמור</button><button type="button" class="btn outline" data-ui-back>ביטול</button></div></div>`;
+   el.querySelector('[data-ui-x]').onclick=uiSheetClose;el.querySelector('[data-ui-back]').onclick=list;
+   const go=()=>{const v=$('uiActInput').value.trim();const err=inp.validate?inp.validate(v):'';if(err){$('uiActErr').textContent=err;return}uiSheetClose();a.run(v)};
+   el.querySelector('[data-ui-ok]').onclick=go;$('uiActInput').onkeydown=e=>{if(e.key==='Enter')go()};
+   setTimeout(()=>{try{$('uiActInput').focus()}catch{}},30);return;
+  }
+  uiSheetClose();a.run();
+ };
+ list();el.hidden=false;uiSheet.scrim.hidden=false;
+}
+function uiWhen(t){if(!t)return'';try{return new Date(t).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}catch{return''}}
+function uiMoreBtn(attrs,label){return`<button type="button" class="ui-more" ${attrs} aria-label="${esc(label)}">⋯</button>`}
+
+if(EDIT_MENU==='on'){
+ // decorate lists whenever they are re-rendered (childList only on the list itself, so decorating never re-triggers)
+ const deco=(id,fn)=>{const host=$(id);if(!host||!window.MutationObserver)return;new MutationObserver(()=>{try{fn(host)}catch(e){console.warn('[edit menu]',e)}}).observe(host,{childList:true});try{fn(host)}catch{}};
+ deco('expenseList',host=>host.querySelectorAll('[data-edit-expense]').forEach(b=>{const tr=b.closest('tr');if(!tr||tr.dataset.uiExp)return;tr.dataset.uiExp=b.dataset.editExpense;b.parentElement.insertAdjacentHTML('beforeend',uiMoreBtn(`data-ui-exp-more="${b.dataset.editExpense}"`,'פעולות על ההוצאה'))}));
+ deco('waypoints',host=>host.querySelectorAll('[data-delete-waypoint]').forEach(b=>{if(b.parentElement.querySelector('[data-ui-wp-more]'))return;b.insertAdjacentHTML('afterend',uiMoreBtn(`data-ui-wp-more="${b.dataset.deleteWaypoint}"`,'פעולות על הנקודה'))}));
+ deco('reservationsList',host=>host.querySelectorAll('[data-res-delete]').forEach(b=>{if(b.parentElement.querySelector('[data-ui-res-more]'))return;b.insertAdjacentHTML('beforebegin',uiMoreBtn(`data-ui-res-more="${esc(b.dataset.resDelete)}"`,'פעולות על ההזמנה'))}));
+
+ const expEdit=async idx=>{const b=document.querySelector(`#expenseList [data-edit-expense="${idx}"]`);if(!b)return;$('addExpenseDetails').open=true;b.click();setTimeout(()=>{try{$('addExpenseDetails').scrollIntoView({block:'start',behavior:'smooth'})}catch{}},30)};
+ const expDelete=idx=>{const b=document.querySelector(`#expenseList [data-delete-expense="${idx}"]`);if(b)uiRunAnswered({type:'confirm'},()=>b.click())};
+
+ document.addEventListener('click',async e=>{
+  const t=e.target;if(!t.closest)return;
+  // expenses
+  let b=t.closest('[data-ui-exp-more]');
+  if(b){e.preventDefault();e.stopPropagation();const idx=Number(b.dataset.uiExpMore);const ex=(await getExpenses())[idx];if(!ex)return;
+   const amt=`${Number(ex.amount||0).toLocaleString('he-IL')} ₪`,orig=ex.originalCurrency&&ex.originalAmount?` (${qeFmt(Number(ex.originalAmount),ex.originalCurrency)})`:'';
+   uiSheetOpen({title:`${ex.description||CATEGORIES[normalizeCategory(ex.category)]||'הוצאה'} · ${amt}`,sub:[CATEGORIES[normalizeCategory(ex.category)],ex.by?`נרשם ע"י ${ex.by}`:'',uiWhen(ex.editedAt||ex.createdAt)].filter(Boolean).join(' · ')+orig,actions:[
+    {icon:'✏️',label:'עריכה',run:()=>expEdit(idx)},
+    {icon:'🗑️',label:'מחיקה',danger:true,confirm:{title:`למחוק את "${ex.description||'ההוצאה'}" (${amt})?`,text:'ההוצאה תימחק אצל כל בני המשפחה.'},run:()=>expDelete(idx)}]});return}
+  // points of interest
+  b=t.closest('[data-ui-wp-more]');
+  if(b){e.preventDefault();e.stopPropagation();const i=Number(b.dataset.uiWpMore),d=tripData[globalDayIndex],w=d&&(d.waypoints||[])[i];if(!w)return;
+   const acts=[];
+   if(valid(w.lat,w.lng)&&!(Number(w.lat)===0&&Number(w.lng)===0))acts.push({icon:'🧭',label:'ניווט לנקודה',run:()=>{const u=`https://www.google.com/maps/dir/?api=1&destination=${w.lat},${w.lng}`;const win=window.open(u,'_blank','noopener');if(!win)location.href=u}});
+   acts.push({icon:'🗑️',label:'מחיקה',danger:true,confirm:{title:`למחוק את "${w.name}" מיום ${d.day}?`,text:'הנקודה תימחק אצל כל בני המשפחה.'},run:()=>{const x=document.querySelector(`#waypoints [data-delete-waypoint="${i}"]`);if(x)x.click()}});
+   uiSheetOpen({title:w.name,sub:[`יום ${d.day}`,w.addedBy?`נוסף ע"י ${w.addedBy}`:'',w.notes||''].filter(Boolean).join(' · '),actions:acts});return}
+  // reservations
+  b=t.closest('[data-ui-res-more]');
+  if(b){e.preventDefault();e.stopPropagation();const id=b.dataset.uiResMore;const r=(await getReservations()).find(x=>x.id===id);if(!r)return;const m=resMeta(r.type);
+   uiSheetOpen({title:`${m.icon} ${r.title||m.label}`,sub:[r.provider,r.datetime,r.confirmationRef?`אישור ${r.confirmationRef}`:''].filter(Boolean).join(' · '),actions:[
+    {icon:'✏️',label:'עריכה',run:()=>openReservationDetail(id)},
+    {icon:'🗑️',label:'מחיקה',danger:true,confirm:{title:`למחוק את "${r.title||m.label}"?`,text:r.type==='hotel'?'ההזמנה תימחק אצל כל בני המשפחה, וסימון "הוזמן" יוסר מימי השהייה.':'ההזמנה וההוצאה המקושרת אליה יימחקו אצל כל בני המשפחה.'},run:()=>uiRunAnswered({type:'confirm'},()=>deleteReservationById(id))}]});return}
+  // vault documents (existing ⋯)
+  b=t.closest('#documentsGrid [data-doc-menu]');
+  if(b){e.preventDefault();e.stopPropagation();const id=b.dataset.docMenu;const d=(await getDocuments()).find(x=>x.id===id);if(!d)return;docActionTargetId=id;
+   const acts=[
+    {icon:'🔀',label:'העברה בין תיקייה / תגית',run:()=>{docActionTargetId=id;$('docActionMove').onclick()}},
+    {icon:'📤',label:'שיתוף',run:()=>{docActionTargetId=id;$('docActionShare').onclick()}}];
+   if($('docActionDrive'))acts.push({icon:'🔗',label:d.driveUrl?'עדכון קישור Drive':'הוספת קישור Drive',input:{label:'קישור לקובץ ב-Google Drive'+(d.src?' (ריק = הסרת הקישור)':''),value:d.driveUrl||'',type:'url',placeholder:'https://drive.google.com/…',validate:v=>{if(!v&&!d.src)return'למסמך הזה אין קובץ במכשיר, אז אי אפשר להסיר את הקישור. אפשר למחוק את המסמך.';if(v&&!vxIsDriveUrl(v))return'צריך קישור שמתחיל ב-https://drive.google.com או https://docs.google.com';return''}},run:v=>{docActionTargetId=id;uiRunAnswered({type:'prompt',value:v},()=>$('docActionDrive').onclick(),true)}});
+   acts.push({icon:'🗑️',label:'מחיקה',danger:true,confirm:{title:`למחוק את "${d.name}"?`,text:'המסמך יימחק מהמכשיר הזה.'},run:()=>{docActionTargetId=id;uiRunAnswered({type:'confirm'},()=>$('docActionDelete').onclick())}});
+   uiSheetOpen({title:d.name,sub:[DOC_CATEGORY_LABELS[d.category]||'',d.by||'',uiWhen(d.createdAt)].filter(Boolean).join(' · '),actions:acts});return}
+  // check-ins (existing ⋯)
+  b=t.closest('[data-ci-more]');
+  if(b){e.preventDefault();e.stopPropagation();const id=b.dataset.ciMore;const c=(typeof checkinsCache!=='undefined'?checkinsCache:[]).find(x=>x.id===id);if(!c)return;
+   const link=b.closest('.ci-row')&&b.closest('.ci-row').querySelector('.ci-row-main');
+   uiSheetOpen({title:c.name||'📍 מיקום מדויק',sub:[`צ'ק-אין של ${c.by||'—'}`,visVnHM(c.t),c.note?`"${c.note}"`:''].filter(Boolean).join(' · '),actions:[
+    {icon:'🗺️',label:'פתיחה ב-Google Maps',run:()=>{if(link){const win=window.open(link.href,'_blank','noopener');if(!win)location.href=link.href}}},
+    {icon:'✏️',label:'עריכת הערה',input:{label:"הערה לצ'ק-אין",value:c.note||'',placeholder:'למשל: הקפה הכי טוב בטיול ☕'},run:v=>uiRunAnswered({type:'prompt',value:v},()=>ciEditNote(id))},
+    {icon:'🗑️',label:'מחיקה',danger:true,confirm:{title:"למחוק את הצ'ק-אין הזה?",text:'הוא יימחק אצל כל בני המשפחה.'},run:()=>uiRunAnswered({type:'confirm'},()=>ciDelete(id))}]});return}
+ },true);
+
+ // tapping an expense row (not a button) edits it
+ $('expenseList').addEventListener('click',e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-ui-exp]');if(tr)expEdit(Number(tr.dataset.uiExp))});
 }
 </script>
 </body>
